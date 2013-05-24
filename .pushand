@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+HOSTNAME=$(hostname)
+VENV="venv"
+echo "Deploying GoChatServer on $HOSTNAME"
+echo "----------------------------------------------------------"
+
+env -i git  submodule update --init 2>/dev/null
+rm -Rf $VENV
+virtualenv --distribute -p /usr/bin/python2.7 $VENV
+source $VENV/bin/activate
+pip install -r requirements.txt
+virtualenv --relocatable $VENV
+
+echo "----------------------------------------------------------"
+echo "Deploy completed successful"
+echo "To run GoChatServer:"
+echo "1. Connect to $HOSTNAME (vagrant ssh)"
+echo "2. cd $PWD"
+echo "3. Enable virtualenv: source $VENV/bin/activate"
+echo "4. Run: foreman start"
+
