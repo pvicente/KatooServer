@@ -102,6 +102,6 @@ class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientP
         self.roster = roster
     
     def onMessage(self, msg):
-        print '(%s) onMessage: %s'%(hex(id(self)), msg)
-        pass
+        if msg['type'] == 'chat' and not msg.body is None:
+            print '(%s) onMessage: %s'%(hex(id(self)), msg.body)
     
