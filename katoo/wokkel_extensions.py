@@ -5,11 +5,28 @@ Created on May 25, 2013
 '''
 from functools import wraps
 from twisted.words.protocols.jabber.sasl import SASLNoAcceptableMechanism, \
-    get_mechanisms, SASLInitiatingInitializer
+    get_mechanisms, SASLInitiatingInitializer, SASLAuthError
 from twisted.words.protocols.jabber.sasl_mechanisms import ISASLMechanism
-from zope.interface import implements
 from utils.decorators import for_methods
+from wokkel.client import XMPPClient
+from zope.interface import implements
 import os
+
+__all__ = ["ExtendedXMPPClient"]
+
+class ExtendedXMPPClient(XMPPClient):
+    def __init__(self, jid, password, host=None, port=5222):
+        XMPPClient.__init__(self, jid, password, host=host, port=port)
+    
+    def initializationFailed(self, reason):
+        try:
+            XMPPClient.initializationFailed(self, reason)
+        except SASLAuthError as e:
+            self.onAuthError(e)
+    
+    def onAuthError(self, reason):
+        raise NotImplemented()
+    
 
 class X_FACEBOOK_PLATFORM(object):
     '''

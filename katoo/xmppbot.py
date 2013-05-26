@@ -29,31 +29,35 @@ Created on May 13, 2013
 # 
 #             self.send(reply)
 #===============================================================================
-import wokkel_extensions
-from wokkel.xmppim import MessageProtocol, PresenceClientProtocol, RosterClientProtocol
+from wokkel.xmppim import MessageProtocol, PresenceClientProtocol, \
+    RosterClientProtocol
 
 class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientProtocol):
     def __init__(self):
         self._parentInitializationFailed = None
     
     def connectionInitialized(self):
+        print '(%s) Connection Initialized'%(hex(id(self)))
         MessageProtocol.connectionInitialized(self)
         RosterClientProtocol.connectionInitialized(self)
         PresenceClientProtocol.connectionInitialized(self)
-    
-    def connectionMade(self):
+        
+        #Send Available and getting roster
         self.available()
         d = self.getRoster()
         d.addCallback(self.onRosterReceived)
     
+    def connectionMade(self):
+        print '(%s) Connection Made'%(hex(id(self)))
+        self.parent.onAuthError = self.onAuthError
+    
     def connectionLost(self, reason):
-        print 'Connection Lost. Reason: %s'%(reason)
+        print '(%s) Connection Lost. Reason: %s'%(hex(id(self)), reason)
         #pass
     
-    def initializationFailed(self, reason):
-        print 'Initialization Failed. Reason: %s'%(reason)
-        #pass
-    
+    def onAuthError(self, reason):
+        print '(%s) onAuthError. Reason: %s'%(hex(id(self)), reason)
+        
     def availableReceived(self, entity, show=None, statuses=None, priority=0):
         """
         Available presence was received.
@@ -71,7 +75,7 @@ class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientP
         @param priority: priority level of the resource.
         @type priority: C{int}
         """
-        pass
+        print 'Available received. %s'%(locals())
     
     def unavailableReceived(self, entity, statuses=None):
         """
@@ -85,7 +89,7 @@ class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientP
                          specified, is keyed with C{None}.
         @type statuses: C{dict}
         """
-        pass
+        print 'Unavailable received. %s'%(locals())
     
     def onRosterSet(self, item):
         pass
@@ -94,8 +98,10 @@ class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientP
         pass
     
     def onRosterReceived(self, roster):
+        print '(%s) onRosterReceived: %s'%(hex(id(self)), roster)
         self.roster = roster
     
     def onMessage(self, msg):
+        print '(%s) onMessage: %s'%(hex(id(self)), msg)
         pass
     
