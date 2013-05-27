@@ -29,10 +29,14 @@ Created on May 13, 2013
 # 
 #             self.send(reply)
 #===============================================================================
+from twisted.internet import defer
+from wokkel.disco import DiscoClientProtocol, DiscoHandler
 from wokkel.xmppim import MessageProtocol, PresenceClientProtocol, \
     RosterClientProtocol
+import itertools
 
-class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientProtocol):
+class CompleteBotProtocol(MessageProtocol, PresenceClientProtocol, RosterClientProtocol, DiscoHandler, DiscoClientProtocol): 
+    
     def __init__(self):
         self._parentInitializationFailed = None
     
@@ -41,9 +45,10 @@ class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientP
         MessageProtocol.connectionInitialized(self)
         RosterClientProtocol.connectionInitialized(self)
         PresenceClientProtocol.connectionInitialized(self)
+        DiscoHandler.connectionInitialized(self)
         
         #Send Available and getting roster
-        self.available()
+        self.available(show='away')
         d = self.getRoster()
         d.addCallback(self.onRosterReceived)
     
@@ -76,6 +81,13 @@ class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientP
         @type priority: C{int}
         """
         print 'Available received. %s'%(locals())
+        d = self.requestInfo(entity)
+        d.addCallback(self.onRequestInfo)
+        return d
+    
+    def onRequestInfo(self, iq):
+        print 'OnRequestInfo: %s'%(iq.toElement().toXml())
+        
     
     def unavailableReceived(self, entity, statuses=None):
         """
@@ -100,8 +112,30 @@ class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientP
     def onRosterReceived(self, roster):
         print '(%s) onRosterReceived: %s'%(hex(id(self)), roster)
         self.roster = roster
+        
     
     def onMessage(self, msg):
         if msg['type'] == 'chat' and not msg.body is None:
             print '(%s) onMessage: %s'%(hex(id(self)), msg.body)
-    
+
+    def getDiscoInfo(self, requestor, target, nodeIdentifier=''):
+        """
+        Get identity and features from this entity, node.
+
+        This handler supports XMPP Ping, but only without a nodeIdentifier
+        specified.
+        """
+        print '(%s) getDiscoInfo: %s'%(hex(id(self)), vars(locals()))
+        return defer.succeed([])
+
+
+    def getDiscoItems(self, requestor, target, nodeIdentifier=''):
+        """
+        Get contained items for this entity, node.
+
+        This handler does not support items.
+        """
+        print '(%s) getDiscoItems: %s'%(hex(id(self)), vars(locals()))
+        return defer.succeed([])
+
+CompleteBotProtocol.iqHandlers = dict(list(itertools.chain(*[d.iqHandlers.items() for d in (CompleteBotProtocol.__bases__) if hasattr(d, 'iqHandlers')])))

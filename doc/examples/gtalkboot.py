@@ -10,7 +10,7 @@ from katoo.wokkel_extensions import ExtendedXMPPClient
 from katoo.xmppbot import CompleteBotProtocol
 
 application = service.Application("gtalkbot")
-username = os.getenv("USERNAME", 'user@gmail.com')
+username = os.getenv("USERNAME", 'pedro.vicente.fernandez@gmail.com/Messaging')
 token = os.getenv('TOKEN', '')
 
 xmppclient = ExtendedXMPPClient(jid=jid.internJID(username), password=token, host="talk.google.com")

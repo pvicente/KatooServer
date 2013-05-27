@@ -72,7 +72,7 @@ class X_OAUTH2(object):
     name = 'X-OAUTH2'
     
     def __init__(self, jid, password):
-        self.username=jid.full() 
+        self.username=jid.userhost()
         self.access_token = password
     
     def getInitialResponse(self):
