@@ -361,11 +361,9 @@ class RQTwistedQueue(Queue):
             job.timeout = timeout  # _timeout_in_seconds(timeout)
         else:
             job.timeout = 180  # default
-        job_id = job.id
         d1 = job.save()
-        d2 = self.push_job_id(job_id)
-        dl = defer.DeferredList([d1, d2])
-        return dl
+        d1.addCallback(self.push_job_id)
+        return d1
 
     @classmethod
     def lpop(cls, queue_keys, timeout, connection=None):
@@ -390,57 +388,8 @@ class RQTwistedQueue(Queue):
         return d
 
     def dequeue(self):
-        """Dequeues the front-most job from this queue.
-
-        Returns a Job instance, which can be executed or inspected.
-        """
         raise NotImplemented()
 
     @classmethod
     def dequeue_any(cls, queues, timeout, connection=None):
         raise NotImplemented()
-        """Class method returning the Job instance at the front of the given
-        set of Queues, where the order of the queues is important.
-
-        When all of the Queues are empty, depending on the `timeout` argument,
-        either blocks execution of this function for the duration of the
-        timeout or until new messages arrive on any of the queues, or returns
-        None.
-
-        See the documentation of cls.lpop for the interpretation of timeout.
-        """
-        if connection is None:
-            connection = RedisMixin.redis_conn
-        
-        def get_job(result):
-            if result is None:
-                return None
-            queue_key, job_id = result
-            queue = cls.from_queue_key(queue_key, connection)
-            
-            
-        queue_keys = [q.key for q in queues]
-        d = cls.lpop(queue_keys, timeout, connection=connection)
-        if result is None:
-            yield None, None
-        job_id, queue_key = result
-        job = None
-        queue = cls.from_queue_key(queue_key, connection=connection)
-        try:
-            job = yield RQTwistedJob.fetch(job_id, connection=connection)
-        except NoSuchJobError:
-            # Silently pass on jobs that don't exist (anymore),
-            # and continue by reinvoking the same function recursively
-            pass
-        except UnpickleError as e:
-            # Attach queue information on the exception for improved error
-            # reporting
-            e.job_id = job_id
-            e.queue = queue
-            raise e
-        finally:
-            yield job, queue
-        
-
-
-
