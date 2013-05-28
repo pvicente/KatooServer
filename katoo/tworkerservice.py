@@ -3,7 +3,7 @@ Created on May 27, 2013
 
 @author: pvicente
 '''
-from katoo.rqtwisted import RedisMixin, RQTwistedJob
+from katoo.rqtwisted import RedisMixin, RQTwistedJob, RQTwistedQueue
 from twisted.application import service
 from twisted.internet import defer, reactor, threads
 from twisted.python import log
@@ -18,6 +18,54 @@ class IWorkQueue(Interface):
 
 def example_func(argument):
     print 'Hello', argument
+
+class TQueueService(service.Service, RedisMixin):
+    def __init__(self, queues):
+        self.queues = [RQTwistedQueue(name) for name in queues]
+        self.queue_keys = [q.key for q in self.queues]
+        self.stopped = False
+        
+    @defer.inlineCallbacks
+    def dequeue(self):
+        try:
+            res = yield RQTwistedQueue.lpop(self.queue_keys, timeout=1, connection=self.redis_conn)
+            if res is None:
+                return
+            queue_key, job_id = res
+            log.msg('Job: %s in queue: %s'%(job_id, queue_key))
+            job = yield RQTwistedJob.fetch(job_id, connection=self.redis_conn)
+            if not job is None:
+                log.msg('Fetch Job:', job)
+                job.perform()
+        except Exception as e:
+            log.msg('Exception dequeing:', e)
+            raise
+        finally:
+            if not self.stopped:
+                reactor.callWhenRunning(self.dequeue)
+    
+    @defer.inlineCallbacks
+    def enqueue(self):
+        try:
+            queue = RQTwistedQueue()
+            res = yield queue.enqueue_call(func=example_func, args=(1,))
+            log.msg('Enqueued:', res)
+            print res
+        except Exception as e:
+            log.msg('Exception enqueing:', e)
+            raise
+        finally:
+            if not self.stopped:
+                reactor.callLater(1, self.enqueue)
+    
+    def startService(self):
+        reactor.callLater(1, self.dequeue)
+        reactor.callLater(5, self.enqueue)
+        service.Service.startService(self)
+
+    def stopService(self):
+        service.Service.stopService(self)
+        self.stopped = True
 
 class TWorkerService(service.Service, RedisMixin):
     implements(IWorkQueue)

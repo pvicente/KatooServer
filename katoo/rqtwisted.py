@@ -5,10 +5,12 @@ Created on May 27, 2013
 '''
 from pickle import loads, dumps
 from rq.exceptions import NoSuchJobError, UnpickleError
-from rq.job import unpickle, Job
+from rq.job import unpickle, Job, Status
+from rq.queue import Queue, compact
 from twisted.internet import defer
 from cyclone import redis
 import times
+from functools import total_ordering
 
 class RedisMixin(object):
     redis_conn = None
@@ -181,9 +183,264 @@ class RQTwistedJob(Job):
         if self.meta:
             obj['meta'] = dumps(self.meta)
 
-        return self.connection.hmset(key, obj)
+        d = self.connection.hmset(key, obj)
+        d.addCallback(lambda x: self.id)
+        return d
 
     def delete(self):
         """Deletes the job hash from Redis."""
         return self.connection.delete(self.key)
+
+@total_ordering
+class RQTwistedQueue(Queue):
+
+    @classmethod
+    def all(cls, connection=None):
+        """Returns an iterable of all Queues.
+        """
+        prefix = cls.redis_queue_namespace_prefix
+        
+        connection = RedisMixin.redis_conn
+        def to_queue(queue_key):
+            return cls.from_queue_key(queue_key)
+        d = connection.keys('%s*' % prefix)
+        d.addCallback(lambda keys: map(to_queue, keys))
+        return d
+
+    @classmethod
+    def from_queue_key(cls, queue_key, connection=None):
+        """Returns a Queue instance, based on the naming conventions for naming
+        the internal Redis keys.  Can be used to reverse-lookup Queues by their
+        Redis keys.
+        """
+        prefix = cls.redis_queue_namespace_prefix
+        if not queue_key.startswith(prefix):
+            raise ValueError('Not a valid RQ queue key: %s' % (queue_key,))
+        name = queue_key[len(prefix):]
+        return cls(name)
+
+    def __init__(self, name='default', default_timeout=None, connection=None,
+                 async=True):
+        self.connection = RedisMixin.redis_conn
+        prefix = self.redis_queue_namespace_prefix
+        self.name = name
+        self._key = '%s%s' % (prefix, name)
+        self._default_timeout = default_timeout
+        self._async = True
+
+    def empty(self):
+        """Removes all messages on the queue."""
+        return self.connection.delete(self.key)
+    
+    def is_empty(self):
+        """Returns whether the current queue is empty."""
+        return self.count.addCallback(lambda x: x == 0)
+
+    @property
+    def count(self):
+        """Returns a count of all messages in the queue."""
+        return self.connection.llen(self.key)
+    
+    @property
+    def job_ids(self):
+        """Returns a list of all job IDS in the queue."""
+        return self.connection.lrange(self.key, 0, -1)
+
+    @property
+    def jobs(self):
+        """Returns a list of all (valid) jobs in the queue."""
+        @defer.inlineCallbacks
+        def safe_fetch(job_id):
+            try:
+                job = yield Job.safe_fetch(job_id)
+            except NoSuchJobError:
+                yield self.remove(job_id)
+            except UnpickleError:
+                yield
+            yield job
+
+        return compact([safe_fetch(job_id) for job_id in self.job_ids])
+
+    def remove(self, job_or_id):
+        """Removes Job from queue, accepts either a Job instance or ID."""
+        job_id = job_or_id.id if isinstance(job_or_id, RQTwistedJob) else job_or_id
+        return self.connection.lrem(self.key, 0, job_id)
+    
+    @defer.inlineCallbacks
+    def compact(self):
+        """Removes all "dead" jobs from the queue by cycling through it, while
+        guarantueeing FIFO semantics.
+        """
+        COMPACT_QUEUE = 'rq:queue:_compact'
+
+        yield self.connection.rename(self.key, COMPACT_QUEUE)
+        while True:
+            job_id = yield self.connection.lpop(COMPACT_QUEUE)
+            if job_id is None:
+                break
+            if RQTwistedJob.exists(job_id):
+                yield self.connection.rpush(self.key, job_id)
+    
+    
+    def push_job_id(self, job_or_id):  # noqa
+        """Pushes a job ID on the corresponding Redis queue."""
+        job_id = job_or_id.id if isinstance(job_or_id, RQTwistedJob) else job_or_id
+        d = self.connection.rpush(self.key, job_id)
+        d.addCallback(lambda x: job_id)
+        return d
+
+    
+    def pop_job_id(self):
+        """Pops a given job ID from this Redis queue."""
+        return self.connection.lpop(self.key)
+    
+
+    def enqueue_call(self, func, args=None, kwargs=None, timeout=None, result_ttl=None): #noqa
+        """Creates a job to represent the delayed function call and enqueues
+        it.
+
+        It is much like `.enqueue()`, except that it takes the function's args
+        and kwargs as explicit arguments.  Any kwargs passed to this function
+        contain options for RQ itself.
+        """
+        timeout = timeout or self._default_timeout
+        job = RQTwistedJob.create(func, args, kwargs, connection=self.connection,
+                         result_ttl=result_ttl, status=Status.QUEUED)
+        return self.enqueue_job(job, timeout=timeout)
+
+    def enqueue(self, f, *args, **kwargs):
+        """Creates a job to represent the delayed function call and enqueues
+        it.
+
+        Expects the function to call, along with the arguments and keyword
+        arguments.
+
+        The function argument `f` may be any of the following:
+
+        * A reference to a function
+        * A reference to an object's instance method
+        * A string, representing the location of a function (must be
+          meaningful to the import context of the workers)
+        """
+        if not isinstance(f, basestring) and f.__module__ == '__main__':
+            raise ValueError(
+                    'Functions from the __main__ module cannot be processed '
+                    'by workers.')
+
+        # Detect explicit invocations, i.e. of the form:
+        #     q.enqueue(foo, args=(1, 2), kwargs={'a': 1}, timeout=30)
+        timeout = None
+        result_ttl = None
+        if 'args' in kwargs or 'kwargs' in kwargs:
+            assert args == (), 'Extra positional arguments cannot be used when using explicit args and kwargs.'  # noqa
+            timeout = kwargs.pop('timeout', None)
+            args = kwargs.pop('args', None)
+            result_ttl = kwargs.pop('result_ttl', None)
+            kwargs = kwargs.pop('kwargs', None)
+
+        return self.enqueue_call(func=f, args=args, kwargs=kwargs,
+                                 timeout=timeout, result_ttl=result_ttl)
+
+    def enqueue_job(self, job, timeout=None, set_meta_data=True):
+        """Enqueues a job for delayed execution.
+
+        When the `timeout` argument is sent, it will overrides the default
+        timeout value of 180 seconds.  `timeout` may either be a string or
+        integer.
+
+        If the `set_meta_data` argument is `True` (default), it will update
+        the properties `origin` and `enqueued_at`.
+
+        If Queue is instantiated with async=False, job is executed immediately.
+        """
+        if set_meta_data:
+            job.origin = self.name
+            job.enqueued_at = times.now()
+
+        if timeout:
+            job.timeout = timeout  # _timeout_in_seconds(timeout)
+        else:
+            job.timeout = 180  # default
+        job_id = job.id
+        d1 = job.save()
+        d2 = self.push_job_id(job_id)
+        dl = defer.DeferredList([d1, d2])
+        return dl
+
+    @classmethod
+    def lpop(cls, queue_keys, timeout, connection=None):
+        """Helper method.  Intermediate method to abstract away from some
+        Redis API details, where LPOP accepts only a single key, whereas BLPOP
+        accepts multiple.  So if we want the non-blocking LPOP, we need to
+        iterate over all queues, do individual LPOPs, and return the result.
+
+        Until Redis receives a specific method for this, we'll have to wrap it
+        this way.
+
+        The timeout parameter is interpreted as follows:
+             > 0 - maximum number of seconds to block
+        """
+        if connection is None:
+            connection = RedisMixin.redis_conn
+        if not timeout:  # blocking variant
+                raise ValueError('RQ does not support indefinite timeouts. Please pick a timeout value > 0.')
+        d = connection.blpop(queue_keys, timeout)
+        #return queue_key, job_id or None
+        d.addCallback(lambda x: x if x is None else (x[0], x[1]))
+        return d
+
+    def dequeue(self):
+        """Dequeues the front-most job from this queue.
+
+        Returns a Job instance, which can be executed or inspected.
+        """
+        raise NotImplemented()
+
+    @classmethod
+    def dequeue_any(cls, queues, timeout, connection=None):
+        raise NotImplemented()
+        """Class method returning the Job instance at the front of the given
+        set of Queues, where the order of the queues is important.
+
+        When all of the Queues are empty, depending on the `timeout` argument,
+        either blocks execution of this function for the duration of the
+        timeout or until new messages arrive on any of the queues, or returns
+        None.
+
+        See the documentation of cls.lpop for the interpretation of timeout.
+        """
+        if connection is None:
+            connection = RedisMixin.redis_conn
+        
+        def get_job(result):
+            if result is None:
+                return None
+            queue_key, job_id = result
+            queue = cls.from_queue_key(queue_key, connection)
+            
+            
+        queue_keys = [q.key for q in queues]
+        d = cls.lpop(queue_keys, timeout, connection=connection)
+        if result is None:
+            yield None, None
+        job_id, queue_key = result
+        job = None
+        queue = cls.from_queue_key(queue_key, connection=connection)
+        try:
+            job = yield RQTwistedJob.fetch(job_id, connection=connection)
+        except NoSuchJobError:
+            # Silently pass on jobs that don't exist (anymore),
+            # and continue by reinvoking the same function recursively
+            pass
+        except UnpickleError as e:
+            # Attach queue information on the exception for improved error
+            # reporting
+            e.job_id = job_id
+            e.queue = queue
+            raise e
+        finally:
+            yield job, queue
+        
+
+
 
