@@ -52,6 +52,8 @@ class RQTwistedJob(Job):
         """Fetches a persisted job from its corresponding Redis key and
         instantiates it.
         """
+        if id is None:
+            return defer.succeed(None)
         job = cls(id, connection=connection)
         return job.refresh()
 
@@ -60,6 +62,8 @@ class RQTwistedJob(Job):
         """Fetches a persisted job from its corresponding Redis key, but does
         not instantiate it, making it impossible to get UnpickleErrors.
         """
+        if id is None:
+            return defer.succeed(None)
         job = cls(id, connection=connection)
         return job.refresh()
 
@@ -361,23 +365,12 @@ class RQTwistedQueue(Queue):
             job.timeout = timeout  # _timeout_in_seconds(timeout)
         else:
             job.timeout = 180  # default
-        d1 = job.save()
-        d1.addCallback(self.push_job_id)
-        return d1
+        d = job.save()
+        d.addCallback(self.push_job_id)
+        return d
 
     @classmethod
     def lpop(cls, queue_keys, timeout, connection=None):
-        """Helper method.  Intermediate method to abstract away from some
-        Redis API details, where LPOP accepts only a single key, whereas BLPOP
-        accepts multiple.  So if we want the non-blocking LPOP, we need to
-        iterate over all queues, do individual LPOPs, and return the result.
-
-        Until Redis receives a specific method for this, we'll have to wrap it
-        this way.
-
-        The timeout parameter is interpreted as follows:
-             > 0 - maximum number of seconds to block
-        """
         if connection is None:
             connection = RedisMixin.redis_conn
         if not timeout:  # blocking variant
@@ -387,9 +380,29 @@ class RQTwistedQueue(Queue):
         d.addCallback(lambda x: x if x is None else (x[0], x[1]))
         return d
 
-    def dequeue(self):
-        raise NotImplemented()
+    def dequeue(self, timeout):
+        '''
+        Return first job in queue or None if no job
+        '''
+        d = self.lpop([self.key], timeout, self.connection)
+        d.addCallback(lambda x: x if x is None else x[1])
+        d.addCallback(RQTwistedJob.fetch)
+        return d
 
     @classmethod
-    def dequeue_any(cls, queues, timeout, connection=None):
-        raise NotImplemented()
+    def dequeue_any(cls, queue_keys, timeout, connection=None):
+        def get_queue_job(res):
+            if res is None:
+                return defer.succeed(None)
+            queue_key, job_id = res
+            queue = cls.from_queue_key(queue_key)
+            d = RQTwistedJob.fetch(job_id, connection)
+            d.addCallback(lambda job: job if job is None else (queue, job))
+            return d
+            
+        if connection is None:
+            connection = RedisMixin.redis_conn
+        d = cls.lpop(queue_keys, timeout, connection)
+        d.addCallback(get_queue_job)
+        return d
+        

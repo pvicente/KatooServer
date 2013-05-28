@@ -5,10 +5,10 @@ Created on May 27, 2013
 '''
 from twisted.application import service
 from katoo.rqtwisted import RedisMixin
-from katoo.tworkerservice import TQueueService
+from katoo.tworkerservice import TQueuesService
 
 RedisMixin.setup()
 application = service.Application("twistedrqworker")
 
-worker = TQueueService(['default',])
+worker = TQueuesService(['default',])
 worker.setServiceParent(application)
