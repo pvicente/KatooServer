@@ -18,12 +18,14 @@ class RedisMixin(object):
     @classmethod
     def setup(cls):
         # read settings from a conf file or something...
-        cls.redis_conn = redis.lazyConnectionPool()
+        cls.redis_conn = redis.lazyConnectionPool(poolsize=4)
 
 class RQTwistedJob(Job):
 
     def __init__(self, job_id=None, connection=None):
-        self.connection = RedisMixin.redis_conn
+        if connection is None:
+            connection = RedisMixin.redis_conn
+        self.connection = connection
         self._id = job_id
         self.created_at = times.now()
         self._func_name = None
@@ -44,7 +46,8 @@ class RQTwistedJob(Job):
     @classmethod
     def exists(cls, job_id, connection=None):
         """Returns whether a job hash exists for the given job ID."""
-        connection = RedisMixin.redis_conn
+        if connection is None:
+            connection = RedisMixin.redis_conn
         return connection.exists(cls.key_for(job_id))
 
     @classmethod
@@ -204,7 +207,8 @@ class RQTwistedQueue(Queue):
         """
         prefix = cls.redis_queue_namespace_prefix
         
-        connection = RedisMixin.redis_conn
+        if connection is None:
+            connection = RedisMixin.redis_conn
         def to_queue(queue_key):
             return cls.from_queue_key(queue_key)
         d = connection.keys('%s*' % prefix)
@@ -225,7 +229,9 @@ class RQTwistedQueue(Queue):
 
     def __init__(self, name='default', default_timeout=None, connection=None,
                  async=True):
-        self.connection = RedisMixin.redis_conn
+        if connection is None:
+            connection = RedisMixin.redis_conn
+        self.connection = connection
         prefix = self.redis_queue_namespace_prefix
         self.name = name
         self._key = '%s%s' % (prefix, name)
