@@ -3,7 +3,7 @@ Created on May 27, 2013
 
 @author: pvicente
 '''
-from katoo.rqtwisted import RedisMixin, RQTwistedJob, RQTwistedQueue
+from katoo.rqtwisted import RedisMixin, RQTwistedJob, RQTwistedQueue, UnpickleError, NoSuchJobError
 from twisted.application import service
 from twisted.internet import defer, reactor, threads
 from twisted.python import log
@@ -68,6 +68,8 @@ class TDequeingService(service.Service, RedisMixin):
             job = yield self.queue.dequeue(self.blocking_time)
             if not job is None:
                 threads.deferToThread(job.perform)
+        except (UnpickleError, NoSuchJobError) as e:
+            log.msg('Error fetching job', e)
         except Exception as e:
             log.msg('Exception dequeing:', e)
             raise

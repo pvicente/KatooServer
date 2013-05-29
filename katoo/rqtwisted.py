@@ -48,23 +48,23 @@ class RQTwistedJob(Job):
         return connection.exists(cls.key_for(job_id))
 
     @classmethod
-    def fetch(cls, id, connection=None):
+    def fetch(cls, job_id, connection=None):
         """Fetches a persisted job from its corresponding Redis key and
         instantiates it.
         """
-        if id is None:
+        if job_id is None:
             return defer.succeed(None)
-        job = cls(id, connection=connection)
+        job = cls(job_id, connection=connection)
         return job.refresh()
 
     @classmethod
-    def safe_fetch(cls, id, connection=None):
+    def safe_fetch(cls, job_id, connection=None):
         """Fetches a persisted job from its corresponding Redis key, but does
         not instantiate it, making it impossible to get UnpickleErrors.
         """
-        if id is None:
+        if job_id is None:
             return defer.succeed(None)
-        job = cls(id, connection=connection)
+        job = cls(job_id, connection=connection)
         return job.refresh()
 
     def _get_status_impl(self, value):
@@ -252,8 +252,8 @@ class RQTwistedQueue(Queue):
 
     @property
     def jobs(self):
+        raise NotImplemented()
         """Returns a list of all (valid) jobs in the queue."""
-        @defer.inlineCallbacks
         def safe_fetch(job_id):
             try:
                 job = yield Job.safe_fetch(job_id)
@@ -262,7 +262,7 @@ class RQTwistedQueue(Queue):
             except UnpickleError:
                 yield
             yield job
-
+        
         return compact([safe_fetch(job_id) for job_id in self.job_ids])
 
     def remove(self, job_or_id):
@@ -270,8 +270,8 @@ class RQTwistedQueue(Queue):
         job_id = job_or_id.id if isinstance(job_or_id, RQTwistedJob) else job_or_id
         return self.connection.lrem(self.key, 0, job_id)
     
-    @defer.inlineCallbacks
     def compact(self):
+        raise NotImplemented()
         """Removes all "dead" jobs from the queue by cycling through it, while
         guarantueeing FIFO semantics.
         """

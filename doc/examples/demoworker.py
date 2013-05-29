@@ -5,7 +5,7 @@ Created on May 27, 2013
 '''
 from twisted.application import service
 from katoo.rqtwisted import RedisMixin
-from katoo.tworkerservice import TQueuesService
+from tworkerservice import TQueuesService
 
 RedisMixin.setup()
 application = service.Application("twistedrqworker")
