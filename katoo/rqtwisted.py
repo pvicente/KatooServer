@@ -3,25 +3,15 @@ Created on May 27, 2013
 
 @author: pvicente
 '''
-from cyclone import redis
+
 from functools import total_ordering
-from katoo.utils.parse import redis_url_parse
+from katoo.utils.redis import RedisMixin
 from pickle import loads, dumps
 from rq.exceptions import NoSuchJobError, UnpickleError
 from rq.job import unpickle, Job, Status
 from rq.queue import Queue, compact
 from twisted.internet import defer
 import times
-from katoo import conf
-
-class RedisMixin(object):
-    redis_conn = None
-
-    @classmethod
-    def setup(cls):
-        hostname, port, db, password = redis_url_parse(conf.REDIS_URL)
-        #pending to resolve Authentication with redis in cyclone.redis library
-        cls.redis_conn = redis.lazyConnectionPool(host=hostname, port=port, dbid=db, poolsize=conf.REDIS_POOL)
 
 class RQTwistedJob(Job):
 
