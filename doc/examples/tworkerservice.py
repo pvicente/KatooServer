@@ -36,10 +36,9 @@ class TEnqueingService(service.Service, RedisMixin):
         self.enqueued = 0
         self.stopped = False
     
-    @defer.inlineCallbacks
     def enqueue(self):
         try:
-            yield self.queue.enqueue_call(func=example_func, args=(self.enqueued,))
+            self.queue.enqueue_call(func=example_func, args=(self.enqueued,))
             self.enqueued+=1
         except Exception as e:
             log.msg('Exception enqueing:', e)

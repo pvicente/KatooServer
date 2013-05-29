@@ -10,5 +10,7 @@ from tworkerservice import TDequeingService
 RedisMixin.setup()
 application = service.Application("dequeingworker")
 
-worker = TDequeingService('default', 1)
-worker.setServiceParent(application)
+worker1 = TDequeingService('default', 1)
+worker1.setServiceParent(application)
+#worker2 = TDequeingService('default', 1)
+#worker2.setServiceParent(application)
