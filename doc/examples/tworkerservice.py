@@ -69,9 +69,10 @@ class TDequeingService(service.Service, RedisMixin):
             if not job is None:
                 threads.deferToThread(job.perform)
         except (UnpickleError, NoSuchJobError) as e:
-            log.msg('Error fetching job', e)
+            log.msg('Exception %s fetching job'%(e.__class__.__name__), e)
+            
         except Exception as e:
-            log.msg('Exception dequeing:', e)
+            log.msg('Exception %s dequeing:'%(e.__class__.__name__), e)
             raise
         finally:
             if not self.stopped:
