@@ -8,6 +8,7 @@ from pickle import loads, dumps
 from rq.exceptions import NoSuchJobError, UnpickleError
 from rq.job import unpickle
 from twisted.internet import defer
+import importlib
 import rq
 import times
 
@@ -130,7 +131,7 @@ class Job(rq.job.Job):
             self._func_name, self._instance, self._args, self._kwargs = unpickle(self.data)
         except UnpickleError as e:
             e.job_id = self.id
-            raise
+            raise e
         self.created_at = to_date(obj.get('created_at'))
         self.origin = obj.get('origin')
         self.description = obj.get('description')
@@ -192,3 +193,28 @@ class Job(rq.job.Job):
     def delete(self):
         """Deletes the job hash from Redis."""
         return self.connection.delete(self.key)
+    
+    def perform(self):
+        """Invokes the job function with the job arguments."""
+        self._result = self.func(*self.args, **self.kwargs)
+        return self._result
+
+    @property
+    def func(self):
+        func_name = self.func_name
+        if func_name is None:
+            return None
+        
+        if self.instance:
+            try:
+                return getattr(self.instance, func_name)
+            except:
+                raise UnpickleError('function "%s" not found in object "%s". Cannot be performed'%(func_name, self.instance), raw_data=self.data)
+        
+        module_name, func_name = func_name.rsplit('.', 1)
+        module = importlib.import_module(module_name)
+        try:
+            return getattr(module, func_name)
+        except:
+            raise UnpickleError('function "%s" not found in module "%s". Cannot be performed'%(func_name, module_name), raw_data=self.data)
+
