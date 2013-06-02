@@ -98,19 +98,6 @@ class Queue(rq.queue.Queue):
     
     def compact(self):
         raise NotImplemented()
-        """Removes all "dead" jobs from the queue by cycling through it, while
-        guarantueeing FIFO semantics.
-        """
-        COMPACT_QUEUE = 'rq:queue:_compact'
-        
-        yield self.connection.rename(self.key, COMPACT_QUEUE)
-        while True:
-            job_id = yield self.connection.lpop(COMPACT_QUEUE)
-            if job_id is None:
-                break
-            if Job.exists(job_id):
-                yield self.connection.rpush(self.key, job_id)
-    
     
     def push_job_id(self, job_or_id):  # noqa
         """Pushes a job ID on the corresponding Redis queue."""
