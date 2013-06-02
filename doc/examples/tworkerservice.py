@@ -34,7 +34,6 @@ def example_func(argument):
     if argument%1000 == 0:
         last_time, last_processed = print_stats(argument, 'Processed jobs', last_time, last_processed)
 
-
 class TEnqueingService(service.Service, RedisMixin):
     def __init__(self, queue_name, sleep_time):
         self.queue = Queue(name=queue_name)
@@ -68,8 +67,38 @@ class TEnqueingService(service.Service, RedisMixin):
         service.Service.stopService(self)
         self.stopped = True
 
-
-class TDequeingService(service.Service, RedisMixin):
+class TOfflineDequeingService(service.Service, RedisMixin):
+    def __init__(self, queue_name, timeout):
+        self.queue = Queue(name=queue_name)
+        self.timeout = timeout
+        self.stopped = False
+    
+    def callback_perform(self, result):
+        if not self.stopped:
+            reactor.callWhenRunning(self.dequeue)
+    
+    def callback_dequeue(self, job):
+        if not job is None:
+            d = threads.deferToThread(job.perform)
+            d.addCallback(self.callback_perform)
+            return d
+        if not self.stopped:
+            reactor.callWhenRunning(self.dequeue)
+        return defer.succeed(None)
+    
+    def dequeue(self):
+        d = self.queue.dequeue(self.timeout)
+        d.addCallback(self.callback_dequeue)
+    
+    def startService(self):
+        reactor.callLater(1, self.dequeue)
+        service.Service.startService(self)
+    
+    def stopService(self):
+        service.Service.stopService(self)
+        self.stopped = False
+    
+class TInlineDequeingService(service.Service, RedisMixin):
     def __init__(self, queue_name, blocking_time):
         self.queue = Queue(name=queue_name)
         self.blocking_time = blocking_time
@@ -89,7 +118,6 @@ class TDequeingService(service.Service, RedisMixin):
     
     def startService(self):
         reactor.callLater(1, self.dequeue)
-        
         service.Service.startService(self)
 
     def stopService(self):
