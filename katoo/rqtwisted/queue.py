@@ -6,12 +6,11 @@ Created on Jun 2, 2013
 from functools import total_ordering
 from katoo.rqtwisted.job import Job
 from katoo.utils.redis import RedisMixin
-from rq.exceptions import NoSuchJobError, UnpickleError
 from rq.job import Status
-from rq.queue import compact
 from twisted.internet import defer
 import rq
 import times
+from rq.exceptions import NoSuchJobError, UnpickleError
 
 @total_ordering
 class Queue(rq.queue.Queue):
@@ -72,23 +71,30 @@ class Queue(rq.queue.Queue):
 
     @property
     def jobs(self):
-        raise NotImplemented()
-        """Returns a list of all (valid) jobs in the queue."""
-        def safe_fetch(job_id):
-            try:
-                job = yield Job.safe_fetch(job_id)
-            except NoSuchJobError:
-                yield self.remove(job_id)
-            except UnpickleError:
-                yield
-            yield job
+        """Returns all jobs from queue and remove jobs with errors when fetch is performed"""
         
-        return compact([safe_fetch(job_id) for job_id in self.job_ids])
+        def get_jobs(job_ids):
+            return defer.DeferredList([Job.safe_fetch(job_id, self.connection) for job_id in job_ids], consumeErrors=True)
+        
+        def compact(deferred_list):
+            ret = []
+            for job in deferred_list:
+                if isinstance(job, Job):
+                    ret.append(job)
+                else:
+                    self.remove(job.job_id)
+            return ret
+        
+        d = self.job_ids
+        d.addCallback(get_jobs)
+        d.addCallback(compact)
+        return d
 
     def remove(self, job_or_id):
         """Removes Job from queue, accepts either a Job instance or ID."""
         job_id = job_or_id.id if isinstance(job_or_id, Job) else job_or_id
-        return self.connection.lrem(self.key, 0, job_id)
+        self.connection.lrem(self.key, 0, job_id)
+        return defer.succeed(None)
     
     def compact(self):
         raise NotImplemented()
@@ -96,7 +102,7 @@ class Queue(rq.queue.Queue):
         guarantueeing FIFO semantics.
         """
         COMPACT_QUEUE = 'rq:queue:_compact'
-
+        
         yield self.connection.rename(self.key, COMPACT_QUEUE)
         while True:
             job_id = yield self.connection.lpop(COMPACT_QUEUE)
@@ -204,13 +210,22 @@ class Queue(rq.queue.Queue):
         '''
         Return first job in queue or None if no job
         '''
+        def handle_error(failure):
+            failure.trap(NoSuchJobError, UnpickleError)
+            return defer.succeed(None)
+        
         d = self.lpop([self.key], timeout, self.connection)
         d.addCallback(lambda x: x if x is None else x[1])
         d.addCallback(Job.fetch)
+        d.addErrback(handle_error)
         return d
 
     @classmethod
     def dequeue_any(cls, queue_keys, timeout, connection=None):
+        def handle_error(failure):
+            failure.trap(NoSuchJobError, UnpickleError)
+            return defer.succeed(None)
+        
         def get_queue_job(res):
             if res is None:
                 return defer.succeed(None)
@@ -218,6 +233,7 @@ class Queue(rq.queue.Queue):
             queue = cls.from_queue_key(queue_key)
             d = Job.fetch(job_id, connection)
             d.addCallback(lambda job: job if job is None else (queue, job))
+            d.addErrback(handle_error)
             return d
             
         if connection is None:

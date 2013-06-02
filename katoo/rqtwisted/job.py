@@ -109,7 +109,9 @@ class Job(rq.job.Job):
     
     def refresh_impl(self, obj):
         if len(obj) == 0:
-            raise NoSuchJobError('No such job: %s' % (self.key,))
+            e = NoSuchJobError('No such job: %s' % (self.key,))
+            e.job_id = self.id
+            raise e
 
         def to_date(date_str):
             if date_str is None:
@@ -120,12 +122,15 @@ class Job(rq.job.Job):
         try:
             self.data = str(obj['data'])
         except KeyError:
-            raise NoSuchJobError('Unexpected job format: {0}'.format(obj))
+            e = NoSuchJobError('Unexpected job format: {0}'.format(obj))
+            e.job_id = self.id
+            raise e
 
         try:
             self._func_name, self._instance, self._args, self._kwargs = unpickle(self.data)
-        except UnpickleError:
-                raise
+        except UnpickleError as e:
+            e.job_id = self.id
+            raise
         self.created_at = to_date(obj.get('created_at'))
         self.origin = obj.get('origin')
         self.description = obj.get('description')
