@@ -48,7 +48,7 @@ class TEnqueingService(service.Service, RedisMixin):
         if self.enqueued%1000 == 0:
             self.last_time, self.last_processed = print_stats(self.enqueued, 'Enqueued jobs', self.last_time, self.last_processed)
         
-    def enqueue(self):        
+    def enqueue(self):
         try:
             d = self.queue.enqueue_call(func=example_func, args=(self.enqueued,))
             d.addCallback(self.callback_enqueue)
@@ -110,11 +110,12 @@ class TInlineDequeingService(service.Service, RedisMixin):
             try:
                 job = yield self.queue.dequeue(self.blocking_time)
                 if not job is None:
-                    threads.deferToThread(job.perform)
+                    yield threads.deferToThread(job.perform)
             except (UnpickleError, NoSuchJobError) as e:
                 log.msg('Exception %s fetching job'%(e.__class__.__name__), e)                
             except Exception as e:
-                log.msg('Exception %s dequeing:'%(e.__class__.__name__), e)
+                log.msg('Exception %s dequeing job %s:'%(e.__class__.__name__, str(job)), e)
+                raise
     
     def startService(self):
         reactor.callLater(1, self.dequeue)
