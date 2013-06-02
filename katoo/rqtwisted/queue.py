@@ -1,199 +1,20 @@
 '''
-Created on May 27, 2013
+Created on Jun 2, 2013
 
 @author: pvicente
 '''
-
 from functools import total_ordering
+from katoo.rqtwisted.job import Job
 from katoo.utils.redis import RedisMixin
-from pickle import loads, dumps
 from rq.exceptions import NoSuchJobError, UnpickleError
-from rq.job import unpickle, Job, Status
-from rq.queue import Queue, compact
+from rq.job import Status
+from rq.queue import compact
 from twisted.internet import defer
+import rq
 import times
 
-class RQTwistedJob(Job):
-
-    def __init__(self, job_id=None, connection=None):
-        if connection is None:
-            connection = RedisMixin.redis_conn
-        self.connection = connection
-        self._id = job_id
-        self.created_at = times.now()
-        self._func_name = None
-        self._instance = None
-        self._args = None
-        self._kwargs = None
-        self.description = None
-        self.origin = None
-        self.enqueued_at = None
-        self.ended_at = None
-        self._result = None
-        self.exc_info = None
-        self.timeout = None
-        self.result_ttl = None
-        self._status = None
-        self.meta = {}
-
-    @classmethod
-    def exists(cls, job_id, connection=None):
-        """Returns whether a job hash exists for the given job ID."""
-        if connection is None:
-            connection = RedisMixin.redis_conn
-        return connection.exists(cls.key_for(job_id))
-
-    @classmethod
-    def fetch(cls, job_id, connection=None):
-        """Fetches a persisted job from its corresponding Redis key and
-        instantiates it.
-        """
-        if job_id is None:
-            return defer.succeed(None)
-        job = cls(job_id, connection=connection)
-        return job.refresh()
-
-    @classmethod
-    def safe_fetch(cls, job_id, connection=None):
-        """Fetches a persisted job from its corresponding Redis key, but does
-        not instantiate it, making it impossible to get UnpickleErrors.
-        """
-        if job_id is None:
-            return defer.succeed(None)
-        job = cls(job_id, connection=connection)
-        return job.refresh()
-
-    def _get_status_impl(self, value):
-        self._status = value
-        return defer.succeed(self._status)
-    
-    def _get_status(self):
-        d = self.connection.hget(self.key, 'status')
-        d.addCallback(self._get_status_impl)
-        return d
-        
-    def _set_status(self, status):
-        self._status = status
-        return self.connection.hset(self.key, 'status', self._status)
-
-    status = property(_get_status, _set_status)
-
-    def _result_impl(self, value):
-        if value is not None:
-                # cache the result
-                self._result = loads(value)
-        return defer.succeed(self._result)  
-
-    @property
-    def result(self):
-        """Returns the return value of the job.
-
-        Initially, right after enqueueing a job, the return value will be
-        None.  But when the job has been executed, and had a return value or
-        exception, this will return that value or exception.
-
-        Note that, when the job has no return value (i.e. returns None), the
-        ReadOnlyJob object is useless, as the result won't be written back to
-        Redis.
-
-        Also note that you cannot draw the conclusion that a job has _not_
-        been executed when its return value is None, since return values
-        written back to Redis will expire after a given amount of time (500
-        seconds by default).
-        """
-        if self._result is None:
-            d = self.connection.hget(self.key, 'result')
-            d.addCallback(self._result_impl)
-            return d
-        return defer.succeed(self._result)
-
-    """Backwards-compatibility accessor property `return_value`."""
-    return_value = result
-    
-    def refresh_impl(self, obj):
-        if len(obj) == 0:
-            raise NoSuchJobError('No such job: %s' % (self.key,))
-
-        def to_date(date_str):
-            if date_str is None:
-                return None
-            else:
-                return times.to_universal(date_str)
-
-        try:
-            self.data = str(obj['data'])
-        except KeyError:
-            raise NoSuchJobError('Unexpected job format: {0}'.format(obj))
-
-        try:
-            self._func_name, self._instance, self._args, self._kwargs = unpickle(self.data)
-        except UnpickleError:
-                raise
-        self.created_at = to_date(obj.get('created_at'))
-        self.origin = obj.get('origin')
-        self.description = obj.get('description')
-        self.enqueued_at = to_date(obj.get('enqueued_at'))
-        self.ended_at = to_date(obj.get('ended_at'))
-        self._result = unpickle(obj.get('result')) if obj.get('result') else None  # noqa
-        self.exc_info = obj.get('exc_info')
-        self.timeout = int(obj.get('timeout')) if obj.get('timeout') else None
-        self.result_ttl = int(obj.get('result_ttl')) if obj.get('result_ttl') else None # noqa
-        self._status = obj.get('status') if obj.get('status') else None
-        self.meta = unpickle(obj.get('meta')) if obj.get('meta') else {}
-        return defer.succeed(self)
-    
-    
-    def refresh(self):
-        """Overwrite the current instance's properties with the values in the
-        corresponding Redis key.
-
-        Will raise a NoSuchJobError if no corresponding Redis key exists.
-        """
-        d = self.connection.hgetall(self.key)
-        d.addCallback(self.refresh_impl)
-        return d
-    
-    def save(self):
-        """Persists the current job instance to its corresponding Redis key."""
-        key = self.key
-
-        obj = {}
-        obj['created_at'] = times.format(self.created_at or times.now(), 'UTC')
-
-        if self.func_name is not None:
-            obj['data'] = dumps(self.job_tuple)
-        if self.origin is not None:
-            obj['origin'] = self.origin
-        if self.description is not None:
-            obj['description'] = self.description
-        if self.enqueued_at is not None:
-            obj['enqueued_at'] = times.format(self.enqueued_at, 'UTC')
-        if self.ended_at is not None:
-            obj['ended_at'] = times.format(self.ended_at, 'UTC')
-        if self._result is not None:
-            obj['result'] = dumps(self._result)
-        if self.exc_info is not None:
-            obj['exc_info'] = self.exc_info
-        if self.timeout is not None:
-            obj['timeout'] = self.timeout
-        if self.result_ttl is not None:
-            obj['result_ttl'] = self.result_ttl
-        if self._status is not None:
-            obj['status'] = self._status
-        if self.meta:
-            obj['meta'] = dumps(self.meta)
-
-        d = self.connection.hmset(key, obj)
-        d.addCallback(lambda x: self.id)
-        return d
-
-    def delete(self):
-        """Deletes the job hash from Redis."""
-        return self.connection.delete(self.key)
-
 @total_ordering
-class RQTwistedQueue(Queue):
-
+class Queue(rq.queue.Queue):
     @classmethod
     def all(cls, connection=None):
         """Returns an iterable of all Queues.
@@ -266,7 +87,7 @@ class RQTwistedQueue(Queue):
 
     def remove(self, job_or_id):
         """Removes Job from queue, accepts either a Job instance or ID."""
-        job_id = job_or_id.id if isinstance(job_or_id, RQTwistedJob) else job_or_id
+        job_id = job_or_id.id if isinstance(job_or_id, Job) else job_or_id
         return self.connection.lrem(self.key, 0, job_id)
     
     def compact(self):
@@ -281,13 +102,13 @@ class RQTwistedQueue(Queue):
             job_id = yield self.connection.lpop(COMPACT_QUEUE)
             if job_id is None:
                 break
-            if RQTwistedJob.exists(job_id):
+            if Job.exists(job_id):
                 yield self.connection.rpush(self.key, job_id)
     
     
     def push_job_id(self, job_or_id):  # noqa
         """Pushes a job ID on the corresponding Redis queue."""
-        job_id = job_or_id.id if isinstance(job_or_id, RQTwistedJob) else job_or_id
+        job_id = job_or_id.id if isinstance(job_or_id, Job) else job_or_id
         d = self.connection.rpush(self.key, job_id)
         d.addCallback(lambda x: job_id)
         return d
@@ -307,7 +128,7 @@ class RQTwistedQueue(Queue):
         contain options for RQ itself.
         """
         timeout = timeout or self._default_timeout
-        job = RQTwistedJob.create(func, args, kwargs, connection=self.connection,
+        job = Job.create(func, args, kwargs, connection=self.connection,
                          result_ttl=result_ttl, status=Status.QUEUED)
         return self.enqueue_job(job, timeout=timeout)
 
@@ -385,7 +206,7 @@ class RQTwistedQueue(Queue):
         '''
         d = self.lpop([self.key], timeout, self.connection)
         d.addCallback(lambda x: x if x is None else x[1])
-        d.addCallback(RQTwistedJob.fetch)
+        d.addCallback(Job.fetch)
         return d
 
     @classmethod
@@ -395,7 +216,7 @@ class RQTwistedQueue(Queue):
                 return defer.succeed(None)
             queue_key, job_id = res
             queue = cls.from_queue_key(queue_key)
-            d = RQTwistedJob.fetch(job_id, connection)
+            d = Job.fetch(job_id, connection)
             d.addCallback(lambda job: job if job is None else (queue, job))
             return d
             
