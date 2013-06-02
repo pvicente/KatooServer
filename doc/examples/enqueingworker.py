@@ -12,6 +12,6 @@ RedisMixin.setup()
 application = service.Application("enqueingworker")
 
 sleep_time = float(os.getenv('ENQUEUE_SLEEPTIME', 0.001))
-
-worker = TEnqueingService('default', sleep_time)
-worker.setServiceParent(application)
+workers = int(os.getenv('ENQUEUE_WORKERS', 1))
+for i in xrange(workers):
+    TEnqueingService('default', sleep_time).setServiceParent(application)

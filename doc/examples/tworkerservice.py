@@ -22,26 +22,37 @@ class IWorkQueue(Interface):
 last_time = time()
 last_processed = 0
 
-def example_func(argument):
-    if argument%1000 == 0:
-        global last_time, last_processed
+def print_stats(argument, summary, last_time, last_processed):
         current_time = time()
         per_second = (argument - last_processed)/(current_time - last_time)
         last_time, last_processed = current_time, argument
-        log.msg('Processed jobs: %s/s. Total: %s '%(per_second, argument))
+        log.msg('%s: %s/s. Total: %s '%(summary, per_second, argument))
+        return last_time, last_processed
+
+def example_func(argument):
+    global last_time, last_processed
+    if argument%1000 == 0:
+        last_time, last_processed = print_stats(argument, 'Processed jobs', last_time, last_processed)
 
 
 class TEnqueingService(service.Service, RedisMixin):
     def __init__(self, queue_name, sleep_time):
         self.queue = Queue(name=queue_name)
         self.sleep_time = sleep_time
-        self.enqueued = 0
         self.stopped = False
-    
-    def enqueue(self):
+        self.enqueued = 0
+        self.last_time = time()
+        self.last_processed = 0
+
+    def callback_enqueue(self, data):
+        self.enqueued+=1
+        if self.enqueued%1000 == 0:
+            self.last_time, self.last_processed = print_stats(self.enqueued, 'Enqueued jobs', self.last_time, self.last_processed)
+        
+    def enqueue(self):        
         try:
-            self.queue.enqueue_call(func=example_func, args=(self.enqueued,))
-            self.enqueued+=1
+            d = self.queue.enqueue_call(func=example_func, args=(self.enqueued,))
+            d.addCallback(self.callback_enqueue)
         except Exception as e:
             log.msg('Exception enqueing:', e)
             raise
@@ -66,22 +77,19 @@ class TDequeingService(service.Service, RedisMixin):
     
     @defer.inlineCallbacks
     def dequeue(self):
-        try:
-            job = yield self.queue.dequeue(self.blocking_time)
-            if not job is None:
-                threads.deferToThread(job.perform)
-        except (UnpickleError, NoSuchJobError) as e:
-            log.msg('Exception %s fetching job'%(e.__class__.__name__), e)
-            
-        except Exception as e:
-            log.msg('Exception %s dequeing:'%(e.__class__.__name__), e)
-            raise
-        finally:
-            if not self.stopped:
-                reactor.callWhenRunning(self.dequeue)
+        while not self.stopped:
+            try:
+                job = yield self.queue.dequeue(self.blocking_time)
+                if not job is None:
+                    threads.deferToThread(job.perform)
+            except (UnpickleError, NoSuchJobError) as e:
+                log.msg('Exception %s fetching job'%(e.__class__.__name__), e)                
+            except Exception as e:
+                log.msg('Exception %s dequeing:'%(e.__class__.__name__), e)
     
     def startService(self):
         reactor.callLater(1, self.dequeue)
+        
         service.Service.startService(self)
 
     def stopService(self):
