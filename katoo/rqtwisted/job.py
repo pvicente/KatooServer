@@ -196,7 +196,7 @@ class Job(rq.job.Job):
     def perform(self):
         """Invokes the job function with the job arguments."""
         self._result = self.func(*self.args, **self.kwargs)
-        return self._result
+        return self._result, self
     
     @property
     def func(self):

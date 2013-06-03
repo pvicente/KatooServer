@@ -19,7 +19,7 @@ import time
 import times
 import traceback
 
-DEFAULT_RESULT_TTL = 0
+DEFAULT_RESULT_TTL = 5
 DEFAULT_WORKER_TTL = 420
 
 green = make_colorizer('darkgreen')
@@ -142,7 +142,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
 
             if not fallthrough:
                 break
-
+    
     @defer.inlineCallbacks
     def work(self):
         queue = self.queues[0]
@@ -151,35 +151,39 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
             try:
                 job = yield queue.dequeue(self.blocking_time)
                 if job is None:
-                    break
-                rv = yield threads.deferToThread(job.perform)
-                pickled_rv = dumps(rv)
-                job._status = Status.FINISHED
-                job.ended_at = times.now()
-                if rv is None:
-                    self.log.msg('Job OK')
-                else:
-                    self.log.msg('Job OK, result = %s' % (yellow(unicode(rv)),))
-                result_ttl =  self.default_result_ttl if job.result_ttl is None else job.result_ttl
-                if result_ttl == 0:
-                    yield job.delete()
-                    #self.log.msg('Result discarded immediately.')
-                else:
-                    t = yield self.connection.multi()
-                    yield t.hset(job.key, 'result', pickled_rv)
-                    yield t.hset(job.key, 'status', job._status)
-                    yield t.hset(job.key, 'ended_at', times.format(job.ended_at, 'UTC'))
-                    if result_ttl > 0:
-                        yield t.expire(job.key, result_ttl)
-                        self.log.msg('Result is kept for %d seconds.' % result_ttl)
-                    else:
-                        self.log.msg('Result will never expire, clean up result key manually.')
-                    yield t.commit()
+                    continue
+                d = threads.deferToThread(job.perform)
+                d.addCallback(self.callback_perform_job)
+                #Pending handle error job
+                #d.addErrback()
             except Exception as e:
                 log.msg('Exception %s dequeing job %s:'%(e.__class__.__name__, str(job)), e)
                 if not job is None:
                     job.status = Status.FAILED
                     self.handle_exception(job, *sys.exc_info())
+    
+    @defer.inlineCallbacks
+    def callback_perform_job(self, result):
+        rv, job = result
+        pickled_rv = dumps(rv)
+        job._status = Status.FINISHED
+        job.ended_at = times.now()
+#             if rv is None:
+#                 self.log.msg('Job OK')
+#             else:
+#                 self.log.msg('Job OK, result = %s' % (yellow(unicode(rv)),))
+        result_ttl =  self.default_result_ttl if job.result_ttl is None else job.result_ttl
+        if result_ttl == 0:
+            yield job.delete()
+            #self.log.msg('Result discarded immediately.')
+        else:
+            t = yield self.connection.multi()
+            yield t.hset(job.key, 'result', pickled_rv)
+            yield t.hset(job.key, 'status', job._status)
+            yield t.hset(job.key, 'ended_at', times.format(job.ended_at, 'UTC'))
+            if result_ttl > 0:
+                yield t.expire(job.key, result_ttl)
+            yield t.commit()
     
     def startService(self):
         reactor.callLater(1, self.register_birth)
@@ -188,5 +192,5 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
 
     def stopService(self):
         reactor.callWhenRunning(self.register_death)
-        reactor.callLater(1, self.stopService)
+        reactor.callLater(5, self.stopService)
         self._stopped = True

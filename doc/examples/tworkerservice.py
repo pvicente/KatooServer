@@ -11,6 +11,7 @@ from twisted.application import service
 from twisted.internet import defer, reactor, threads
 from twisted.python import log
 from zope.interface import Interface, implements
+from katoo.rqtwisted import job
 
 class IWorkQueue(Interface):
     def getJob(self):
@@ -31,7 +32,7 @@ def print_stats(argument, summary, last_time, last_processed):
 
 def example_func(argument):
     global last_time, last_processed
-    sleep(5)
+    #sleep(5)
     if argument%1000 == 0:
         last_time, last_processed = print_stats(argument, 'Processed jobs', last_time, last_processed)
 
