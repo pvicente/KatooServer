@@ -95,14 +95,15 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         yield t.execute()
         yield t.commit()
     
-    def set_state(self, new_state):
-        self._state = new_state
-        return self.connection.hset(self.key, 'state', new_state)
-    
-    def get_state(self):
+    @property
+    def state(self):
         return self._state
-
-    state = property(get_state, set_state)
+    
+    def set_state(self, new_state):
+        if self._state != new_state:
+            self._state = new_state
+            return self.connection.hset(self.key, 'state', new_state)
+        return defer.succeed(None)
     
     @property
     def name(self):
@@ -135,12 +136,15 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     @defer.inlineCallbacks
     def work(self):
         queue = self.queues[0]
+        yield self.set_state('starting')
         while not self.stopped:
             job = None
             try:
+                yield self.set_state('idle')
                 job = yield queue.dequeue(self.blocking_time)
                 if job is None:
                     continue
+                yield self.set_state('busy')
                 d = threads.deferToThread(job.perform)
                 d.addCallback(self.callback_perform_job)
                 d.addErrback(self.errback_perform_job, job=job)
@@ -169,14 +173,12 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         if result_ttl == 0:
             yield job.delete()
             #self.log.msg('Result discarded immediately.')
-        else:
-            t = yield self.connection.multi()
-            yield t.hset(job.key, 'result', pickled_rv)
-            yield t.hset(job.key, 'status', job._status)
-            yield t.hset(job.key, 'ended_at', times.format(job.ended_at, 'UTC'))
+        else: 
+            yield self.connection.hset(job.key, 'result', pickled_rv)
+            yield self.connection.hset(job.key, 'ended_at', times.format(job.ended_at, 'UTC'))
+            yield self.connection.hset(job.key, 'status', job._status)
             if result_ttl > 0:
-                yield t.expire(job.key, result_ttl)
-            yield t.commit()
+                yield self.connection.expire(job.key, result_ttl)
     
     def startService(self):
         reactor.callLater(1, self.register_birth)
