@@ -124,24 +124,13 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
             final_queue.append(queue)
         self.queues = final_queue
 
-    def handle_exception(self, job, *exc_info):
-        """Walks the exception handler stack to delegate exception handling."""
-        exc_string = ''.join(
-                traceback.format_exception_only(*exc_info[:2]) +
-                traceback.format_exception(*exc_info))
-        self.log.msg(exc_string)
-
-        for handler in reversed(self._exc_handlers):
-            self.log.msg('Invoking exception handler %s' % (handler,))
-            fallthrough = handler(job, *exc_info)
-
-            # Only handlers with explicit return values should disable further
-            # exc handling, so interpret a None return value as True.
-            if fallthrough is None:
-                fallthrough = True
-
-            if not fallthrough:
-                break
+    def move_to_failed_queue(self, job, failure=None, *exc_info ):
+        """Default exception handler: move the job to the failed queue."""
+        if failure is None:
+            exc_string = ''.join(traceback.format_exception(*exc_info))
+        else:
+            exc_string = failure.getTraceback()
+        return self.failed_queue.quarantine(job, exc_info=exc_string)
     
     @defer.inlineCallbacks
     def work(self):
@@ -154,13 +143,17 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
                     continue
                 d = threads.deferToThread(job.perform)
                 d.addCallback(self.callback_perform_job)
-                #Pending handle error job
-                #d.addErrback()
+                d.addErrback(self.errback_perform_job, job=job)
             except Exception as e:
                 log.msg('Exception %s dequeing job %s:'%(e.__class__.__name__, str(job)), e)
                 if not job is None:
                     job.status = Status.FAILED
-                    self.handle_exception(job, *sys.exc_info())
+                    self.move_to_failed_queue(job, *sys.exc_info())
+    
+    def errback_perform_job(self, failure, job):
+        self.log.msg('errback perform job: %s. Failure: %s'%(job, failure))
+        job.status = Status.FAILED
+        return self.move_to_failed_queue(job, failure)
     
     @defer.inlineCallbacks
     def callback_perform_job(self, result):
