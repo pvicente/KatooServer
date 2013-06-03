@@ -217,9 +217,8 @@ class Queue(rq.queue.Queue):
             if res is None:
                 return defer.succeed(None)
             queue_key, job_id = res
-            queue = cls.from_queue_key(queue_key)
             d = Job.fetch(job_id, connection)
-            d.addCallback(lambda job: job if job is None else (queue, job))
+            d.addCallback(lambda job: job if job is None else (queue_key, job))
             d.addErrback(handle_error)
             return d
             

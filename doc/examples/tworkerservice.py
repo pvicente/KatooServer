@@ -32,7 +32,8 @@ def print_stats(argument, summary, last_time, last_processed):
 
 def example_func(argument):
     global last_time, last_processed
-    #sleep(5)
+    #sleep(0.5)
+    #raise ValueError('testing raising')
     if argument%1000 == 0:
         last_time, last_processed = print_stats(argument, 'Processed jobs', last_time, last_processed)
 

@@ -112,6 +112,14 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
             self._name = '%s.%s' % (shortname, self.pid)
         return self._name
     
+    def queue_names(self):
+        """Returns the queue names of this worker's queues."""
+        return [q.name for q in self.queues]
+    
+    def queue_keys(self):
+        """Returns the Redis keys representing this worker's queues."""
+        return [q.key for q in self.queues]
+    
     def validate_queues(self):  # noqa
         """Sanity check for the given queues."""
         if not hasattr(self.queues, '__iter__'):
@@ -135,16 +143,16 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     
     @defer.inlineCallbacks
     def work(self):
-        queue = self.queues[0]
         yield self.set_state('starting')
         while not self.stopped:
-            job = None
+            res = job = None
             try:
                 yield self.set_state('idle')
-                job = yield queue.dequeue(self.blocking_time)
-                if job is None:
+                res = yield Queue.dequeue_any(queue_keys=self.queue_keys(), timeout=self.blocking_time, connection=self.connection)
+                if res is None:
                     continue
                 yield self.set_state('busy')
+                queue_key, job = res
                 d = threads.deferToThread(job.perform)
                 d.addCallback(self.callback_perform_job)
                 d.addErrback(self.errback_perform_job, job=job)
