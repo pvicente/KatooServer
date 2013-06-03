@@ -88,13 +88,16 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         yield self.connection.sadd(self.redis_workers_keys, key)
 #        yield t.expire(key, self.default_worker_ttl)
     
-    @defer.inlineCallbacks
     def register_death(self):
         """Registers its own death."""
-        self.log.msg('Registering death')
-        yield self.connection.srem(self.redis_workers_keys, self.key)
-        yield self.connection.hset(self.key, 'death', time.time())
-#        yield t.expire(self.key, 60)
+        self.log.msg('Registering death of worker', self.name)
+        d1 = self.connection.srem(self.redis_workers_keys, self.key)
+        d2 = self.connection.hset(self.key, 'death', time.time())
+        
+        #TODO: It will be removed when workers will registered in death set. Issue #6
+        d3 = self.connection.expire(self.key, 5)
+        ret = defer.DeferredList([d1,d2,d3], consumeErrors=True)
+        return ret
     
     @property
     def state(self):
@@ -194,6 +197,6 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         service.Service.startService(self)
 
     def stopService(self):
-        reactor.callWhenRunning(self.register_death)
-        reactor.callLater(5, self.stopService)
         self._stopped = True
+        service.Service.stopService(self)
+        return self.register_death()
