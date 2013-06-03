@@ -16,6 +16,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+from cyclone.bottle import run, route
+from twisted.application import service, internet
+from twisted.internet import defer
+from twisted.python import log
 import cyclone.escape
 import cyclone.redis
 import cyclone.sqlite
@@ -23,10 +27,8 @@ import cyclone.util
 import cyclone.web
 import cyclone.websocket
 import cyclone.xmlrpc
-from cyclone.bottle import run, route
+import os
 
-from twisted.internet import defer
-from twisted.python import log
 
 
 class BaseHandler(cyclone.web.RequestHandler):
@@ -106,19 +108,7 @@ class XmlrpcHandler(cyclone.xmlrpc.XmlrpcRequestHandler):
     def xmlrpc_echo(self, text):
         return text
 
-
-try:
-    raise Exception("COMMENT_THIS_LINE_AND_LOG_TO_DAILY_FILE")
-    from twisted.python.logfile import DailyLogFile
-    logFile = DailyLogFile.fromFullPath("server.log")
-    print("Logging to daily log file: server.log")
-except Exception, e:
-    import sys
-    logFile = sys.stdout
-
-run(host="127.0.0.1", port=8888,
-    log=logFile,
-    debug=True,
+bottle_app = cyclone.bottle.create_app(debug=True,
     static_path="./static",
     template_path="./template",
     locale_path="./locale",
@@ -133,3 +123,22 @@ run(host="127.0.0.1", port=8888,
         (r"/websocket", WebSocketHandler),
         (r"/xmlrpc",    XmlrpcHandler),
     ])
+
+application = service.Application("Application")
+
+webservice = internet.TCPServer(int(os.getenv('PORT', 8888)), bottle_app, interface=os.getenv('LISTTEN', "0.0.0.0")) 
+webservice.setServiceParent(application)
+
+from katoo.utils.redis import RedisMixin
+from katoo.rqtwisted.worker import Worker
+
+RedisMixin.setup()
+
+blocking_seconds = int(os.getenv('DEQUEUE_BLOCKTIME', 1))
+workers = int(os.getenv('WORKERS', 1))
+
+for i in xrange(workers):
+    t = Worker(['default'])
+    t.setServiceParent(application)
+
+
