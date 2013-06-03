@@ -12,7 +12,9 @@ from rq.utils import make_colorizer
 from twisted.application import service
 from twisted.internet import defer, threads, reactor
 from twisted.python import log
+import os
 import platform
+import random
 import rq.worker
 import sys
 import time
@@ -50,6 +52,10 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         self.blocking_time = 1
     
     @classmethod
+    def default_name(cls):
+        return '%.3f-%s.%s' % (random.random(), platform.node(), os.getpid())
+    
+    @classmethod
     @defer.inlineCallbacks
     def all(cls, connection=None):
         if connection is None:
@@ -76,24 +82,19 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         key = self.key
         now = time.time()
         queues = ','.join(self.queue_names())
-        t = yield self.connection.multi()
-        yield t.delete(key)
-        yield t.hset(key, 'birth', now)
-        yield t.hset(key, 'queues', queues)
-        yield t.sadd(self.redis_workers_keys, key)
+        yield self.connection.delete(key)
+        yield self.connection.hset(key, 'birth', now)
+        yield self.connection.hset(key, 'queues', queues)
+        yield self.connection.sadd(self.redis_workers_keys, key)
 #        yield t.expire(key, self.default_worker_ttl)
-        yield t.commit()
     
     @defer.inlineCallbacks
     def register_death(self):
         """Registers its own death."""
         self.log.msg('Registering death')
-        t = yield self.connection.multi()
-        yield t.srem(self.redis_workers_keys, self.key)
-        yield t.hset(self.key, 'death', time.time())
+        yield self.connection.srem(self.redis_workers_keys, self.key)
+        yield self.connection.hset(self.key, 'death', time.time())
 #        yield t.expire(self.key, 60)
-        yield t.execute()
-        yield t.commit()
     
     @property
     def state(self):
@@ -108,8 +109,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     @property
     def name(self):
         if self._name is None:
-            shortname=platform.node()
-            self._name = '%s.%s' % (shortname, self.pid)
+            self._name = self.default_name()
         return self._name
     
     def queue_names(self):
