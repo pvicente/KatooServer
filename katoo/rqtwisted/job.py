@@ -113,20 +113,20 @@ class Job(rq.job.Job):
             e = NoSuchJobError('No such job: %s' % (self.key,))
             e.job_id = self.id
             raise e
-
+        
         def to_date(date_str):
             if date_str is None:
                 return None
             else:
                 return times.to_universal(date_str)
-
+        
         try:
             self.data = str(obj['data'])
         except KeyError:
             e = NoSuchJobError('Unexpected job format: {0}'.format(obj))
             e.job_id = self.id
             raise e
-
+        
         try:
             self._func_name, self._instance, self._args, self._kwargs = unpickle(self.data)
         except UnpickleError as e:
@@ -145,7 +145,6 @@ class Job(rq.job.Job):
         self.meta = unpickle(obj.get('meta')) if obj.get('meta') else {}
         return defer.succeed(self)
     
-    
     def refresh(self):
         """Overwrite the current instance's properties with the values in the
         corresponding Redis key.
@@ -159,10 +158,10 @@ class Job(rq.job.Job):
     def save(self):
         """Persists the current job instance to its corresponding Redis key."""
         key = self.key
-
+        
         obj = {}
         obj['created_at'] = times.format(self.created_at or times.now(), 'UTC')
-
+        
         if self.func_name is not None:
             obj['data'] = dumps(self.job_tuple)
         if self.origin is not None:
@@ -185,7 +184,7 @@ class Job(rq.job.Job):
             obj['status'] = self._status
         if self.meta:
             obj['meta'] = dumps(self.meta)
-
+        
         d = self.connection.hmset(key, obj)
         d.addCallback(lambda x: self.id)
         return d
@@ -198,7 +197,7 @@ class Job(rq.job.Job):
         """Invokes the job function with the job arguments."""
         self._result = self.func(*self.args, **self.kwargs)
         return self._result
-
+    
     @property
     def func(self):
         func_name = self.func_name

@@ -6,7 +6,7 @@ Created on May 27, 2013
 from katoo.rqtwisted.job import Job, UnpickleError, NoSuchJobError
 from katoo.rqtwisted.queue import Queue
 from katoo.utils.redis import RedisMixin
-from time import time
+from time import time, sleep
 from twisted.application import service
 from twisted.internet import defer, reactor, threads
 from twisted.python import log
@@ -31,6 +31,7 @@ def print_stats(argument, summary, last_time, last_processed):
 
 def example_func(argument):
     global last_time, last_processed
+    sleep(5)
     if argument%1000 == 0:
         last_time, last_processed = print_stats(argument, 'Processed jobs', last_time, last_processed)
 

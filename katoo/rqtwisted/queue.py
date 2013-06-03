@@ -6,11 +6,11 @@ Created on Jun 2, 2013
 from functools import total_ordering
 from katoo.rqtwisted.job import Job
 from katoo.utils.redis import RedisMixin
+from rq.exceptions import NoSuchJobError, UnpickleError
 from rq.job import Status
 from twisted.internet import defer
 import rq
 import times
-from rq.exceptions import NoSuchJobError, UnpickleError
 
 @total_ordering
 class Queue(rq.queue.Queue):
@@ -94,7 +94,7 @@ class Queue(rq.queue.Queue):
         """Removes Job from queue, accepts either a Job instance or ID."""
         job_id = job_or_id.id if isinstance(job_or_id, Job) else job_or_id
         self.connection.lrem(self.key, 0, job_id)
-        return defer.succeed(None)
+        return defer.succeed(job_or_id)
     
     def compact(self):
         raise NotImplemented()
@@ -228,4 +228,37 @@ class Queue(rq.queue.Queue):
         d = cls.lpop(queue_keys, timeout, connection)
         d.addCallback(get_queue_job)
         return d
+
+class FailedQueue(Queue):
+    def __init__(self, connection=None):
+        super(FailedQueue, self).__init__('failed', connection=connection)
+
+    def quarantine(self, job, exc_info):
+        """Puts the given Job in quarantine (i.e. put it on the failed
+        queue).
+
+        This is different from normal job enqueueing, since certain meta data
+        must not be overridden (e.g. `origin` or `enqueued_at`) and other meta
+        data must be inserted (`ended_at` and `exc_info`).
+        """
+        job.ended_at = times.now()
+        job.exc_info = exc_info
+        return self.enqueue_job(job, timeout=job.timeout, set_meta_data=False)
+
+    def requeue(self, job_id):
+        """Requeues the job with the given job ID."""
+        def handle_error(failure):
+            r = failure.trap(NoSuchJobError, UnpickleError)
+            return self.remove(r.job_id)
         
+        def requeue_job(job):
+            job.status = Status.QUEUED
+            job.exc_info = None
+            q = Queue(job.origin, connection=job.connection)
+            return q.enqueue_job(job, timeout=job.timeout)
+        
+        d = Job.fetch(job_id, connection=self.connection)
+        d.addErrback(handle_error)
+        d.addCallback(self.remove)
+        d.addCallback(requeue_job)
+        return d
