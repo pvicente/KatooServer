@@ -6,8 +6,8 @@ Created on May 25, 2013
 import os
 from twisted.application import service
 from twisted.words.protocols.jabber import jid
-from katoo.wokkel_extensions import ExtendedXMPPClient
-from katoo.xmppbot import CompleteBotProtocol
+from katoo.xmpp.wokkel_extensions import ExtendedXMPPClient
+from katoo.xmpp.xmppbot import CompleteBotProtocol
 
 application = service.Application("facebookbot")
 appid = os.getenv("APPID", '')
