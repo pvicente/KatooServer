@@ -3,7 +3,7 @@ Created on May 28, 2013
 
 @author: pvicente
 '''
-from katoo.utils.redis import RedisMixin
+from katoo.utils.connections import RedisMixin
 from twisted.application import service
 import os
 from tworkerservice import TInlineDequeingService

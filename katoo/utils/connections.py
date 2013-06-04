@@ -11,11 +11,11 @@ from twisted.python import log
 from urlparse import urlparse
 
 
-def redis_url_parse(url):
+def url_parse(url, scheme='redis'):
     url = urlparse(url)
     
     # We only support redis:// schemes.
-    assert url.scheme == 'redis' or not url.scheme
+    assert url.scheme == scheme or not url.scheme
     
     # Extract the database ID from the path component if hasn't been given.
     try:
@@ -24,18 +24,6 @@ def redis_url_parse(url):
             db = 0
     
     return (url.hostname, url.port or 6379, db, url.password)
-
-class RedisMixin(object):
-    redis_conn = None
-
-    @classmethod
-    def setup(cls):
-        if cls.redis_conn is None:
-            hostname, port, db, password = redis_url_parse(conf.REDIS_URL)
-            AuthRedisProtocol.password = password
-            RedisFactory.protocol = AuthRedisProtocol
-            #pending to resolve Authentication with redis in cyclone.redis library
-            cls.redis_conn = redis.lazyConnectionPool(host=hostname, port=port, dbid=db, poolsize=conf.REDIS_POOL)
 
 class AuthRedisProtocol(redis.RedisProtocol):
     password = None
@@ -57,3 +45,18 @@ class AuthRedisProtocol(redis.RedisProtocol):
                 yield redis.RedisProtocol.connectionMade(self)
         else:
             yield redis.RedisProtocol.connectionMade(self)
+
+class RedisMixin(object):
+    redis_conn = None
+    db = None
+
+    @classmethod
+    def setup(cls):
+        if cls.redis_conn is None:
+            hostname, port, db, password = url_parse(conf.REDIS_URL)
+            AuthRedisProtocol.password = password
+            RedisFactory.protocol = AuthRedisProtocol
+            #pending to resolve Authentication with redis in cyclone.redis library
+            cls.redis_conn = redis.lazyConnectionPool(host=hostname, port=port, dbid=db, poolsize=conf.REDIS_POOL)
+            cls.db = db
+

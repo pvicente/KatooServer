@@ -1,4 +1,4 @@
-from katoo.utils.redis import RedisMixin
+from katoo.utils.connections import RedisMixin
 import v1.handlers
 import cyclone.bottle
 

@@ -4,7 +4,7 @@ Created on Jun 4, 2013
 @author: pvicente
 '''
 
-from katoo.utils.redis import RedisMixin
+from katoo.utils.connections import RedisMixin
 from twisted.internet import defer
 import cyclone.web
 from cyclone.web import log

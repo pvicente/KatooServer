@@ -38,7 +38,7 @@ application = service.Application("Application")
 webservice = internet.TCPServer(int(os.getenv('PORT', 8888)), Application(), interface=os.getenv('LISTTEN', "0.0.0.0")) 
 webservice.setServiceParent(application)
 
-from katoo.utils.redis import RedisMixin
+from katoo.utils.connections import RedisMixin
 from katoo.rqtwisted.worker import Worker
 
 RedisMixin.setup()

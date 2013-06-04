@@ -3,7 +3,7 @@ Created on Jun 2, 2013
 
 @author: pvicente
 '''
-from katoo.utils.redis import RedisMixin
+from katoo.utils.connections import RedisMixin
 from pickle import loads, dumps
 from rq.exceptions import NoSuchJobError, UnpickleError
 from rq.job import unpickle

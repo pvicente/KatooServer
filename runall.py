@@ -6,10 +6,10 @@ Created on Jun 4, 2013
 from twisted.application import service, internet
 from katoo.rqtwisted.worker import Worker
 from katoo.web import app
-import os
+from katoo import conf
 
 application = service.Application("runall")
-webservice = internet.TCPServer(int(os.getenv('PORT', 8888)), app, interface=os.getenv('LISTEN', "0.0.0.0")) 
+webservice = internet.TCPServer(conf.PORT, app, interface=conf.LISTEN) 
 webservice.setServiceParent(application)
 w=Worker(['default'])
 w.setServiceParent(application)

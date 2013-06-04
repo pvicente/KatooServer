@@ -3,7 +3,7 @@ Created on Jun 3, 2013
 
 @author: pvicente
 '''
-from katoo.utils.redis import RedisMixin
+from katoo.utils.connections import RedisMixin
 from katoo.rqtwisted.worker import Worker
 from twisted.application import service
 import os

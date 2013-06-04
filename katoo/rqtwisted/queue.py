@@ -5,7 +5,7 @@ Created on Jun 2, 2013
 '''
 from functools import total_ordering
 from katoo.rqtwisted.job import Job
-from katoo.utils.redis import RedisMixin
+from katoo.utils.connections import RedisMixin
 from rq.exceptions import NoSuchJobError, UnpickleError
 from rq.job import Status
 from twisted.internet import defer

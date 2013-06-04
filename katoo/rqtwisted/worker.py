@@ -4,7 +4,7 @@ Created on Jun 2, 2013
 @author: pvicente
 '''
 from katoo.rqtwisted.queue import Queue, FailedQueue
-from katoo.utils.redis import RedisMixin
+from katoo.utils.connections import RedisMixin
 from pickle import dumps
 from rq.exceptions import NoQueueError
 from rq.job import Status
