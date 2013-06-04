@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 HOSTNAME=$(hostname)
 VENV="venv"
-echo "Deploying GoChatServer on $HOSTNAME"
+echo "Deploying KatooServer on $HOSTNAME"
 echo "----------------------------------------------------------"
 
 env -i git  submodule update --init 2>/dev/null

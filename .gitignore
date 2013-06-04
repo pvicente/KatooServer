@@ -37,3 +37,4 @@ nosetests.xml
 .settings
 venv
 .vagrant
+.env
