@@ -30,11 +30,12 @@ class RedisMixin(object):
 
     @classmethod
     def setup(cls):
-        hostname, port, db, password = redis_url_parse(conf.REDIS_URL)
-        AuthRedisProtocol.password = password
-        RedisFactory.protocol = AuthRedisProtocol
-        #pending to resolve Authentication with redis in cyclone.redis library
-        cls.redis_conn = redis.lazyConnectionPool(host=hostname, port=port, dbid=db, poolsize=conf.REDIS_POOL)
+        if cls.redis_conn is None:
+            hostname, port, db, password = redis_url_parse(conf.REDIS_URL)
+            AuthRedisProtocol.password = password
+            RedisFactory.protocol = AuthRedisProtocol
+            #pending to resolve Authentication with redis in cyclone.redis library
+            cls.redis_conn = redis.lazyConnectionPool(host=hostname, port=port, dbid=db, poolsize=conf.REDIS_POOL)
 
 class AuthRedisProtocol(redis.RedisProtocol):
     password = None
