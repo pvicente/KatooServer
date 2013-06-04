@@ -1,12 +1,12 @@
 from katoo.utils.redis import RedisMixin
-import v1
+import v1.handlers
 import cyclone.bottle
 
 class BaseHandler(cyclone.web.Application, RedisMixin):
     def __init__(self):
             handlers = [
-                (r"/1/google/(.+)", v1.GoogleHandler),
-                (r"/1/google/messages/(.+)", v1.GoogleMessagesHandler)
+                (r"/1/google/(.+)", v1.handlers.GoogleHandler),
+                (r"/1/google/messages/(.+)", v1.handlers.GoogleMessagesHandler)
             ]
             settings = dict(
                 debug=True,
