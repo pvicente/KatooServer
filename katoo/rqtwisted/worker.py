@@ -6,7 +6,7 @@ Created on Jun 2, 2013
 from katoo.rqtwisted.queue import Queue, FailedQueue
 from katoo.utils.redis import RedisMixin
 from pickle import dumps
-from rq.exceptions import UnpickleError, NoSuchJobError, NoQueueError
+from rq.exceptions import NoQueueError
 from rq.job import Status
 from rq.utils import make_colorizer
 from twisted.application import service
@@ -136,8 +136,9 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
             final_queue.append(queue)
         self.queues = final_queue
 
-    def move_to_failed_queue(self, job, failure=None, *exc_info ):
+    def move_to_failed_queue(self, job, *exc_info,**kwargs ):
         """Default exception handler: move the job to the failed queue."""
+        failure = kwargs.get('failure')
         if failure is None:
             exc_string = ''.join(traceback.format_exception(*exc_info))
         else:
@@ -168,7 +169,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     def errback_perform_job(self, failure, job):
         self.log.msg('errback perform job: %s. Failure: %s'%(job, failure))
         job.status = Status.FAILED
-        return self.move_to_failed_queue(job, failure)
+        return self.move_to_failed_queue(job, failure=failure)
     
     @defer.inlineCallbacks
     def callback_perform_job(self, result):

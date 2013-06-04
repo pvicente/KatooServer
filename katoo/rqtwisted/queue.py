@@ -197,35 +197,25 @@ class Queue(rq.queue.Queue):
         '''
         Return first job in queue or None if no job
         '''
-        def handle_error(failure):
-            failure.trap(NoSuchJobError, UnpickleError)
-            return defer.succeed(None)
-        
         d = self.lpop([self.key], timeout, self.connection)
         d.addCallback(lambda x: x if x is None else x[1])
         d.addCallback(Job.fetch)
-        d.addErrback(handle_error)
         return d
-
+    
     @classmethod
     def dequeue_any(cls, queue_keys, timeout, connection=None):
-        def handle_error(failure):
-            failure.trap(NoSuchJobError, UnpickleError)
-            return defer.succeed(None)
-        
-        def get_queue_job(res):
+        def get_job(res):
             if res is None:
-                return defer.succeed(None)
+                return None
             queue_key, job_id = res
-            d = Job.fetch(job_id, connection)
-            d.addCallback(lambda job: job if job is None else (queue_key, job))
-            d.addErrback(handle_error)
+            d = Job.fetch(job_id)
+            d.addCallback(lambda x: None if x is None else (queue_key, x))
             return d
-            
+        
         if connection is None:
             connection = RedisMixin.redis_conn
         d = cls.lpop(queue_keys, timeout, connection)
-        d.addCallback(get_queue_job)
+        d.addCallback(get_job)
         return d
 
 class FailedQueue(Queue):
