@@ -57,8 +57,10 @@ class RedisMixin(object):
     redis_db = None
 
     @classmethod
-    def setup(cls, url=conf.REDIS_URL):
+    def setup(cls, url=None):
         if cls.redis_conn is None:
+            if url is None:
+                url = conf.REDIS_URL
             hostname, port, db, _, password = url_parse(url, 'redis')
             cls.redis_db = int(db)
             AuthRedisProtocol.password = password
@@ -124,8 +126,10 @@ class MongoMixin(object):
     mongo_db = None
     
     @classmethod
-    def setup(cls, url=conf.MONGO_URL):
+    def setup(cls, url=None):
         if cls.mongo_conn is None:
+            if url is None:
+                url = conf.MONGO_URL
             hostname, port, cls.mongo_db, username, password = url_parse(url, 'mongodb')
             AuthMongoProtocol.database = cls.mongo_db
             AuthMongoProtocol.username = username
