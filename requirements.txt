@@ -10,6 +10,7 @@ redis==2.7.5
 rq==0.3.7
 six==1.3.0
 times==0.6.1
+txmongo==0.4
 wokkel==0.7.1
 wsgiref==0.1.2
 zope.interface==4.0.5

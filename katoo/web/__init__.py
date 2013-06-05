@@ -11,7 +11,6 @@ class BaseHandler(cyclone.web.Application, RedisMixin):
             settings = dict(
                 debug=True,
             )
-            RedisMixin.setup()
             cyclone.web.Application.__init__(self, handlers, **settings)
 
 app = BaseHandler()

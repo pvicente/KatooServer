@@ -14,6 +14,6 @@ REDIS_URL=os.getenv('REDISCLOUD_URL', 'redis://localhost:6379')
 REDIS_POOL=int(os.getenv('REDIS_POOL', 10))
 
 #MONGO
-MONGO_URL=os.getenv('MONGOLAB_URI', 'mongo://localhost:27017')
+MONGO_URL=os.getenv('MONGOLAB_URI', 'mongodb://localhost:27017')
 MONGO_POOL=int(os.getenv('MONGO_POOL', 10))
 
