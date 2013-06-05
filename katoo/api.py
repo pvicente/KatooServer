@@ -6,6 +6,7 @@ Created on Jun 5, 2013
 from katoo import KatooApp
 from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
 from katoo.xmpp.xmppclient import XMPPGoogleClient
+from twisted.python import log
 
 def login(xmppuser):
     log.msg('Logging of user:', xmppuser)
@@ -19,7 +20,7 @@ def update(userid, **kwargs):
     log.msg('updating user: %s with kwargs:%s'%(userid, kwargs))
     running_client = KatooApp().getService(userid)
     if running_client is None:
-        raise XMPPUserNotLogged
+        raise XMPPUserNotLogged('User %s is not running in current worker'%(userid))
     xmppuser = running_client.user
     xmppuser.update(**kwargs)
     return xmppuser.save()
@@ -28,13 +29,12 @@ def logout(userid):
     log.msg('logout of user:', userid)
     running_client = KatooApp().getService(userid)
     if running_client is None:
-        raise XMPPUserNotLogged
+        raise XMPPUserNotLogged('User %s is not running in current worker'%(userid))
     return running_client.disownServiceParent()
 
 if __name__ == '__main__':
     from twisted.internet import defer, reactor
     from katoo.data import XMPPGoogleUser
-    from twisted.python import log
     import sys
     
     @defer.inlineCallbacks
