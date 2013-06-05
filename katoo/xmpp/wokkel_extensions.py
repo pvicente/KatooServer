@@ -7,7 +7,7 @@ from functools import wraps
 from twisted.words.protocols.jabber.sasl import SASLNoAcceptableMechanism, \
     get_mechanisms, SASLInitiatingInitializer, SASLAuthError
 from twisted.words.protocols.jabber.sasl_mechanisms import ISASLMechanism
-from utils.decorators import for_methods
+from katoo.utils.decorators import for_methods
 from wokkel.client import XMPPClient
 from zope.interface import implements
 import os
@@ -35,7 +35,7 @@ class X_FACEBOOK_PLATFORM(object):
     '''
     implements(ISASLMechanism)
     name = 'X-FACEBOOK-PLATFORM'
-    api_key = os.getenv("APIKEY", "138055292887831")
+    api_key = os.getenv("FACEBOOK_APIKEY", "0")
     
     def __init__(self, jid, password):
         self.access_token = password

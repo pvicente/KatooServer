@@ -22,13 +22,13 @@ class XMPPGoogleUser(object):
     model = XMPPGoogleUserModel('xmppgoogleuser')
     
     @classmethod
-    def load(cls, appid):
-        d = cls.model.find_one({'appid': appid})
+    def load(cls, userid):
+        d = cls.model.find_one({'userid': userid})
         d.addCallback(lambda result: None if not result else cls(**result))
         return d
     
     def __init__(self,
-                 appid, 
+                 userid, 
                  token,
                  refreshtoken,
                  resource,
@@ -37,7 +37,7 @@ class XMPPGoogleUser(object):
                  pushsound = '',
                  lang= 'en-US',
                  _id = None):
-        self.appid = unicode(appid)
+        self.userid = unicode(userid)
         self.token = unicode(token)
         self.refreshtoken = unicode(refreshtoken)
         self.resource = unicode(resource)
@@ -56,7 +56,7 @@ class XMPPGoogleUser(object):
         return '<%s object at %s>(%s)'%(self.__class__.__name__, hex(id(self)), vars(self))
     
     def __repr__(self):
-        return '<%s object at %s (_id:%s, appid:%s)>'%(self.__class__.__name__, hex(id(self)), getattr(self, '_id', None), self.appid)
+        return '<%s object at %s (_id:%s, appid:%s)>'%(self.__class__.__name__, hex(id(self)), getattr(self, '_id', None), self.userid)
     
 
 
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     
     @defer.inlineCallbacks
     def example():
-        user=XMPPGoogleUser(appid="1", token="accesstoken", refreshtoken="refreshtoken", resource="unknownresource", pushtoken="pushtoken", badgenumber="0", pushsound="asdfasdfas")
+        user=XMPPGoogleUser(userid="1", token="accesstoken", refreshtoken="refreshtoken", resource="unknownresource", pushtoken="pushtoken", badgenumber="0", pushsound="asdfasdfas")
         yield user.save()
         data = yield user.model.find_one({'appid' : "1"})
         print data

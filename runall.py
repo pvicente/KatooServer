@@ -3,16 +3,12 @@ Created on Jun 4, 2013
 
 @author: pvicente
 '''
-from twisted.application import service, internet
-from katoo.utils.connections import RedisMixin, MongoMixin
+from twisted.application import internet
 from katoo.rqtwisted.worker import Worker
 from katoo.web import app
-from katoo import conf
+from katoo import conf, KatooApp
 
-RedisMixin.setup()
-MongoMixin.setup()
-
-application = service.Application("runall")
+application = KatooApp().app
 webservice = internet.TCPServer(conf.PORT, app, interface=conf.LISTEN) 
 webservice.setServiceParent(application)
 w=Worker(['default'])
