@@ -52,6 +52,10 @@ class XMPPGoogleUser(object):
         data=vars(self)
         return self.model.insert(**data)
     
+    def update(self, **kwargs):
+        for k,v in kwargs.iteritems():
+            setattr(self,k,v);
+    
     def __str__(self):
         return '<%s object at %s>(%s)'%(self.__class__.__name__, hex(id(self)), vars(self))
     

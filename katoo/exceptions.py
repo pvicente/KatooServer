@@ -6,3 +6,6 @@ Created on Jun 5, 2013
 
 class XMPPUserAlreadyLogged(Exception):
     pass
+
+class XMPPUserNotLogged(Exception):
+    pass
