@@ -16,13 +16,11 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from cyclone.bottle import run, route
+from cyclone.bottle import route
 from twisted.application import service, internet
 from twisted.internet import defer
 from twisted.python import log
-import cyclone.escape
 import cyclone.redis
-import cyclone.sqlite
 import cyclone.util
 import cyclone.web
 import cyclone.websocket

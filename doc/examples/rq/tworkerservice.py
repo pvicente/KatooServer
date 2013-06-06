@@ -6,7 +6,7 @@ Created on May 27, 2013
 from katoo.rqtwisted.job import Job, UnpickleError, NoSuchJobError
 from katoo.rqtwisted.queue import Queue
 from katoo.utils.connections import RedisMixin
-from time import time, sleep
+from time import time
 from twisted.application import service
 from twisted.internet import defer, reactor, threads
 from twisted.python import log

@@ -16,9 +16,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import cyclone.escape
 import cyclone.redis
-import cyclone.sqlite
 import cyclone.util
 import cyclone.web
 import cyclone.websocket

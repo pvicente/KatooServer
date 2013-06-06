@@ -39,7 +39,7 @@ def logout(userid):
     #remove user
 
 if __name__ == '__main__':
-    from twisted.internet import defer, reactor
+    from twisted.internet import reactor
     from katoo.data import XMPPGoogleUser
     import sys
     

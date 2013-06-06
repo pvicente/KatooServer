@@ -75,8 +75,6 @@ class XMPPGoogleUser(object):
     def __repr__(self):
         return '<%s object at %s (_id:%s, appid:%s)>'%(self.__class__.__name__, hex(id(self)), getattr(self, '_id', None), self.userid)
     
-
-
 if __name__ == '__main__':
     from twisted.internet import defer, reactor
     
