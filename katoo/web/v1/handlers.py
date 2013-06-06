@@ -102,7 +102,7 @@ class GoogleMessagesHandler(MyRequestHandler):
         #Remove messages from database (pending to implement)
         #update badgenumber
         try:
-            yield update(key, {'budgenumber': 0})
+            yield update(key, **{'budgenumber': 0})
             self._response_json({'success': True, 'reason': 'ok'})
         except XMPPUserNotLogged as e:
             raise cyclone.web.HTTPError(500, str(e))
