@@ -11,5 +11,6 @@ from katoo import conf, KatooApp
 application = KatooApp().app
 webservice = internet.TCPServer(conf.PORT, app, interface=conf.LISTEN) 
 webservice.setServiceParent(application)
-w=Worker(['default'])
-w.setServiceParent(application)
+if conf.REDIS_WORKERS > 0:
+    w=Worker(['default'])
+    w.setServiceParent(application)
