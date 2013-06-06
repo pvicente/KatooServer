@@ -34,10 +34,6 @@ class update_arguments(arguments):
     ARGUMENTS = dict([('token', DefaultArgument), ('refreshtoken', DefaultArgument), ('resource', DefaultArgument),
                       ('pushtoken', DefaultArgument), ('badgenumber', DefaultArgument), ('pushsound',DefaultArgument), ('lang', DefaultArgument)])
 
-class deletemessages_arguments(arguments):
-    ARGUMENTS = {'badgenumber': 0}
-
-
 class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
     def _response_json(self, value):
         self.set_header("Content-Type", "application/json")
@@ -103,11 +99,10 @@ class GoogleMessagesHandler(MyRequestHandler):
         user = yield XMPPGoogleUser.load(key)
         if user is None:
             raise cyclone.web.HTTPError(404)
-        args = deletemessages_arguments(self).args
         #Remove messages from database (pending to implement)
         #update badgenumber
         try:
-            yield update(key, **args)
+            yield update(key, {'budgenumber': 0})
             self._response_json({'success': True, 'reason': 'ok'})
         except XMPPUserNotLogged as e:
             raise cyclone.web.HTTPError(500, str(e))

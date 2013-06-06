@@ -56,7 +56,7 @@ class XMPPGoogleUser(object):
     
     def save(self):
         data=vars(self)
-        return self.model.insert(**data)
+        return self.model.update({'userid': self.userid}, upsert=True, multi=False, **data)
     
     def update(self, **kwargs):
         for k,v in kwargs.iteritems():
