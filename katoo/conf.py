@@ -8,6 +8,7 @@ import os
 #WEBSERVICE
 PORT=int(os.getenv('PORT', 5000))
 LISTEN=os.getenv('LISTEN', '0.0.0.0')
+LOG_REQUESTS=bool(os.getenv('LOG_REQUESTS', True))
 
 ##REDIS_CONNECTION_MANAGEMENT
 REDIS_URL=os.getenv('REDISCLOUD_URL', 'redis://localhost:6379')
