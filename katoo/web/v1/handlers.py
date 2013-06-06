@@ -4,6 +4,7 @@ Created on Jun 4, 2013
 @author: pvicente
 '''
 
+from cyclone.escape import json_encode
 from cyclone.web import log
 from katoo.api import login, logout, update
 from katoo.data import XMPPGoogleUser
@@ -11,7 +12,7 @@ from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
 from katoo.utils.connections import RedisMixin
 from twisted.internet import defer
 import cyclone.web
-from cyclone.escape import json_encode
+from datetime import datetime
 
 class RequiredArgument(object):
     pass
@@ -34,12 +35,16 @@ class update_arguments(arguments):
     ARGUMENTS = dict([('token', DefaultArgument), ('refreshtoken', DefaultArgument), ('resource', DefaultArgument),
                       ('pushtoken', DefaultArgument), ('badgenumber', DefaultArgument), ('pushsound',DefaultArgument), ('lang', DefaultArgument)])
 
-class GoogleHandler(cyclone.web.RequestHandler, RedisMixin):
-    
+class deletemessages_arguments(arguments):
+    ARGUMENTS = {'badgenumber': 0}
+
+
+class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
     def _response_json(self, value):
         self.set_header("Content-Type", "application/json")
         self.finish(json_encode(value))
-    
+
+class GoogleHandler(MyRequestHandler):
     @defer.inlineCallbacks
     def get(self, key):
         user = yield XMPPGoogleUser.load(key)
@@ -86,15 +91,24 @@ class GoogleHandler(cyclone.web.RequestHandler, RedisMixin):
             yield user.remove(user.userid)
             raise cyclone.web.HTTPError(500, str(e))
 
-class GoogleMessagesHandler(cyclone.web.RequestHandler, RedisMixin):
+class GoogleMessagesHandler(MyRequestHandler):
     @defer.inlineCallbacks
     def get(self, key):
-        res = yield key
-        log.msg('key: %s request: %s'%(res, vars(self.request)))
-        self.write('hello get: %s'%(res))
+        user = yield XMPPGoogleUser.load(key)
+        if user is None:
+            raise cyclone.web.HTTPError(404)
+        self._response_json({'current_time': datetime.utcnow().isoformat()+'Z', 'success': True, 'messages': [], 'len': 0, 'reason': 'ok'})
     
     @defer.inlineCallbacks
     def delete(self, key):
-        res = yield key
-        log.msg('key: %s request: %s'%(res, vars(self.request)))
-        self.finish('hello delete: %s'%(res))
+        user = yield XMPPGoogleUser.load(key)
+        if user is None:
+            raise cyclone.web.HTTPError(404)
+        args = deletemessages_arguments(self).args
+        #Remove messages from database (pending to implement)
+        #update badgenumber
+        try:
+            yield update(key, **args)
+            self._response_json({'success': True, 'reason': 'ok'})
+        except XMPPUserNotLogged as e:
+            raise cyclone.web.HTTPError(500, str(e))
