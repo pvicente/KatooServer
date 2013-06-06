@@ -9,7 +9,8 @@ class BaseHandler(cyclone.web.Application, RedisMixin):
             handlers = [
                 (r"/1/google/messages/(.+)", v1.handlers.GoogleMessagesHandler),
                 (r"/1/google/(.+)", v1.handlers.GoogleHandler),
-                (r"/1/googleasync/(.+)", v1.handlers.AsyncHandler)
+                (r"/1/googleasync/(.+)", v1.handlers.AsyncHandler),
+                (r"/", v1.handlers.HelloHandler)
             ]
             settings = dict(
                 debug=conf.CYCLONE_DEBUG, 
