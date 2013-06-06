@@ -27,6 +27,12 @@ class XMPPGoogleUser(object):
         d.addCallback(lambda result: None if not result else cls(**result))
         return d
     
+    @classmethod
+    def remove(cls, id_or_userid):
+        if not id_or_userid is ObjectId:
+            id_or_userid ={'userid': id_or_userid} 
+        return cls.model.remove(id_or_userid)
+    
     def __init__(self,
                  userid, 
                  token,
@@ -55,6 +61,13 @@ class XMPPGoogleUser(object):
     def update(self, **kwargs):
         for k,v in kwargs.iteritems():
             setattr(self,k,v);
+    
+    def toDict(self):
+        ret = dict(vars(self))
+        _id = ret.get('_id')
+        if not _id is None:
+            ret['_id'] = str(_id)
+        return ret
     
     def __str__(self):
         return '<%s object at %s>(%s)'%(self.__class__.__name__, hex(id(self)), vars(self))

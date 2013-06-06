@@ -28,18 +28,25 @@ class login_arguments(arguments):
 
 class GoogleHandler(cyclone.web.RequestHandler, RedisMixin):
     @defer.inlineCallbacks
+    def get(self, key):
+        user = yield XMPPGoogleUser.load(key)
+        if user is None:
+            raise cyclone.web.HTTPError(404)
+        self.finish(json.dumps(user.toDict()))
+    
+    @defer.inlineCallbacks
     def post(self, key):
         try:
             user = yield XMPPGoogleUser.load(key)
             if not user is None:
-                self.handler.finish(json.dumps({'success': False, 'reason': 'Already logged'}))
+                self.finish(json.dumps({'success': False, 'reason': 'Already logged'}))
             else:
                 args = login_arguments(self).args
                 user = XMPPGoogleUser(userid=key, **args)
                 yield login(user)
                 self.finish(json.dumps({'success': False, 'reason': 'ok'}))
         except XMPPUserAlreadyLogged:
-            self.handler.finish(json.dumps({'success': False, 'reason': 'Already logged'}))
+            self.finish(json.dumps({'success': False, 'reason': 'Already logged'}))
     
     @defer.inlineCallbacks
     def put(self, key):
@@ -54,9 +61,10 @@ class GoogleHandler(cyclone.web.RequestHandler, RedisMixin):
             user = yield XMPPGoogleUser.load(key)
             if user is None:
                 raise cyclone.web.HTTPError(404)
-            else:
-                yield logout(key)
+            yield logout(key)
+            self.finish(json.dumps({'success': True, 'reason': 'ok'}))
         except XMPPUserNotLogged as e:
+            yield user.remove(user.userid)
             raise cyclone.web.HTTPError(500, str(e))
 
 class GoogleMessagesHandler(cyclone.web.RequestHandler, RedisMixin):
