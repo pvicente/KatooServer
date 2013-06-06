@@ -14,7 +14,6 @@ from twisted.internet import defer, threads, reactor
 from twisted.python import log
 import os
 import platform
-import random
 import rq.worker
 import sys
 import time
@@ -53,7 +52,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     
     @classmethod
     def default_name(cls):
-        return '%.3f-%s.%s' % (random.random(), platform.node(), os.getpid())
+        return '%s.%s' % (platform.node(), os.getpid())
     
     @classmethod
     @defer.inlineCallbacks
@@ -156,7 +155,8 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
                 if res is None:
                     continue
                 yield self.set_state('busy')
-                queue_key, job = res
+                #Parameter _ is queue_key must be a processed when thresholds will be implemented
+                _, job = res
                 d = threads.deferToThread(job.perform)
                 d.addCallback(self.callback_perform_job)
                 d.addErrback(self.errback_perform_job, job=job)
