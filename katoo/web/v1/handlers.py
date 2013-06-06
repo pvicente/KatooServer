@@ -5,7 +5,6 @@ Created on Jun 4, 2013
 '''
 
 from cyclone.escape import json_encode
-from cyclone.web import log
 from katoo.api import login, logout, update
 from katoo.data import XMPPGoogleUser
 from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
