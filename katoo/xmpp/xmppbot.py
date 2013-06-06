@@ -103,8 +103,8 @@ class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientP
         pass
     
     def onRosterReceived(self, roster):
-        print '(%s) onRosterReceived: %s'%(hex(id(self)), roster)
-        self.roster = roster
+        if self.ROSTER_IN_MEMORY:
+            self.roster = roster
     
     def onMessage(self, msg):
         pass
