@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+ETH=$(ifconfig | grep eth | wc -l)
+HOST=$(hostname)
+
+if [ $ETH -eq "2" ]; then
+	sleep 5
+	NAME=${HOST: 0:6}
+	case $NAME in
+		"server" )
+			ip addr add 11.0.0.1/8 dev eth1
+		;;
+
+		"redis" )
+			ip addr add 11.0.0.100/8 dev eth1
+		;;
+
+		"client" )
+			LAST_NUMBER=${HOST: -1}
+			for i in $(seq 1 255);
+			do
+				ip addr add 11.0.$LAST_NUMBER.$i/8 dev eth1
+			done
+	esac
+fi
+
+exit 0

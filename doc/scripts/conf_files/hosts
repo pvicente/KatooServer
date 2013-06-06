@@ -1,0 +1,20 @@
+127.0.0.1       localhost ubuntu-10
+
+# The following lines are desirable for IPv6 capable hosts
+::1     localhost ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+11.0.0.1	server
+11.0.0.100	redis
+11.0.1.1	client1
+11.0.2.1	client2
+11.0.3.1	client3
+11.0.4.1	client4
+11.0.5.1	client5
+11.0.6.1	client6
+11.0.7.1	client7
+11.0.8.1	client8
+11.0.9.1	client9
+
