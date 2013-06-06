@@ -5,13 +5,14 @@ Created on Jun 4, 2013
 '''
 
 from cyclone.escape import json_encode
+from datetime import datetime
 from katoo.api import login, logout, update
 from katoo.data import XMPPGoogleUser
 from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
 from katoo.utils.connections import RedisMixin
 from twisted.internet import defer
+from twisted.python import log
 import cyclone.web
-from datetime import datetime
 
 class RequiredArgument(object):
     pass
@@ -106,3 +107,17 @@ class GoogleMessagesHandler(MyRequestHandler):
             self._response_json({'success': True, 'reason': 'ok'})
         except XMPPUserNotLogged as e:
             raise cyclone.web.HTTPError(500, str(e))
+        
+
+class AsyncHandler(MyRequestHandler):
+    @cyclone.web.asynchronous
+    def get(self, key):
+        d = XMPPGoogleUser.load(key)
+        d.addCallback(self._response_get)
+        
+    def _response_get(self, user):
+        if user is None:
+            self.send_error(404)
+            return
+        self._response_json(user.toDict())
+        

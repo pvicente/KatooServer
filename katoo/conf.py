@@ -9,6 +9,7 @@ import os
 PORT=int(os.getenv('PORT', 5000))
 LISTEN=os.getenv('LISTEN', '0.0.0.0')
 LOG_REQUESTS=bool(os.getenv('LOG_REQUESTS', True))
+CYCLONE_DEBUG=bool(os.getenv('CYCLONE_DEBUG', True))
 
 ##REDIS_CONNECTION_MANAGEMENT
 REDIS_WORKERS=int(os.getenv('REDIS_WORKERS', 1))

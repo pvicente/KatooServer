@@ -8,10 +8,11 @@ class BaseHandler(cyclone.web.Application, RedisMixin):
     def __init__(self):
             handlers = [
                 (r"/1/google/messages/(.+)", v1.handlers.GoogleMessagesHandler),
-                (r"/1/google/(.+)", v1.handlers.GoogleHandler)
+                (r"/1/google/(.+)", v1.handlers.GoogleHandler),
+                (r"/1/googleasync/(.+)", v1.handlers.AsyncHandler)
             ]
             settings = dict(
-                debug=True, 
+                debug=conf.CYCLONE_DEBUG, 
             )
             cyclone.web.Application.__init__(self, handlers, **settings)
     
