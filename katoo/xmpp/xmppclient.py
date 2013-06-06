@@ -3,6 +3,7 @@ Created on Jun 5, 2013
 
 @author: pvicente
 '''
+from katoo import conf
 from twisted.words.protocols.jabber import jid
 from wokkel_extensions import ExtendedXMPPClient
 from xmppbot import CompleteBotProtocol
@@ -11,7 +12,7 @@ class XMPPGoogleClient(ExtendedXMPPClient):
     def __init__(self, user, app):
         self.user = user
         ExtendedXMPPClient.__init__(self, jid=jid.internJID("user@gmail.com"), password=user.token, host="talk.google.com", port=5222)
-        self.logTraffic = True
+        self.logTraffic = conf.XMPP_LOG_TRAFFIC
         protocol = CompleteBotProtocol()
         protocol.setHandlerParent(self)
         self.setServiceParent(app)
