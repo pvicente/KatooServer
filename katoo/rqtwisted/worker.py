@@ -160,8 +160,8 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
                 d = threads.deferToThread(job.perform)
                 d.addCallback(self.callback_perform_job)
                 d.addErrback(self.errback_perform_job, job=job)
-            except Exception as e:
-                log.msg('Exception %s dequeing job %s:'%(e.__class__.__name__, str(job)), e)
+            except Exception:
+                log.err()
                 if not job is None:
                     job.status = Status.FAILED
                     self.move_to_failed_queue(job, *sys.exc_info())
