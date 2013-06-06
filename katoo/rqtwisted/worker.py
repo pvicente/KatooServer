@@ -12,6 +12,7 @@ from rq.utils import make_colorizer
 from twisted.application import service
 from twisted.internet import defer, threads, reactor
 from twisted.python import log
+import cyclone.redis
 import os
 import platform
 import rq.worker
@@ -147,11 +148,13 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     @defer.inlineCallbacks
     def work(self):
         yield self.set_state('starting')
+        connection_errors = 0
         while not self.stopped:
             res = job = None
             try:
                 yield self.set_state('idle')
                 res = yield Queue.dequeue_any(queue_keys=self.queue_keys(), timeout=self.blocking_time, connection=self.connection)
+                connection_errors = 0
                 if res is None:
                     continue
                 yield self.set_state('busy')
@@ -160,6 +163,13 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
                 d = threads.deferToThread(job.perform)
                 d.addCallback(self.callback_perform_job)
                 d.addErrback(self.errback_perform_job, job=job)
+            except cyclone.redis.ConnectionError:
+                log.err()
+                connection_errors += 1
+                if connection_errors >= 3:
+                    self._stopped = True
+                    log.msg('Exiting due too many connection errors (%s) with redis'%(connection_errors))
+                    reactor.stop()
             except Exception:
                 log.err()
                 if not job is None:
