@@ -4,10 +4,11 @@ Created on May 25, 2013
 @author: pvicente
 '''
 from functools import wraps
+from katoo.utils.decorators import for_methods
+from twisted.python import log
 from twisted.words.protocols.jabber.sasl import SASLNoAcceptableMechanism, \
     get_mechanisms, SASLInitiatingInitializer, SASLAuthError
 from twisted.words.protocols.jabber.sasl_mechanisms import ISASLMechanism
-from katoo.utils.decorators import for_methods
 from wokkel.client import XMPPClient
 from zope.interface import implements
 import os
@@ -23,6 +24,8 @@ class ExtendedXMPPClient(XMPPClient):
             XMPPClient.initializationFailed(self, reason)
         except SASLAuthError as e:
             self.onAuthError(e)
+        except:
+            log.err()
     
     def onAuthError(self, reason):
         raise NotImplemented()

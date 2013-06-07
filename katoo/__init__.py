@@ -15,5 +15,10 @@ class KatooApp(Singleton):
         except KeyError:
             return None
 
+    def start(self):
+        self.service.startService()
+    
+    def stop(self):
+        self.service.stopService()
 
 KatooApp()

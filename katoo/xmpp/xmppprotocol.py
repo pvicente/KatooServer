@@ -30,14 +30,12 @@ Created on May 13, 2013
 #             self.send(reply)
 #===============================================================================
 from katoo import conf
+from twisted.python import log
 from wokkel.xmppim import MessageProtocol, PresenceClientProtocol, \
     RosterClientProtocol
 
 class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientProtocol):
     ROSTER_IN_MEMORY = conf.XMPP_ROSTER_IN_MEMORY
-    def __init__(self):
-        self._parentInitializationFailed = None
-    
     def connectionInitialized(self):
         #print '(%s) Connection Initialized'%(hex(id(self)))
         MessageProtocol.connectionInitialized(self)
@@ -54,10 +52,14 @@ class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientP
         self.parent.onAuthError = self.onAuthError
     
     def connectionLost(self, reason):
+        log.msg('ConnectionLost')
+        log.err(reason)
         #print '(%s) Connection Lost. Reason: %s'%(hex(id(self)), reason)
         pass
     
     def onAuthError(self, reason):
+        log.msg('onAuthError')
+        log.err(reason)
         #print '(%s) onAuthError. Reason: %s'%(hex(id(self)), reason)
         pass
         
