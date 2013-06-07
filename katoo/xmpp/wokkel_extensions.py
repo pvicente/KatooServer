@@ -5,6 +5,7 @@ Created on May 25, 2013
 '''
 from functools import wraps
 from katoo.utils.decorators import for_methods
+from twisted.internet import defer, reactor
 from twisted.python import log
 from twisted.words.protocols.jabber.sasl import SASLNoAcceptableMechanism, \
     get_mechanisms, SASLInitiatingInitializer, SASLAuthError
@@ -12,24 +13,41 @@ from twisted.words.protocols.jabber.sasl_mechanisms import ISASLMechanism
 from wokkel.client import XMPPClient
 from zope.interface import implements
 import os
+import time
 
-__all__ = ["ExtendedXMPPClient"]
+__all__ = ["ReauthXMPPClient"]
 
-class ExtendedXMPPClient(XMPPClient):
+class ReauthXMPPClient(XMPPClient):
     def __init__(self, jid, password, host=None, port=5222):
         XMPPClient.__init__(self, jid, password, host=host, port=port)
+        self._authFailureTime = None
+    
+    def _authd(self, xs):
+        self._authFailureTime = None
+        XMPPClient._authd(self, xs)
     
     def initializationFailed(self, reason):
-        try:
-            XMPPClient.initializationFailed(self, reason)
-        except SASLAuthError as e:
-            self.onAuthError(e)
-        except:
-            log.err()
+        if not reason.check(SASLAuthError):
+            log.msg('Stream initialization failed')
+            log.err(reason)
+            return defer.returnValue(None)
+        current_time = time.time()
+        if self._authFailureTime is None:
+            self._authFailureTime = current_time
+            return self.onAuthenticationRenewal(reason)
+        if current_time - self._authFailureTime > 60:
+            #I cannot stop factory retrying and if I set the delay too higher, reconnection delay wil be executed in the future
+            #and resetDelay will not work. Instead we wait 60 seconds to negotiate the new credentials
+            log.msg('Authentication Failed: Stopping service for user', self.user.userid)
+            log.err(reason)
+            
+            #TODO: send a push notification to client and save disconnected state in client
+            self.stopService()
+            return self.disownServiceParent()
     
-    def onAuthError(self, reason):
-        raise NotImplemented()
-    
+    def onAuthenticationRenewal(self, reason):
+        #This method must be overrided and not called due to new reconnection will fail
+        self._authFailureTime -= 60
 
 class X_FACEBOOK_PLATFORM(object):
     '''
