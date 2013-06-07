@@ -1,1 +1,1 @@
-web: python cyclonemultiprocess.py
+web: twistd -ny runall.py
