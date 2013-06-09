@@ -8,13 +8,49 @@ from twisted.python import log
 from twisted.words.protocols.jabber import jid
 from wokkel_extensions import ReauthXMPPClient
 from xmppprotocol import CompleteBotProtocol
+from xmpphandler import GenericXMPPHandler
 
+class GoogleHandler(GenericXMPPHandler):
+    def __init__(self, client):
+        GenericXMPPHandler.__init__(self, client)
+        self.user = client.user
+    
+    def onConnectionEstablished(self):
+        pass
+    
+    def onConnectionLost(self, reason):
+        pass
+    
+    def onAuthenticated(self):
+        pass
+    
+    def onAvailableReceived(self, jid):
+        pass
+    
+    def onUnavailableReceived(self, jid):
+        pass
+    
+    def onRosterReceived(self, roster):
+        pass
+    
+    def onRosterSet(self, item):
+        pass
+    
+    def onRosterRemove(self, item):
+        pass
+    
+    def onMessageReceived(self, msg):
+        pass
+    
 class XMPPGoogleClient(ReauthXMPPClient):
     def __init__(self, user, app):
-        self.user = user
         ReauthXMPPClient.__init__(self, jid=jid.internJID("user@gmail.com"), password=user.token, host="talk.google.com", port=5222)
+        self.user = user
         self.logTraffic = conf.XMPP_LOG_TRAFFIC
-        protocol = CompleteBotProtocol()
+        
+        #Initialize protocol
+        handler = GoogleHandler(self)
+        protocol = CompleteBotProtocol(handler)
         protocol.setHandlerParent(self)
         self.setServiceParent(app)
     

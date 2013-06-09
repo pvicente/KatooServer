@@ -29,15 +29,17 @@ Created on May 13, 2013
 # 
 #             self.send(reply)
 #===============================================================================
-from katoo import conf
-from twisted.python import log
 from wokkel.xmppim import MessageProtocol, PresenceClientProtocol, \
     RosterClientProtocol
 
 class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientProtocol):
-    ROSTER_IN_MEMORY = conf.XMPP_ROSTER_IN_MEMORY
+    
+    def __init__(self, xmpphandler):
+        MessageProtocol.__init__(self)
+        self._xmpphandler = xmpphandler
+        self._xmpphandler.setProtocol(self)
+    
     def connectionInitialized(self):
-        #print '(%s) Connection Initialized'%(hex(id(self)))
         MessageProtocol.connectionInitialized(self)
         RosterClientProtocol.connectionInitialized(self)
         PresenceClientProtocol.connectionInitialized(self)
@@ -46,23 +48,16 @@ class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientP
         self.available()
         d = self.getRoster()
         d.addCallback(self.onRosterReceived)
+        
+        #Call to handler
+        self._xmpphandler.onAuthenticated()
     
     def connectionMade(self):
-        #print '(%s) Connection Made'%(hex(id(self)))
-        self.parent.onAuthError = self.onAuthError
+        self._xmpphandler.onConnectionEstablished()
     
     def connectionLost(self, reason):
-        log.msg('ConnectionLost')
-        log.err(reason)
-        #print '(%s) Connection Lost. Reason: %s'%(hex(id(self)), reason)
-        pass
+        self._xmpphandler.onConnectionLost(reason)
     
-    def onAuthError(self, reason):
-        log.msg('onAuthError')
-        log.err(reason)
-        #print '(%s) onAuthError. Reason: %s'%(hex(id(self)), reason)
-        pass
-        
     def availableReceived(self, entity, show=None, statuses=None, priority=0):
         """
         Available presence was received.
@@ -80,9 +75,8 @@ class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientP
         @param priority: priority level of the resource.
         @type priority: C{int}
         """
-        #print 'Available received. %s'%(locals())
-        pass
-    
+        self._xmpphandler.onAvailableReceived(entity)
+   
     def unavailableReceived(self, entity, statuses=None):
         """
         Unavailable presence was received.
@@ -95,21 +89,17 @@ class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientP
                          specified, is keyed with C{None}.
         @type statuses: C{dict}
         """
-        #print 'Unavailable received. %s'%(locals())
-        pass
+        self._xmpphandler.onUnavailableReceived(entity)
     
     def onRosterSet(self, item):
-        pass
-        
+        self._xmpphandler.onRosterSet(item)
+    
     def onRosterRemove(self, item):
-        pass
+        self._xmpphandler.onRosterRemove(item)
     
     def onRosterReceived(self, roster):
-        if self.ROSTER_IN_MEMORY:
-            self.roster = roster
+        self._xmpphandler.onRosterReceived(roster)
     
     def onMessage(self, msg):
-        pass
-        #if msg['type'] == 'chat' and not msg.body is None:
-            #print '(%s) onMessage: %s'%(hex(id(self)), msg.body)
+        self._xmpphandler.onMessageReceived(msg)
     
