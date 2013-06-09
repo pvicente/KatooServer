@@ -24,8 +24,8 @@ class arguments(object):
     ARGUMENTS = {}
     def __init__(self, handler):
         self.args = dict([(k,handler.get_argument(k)) if v is RequiredArgument else (k,handler.get_argument(k,v)) for k,v in self.ARGUMENTS.iteritems()])
-        #Remove default arguments
-        self.args = dict([(k,v) for k,v in self.args.iteritems() if not v is DefaultArgument])
+        #Remove default arguments and add '_' prefix to keys
+        self.args = dict([('_'+k,v) for k,v in self.args.iteritems() if not v is DefaultArgument])
 
 class login_arguments(arguments):
     ARGUMENTS = dict([('token', RequiredArgument), ('refreshtoken', RequiredArgument), ('resource', RequiredArgument),
@@ -56,7 +56,7 @@ class GoogleHandler(MyRequestHandler):
                 self._response_json({'success': False, 'reason': 'Already logged'})
             else:
                 args = login_arguments(self).args
-                user = GoogleUser(userid=key, **args)
+                user = GoogleUser(_userid=key, **args)
                 yield login(user)
                 self._response_json({'success': True, 'reason': 'ok'})
         except XMPPUserAlreadyLogged:
@@ -103,7 +103,7 @@ class GoogleMessagesHandler(MyRequestHandler):
         #Remove messages from database (pending to implement)
         #update badgenumber
         try:
-            yield update(key, **{'budgenumber': 0})
+            yield update(key, **{'_budgenumber': 0})
             self._response_json({'success': True, 'reason': 'ok'})
         except XMPPUserNotLogged as e:
             raise cyclone.web.HTTPError(500, str(e))

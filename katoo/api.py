@@ -45,7 +45,7 @@ if __name__ == '__main__':
     
     @defer.inlineCallbacks
     def example():
-        user=GoogleUser(userid="1", token="asdasdf", refreshtoken="refreshtoken", resource="unknownresource", pushtoken="pushtoken", badgenumber="0", pushsound="asdfasdfas")
+        user=GoogleUser(_userid="1", _token="asdasdf", _refreshtoken="refreshtoken", _resource="unknownresource", _pushtoken="pushtoken", _badgenumber="0", _pushsound="asdfasdfas")
         log.msg('User:%s before saving'%(user))
         res = yield user.save()
         log.msg('User %s: saved. Res %s'%(user, res))
