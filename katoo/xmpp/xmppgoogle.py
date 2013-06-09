@@ -11,9 +11,11 @@ from wokkel_extensions import ReauthXMPPClient
 from xmppprotocol import CompleteBotProtocol, GenericXMPPHandler
 
 class GoogleHandler(GenericXMPPHandler):
+    ROSTER_IN_MEMORY=conf.XMPP_ROSTER_IN_MEMORY
     def __init__(self, client):
         GenericXMPPHandler.__init__(self, client)
         self.user = client.user
+        self.roster = None
     
     def onConnectionEstablished(self):
         pass
@@ -31,7 +33,8 @@ class GoogleHandler(GenericXMPPHandler):
         pass
     
     def onRosterReceived(self, roster):
-        pass
+        if self.ROSTER_IN_MEMORY:
+            self.roster = roster
     
     def onRosterSet(self, item):
         pass

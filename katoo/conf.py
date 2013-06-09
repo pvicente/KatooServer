@@ -8,8 +8,8 @@ import os
 #WEBSERVICE
 PORT=int(os.getenv('PORT', 5000))
 LISTEN=os.getenv('LISTEN', '0.0.0.0')
-LOG_REQUESTS=bool(os.getenv('LOG_REQUESTS', True))
-CYCLONE_DEBUG=bool(os.getenv('CYCLONE_DEBUG', True))
+LOG_REQUESTS=eval(str(os.getenv('LOG_REQUESTS', True)))
+CYCLONE_DEBUG=eval(str(os.getenv('CYCLONE_DEBUG', True)))
 
 ##REDIS_CONNECTION_MANAGEMENT
 REDIS_WORKERS=int(os.getenv('REDIS_WORKERS', 1))
@@ -21,5 +21,5 @@ MONGO_URL=os.getenv('MONGOLAB_URI', 'mongodb://localhost:27017')
 MONGO_POOL=int(os.getenv('MONGO_POOL', 10))
 
 #XMPP
-XMPP_ROSTER_IN_MEMORY=bool(os.getenv('XMPP_ROSTER_IN_MEMORY', True))
-XMPP_LOG_TRAFFIC=bool(os.getenv('XMPP_LOG_TRAFFIC', True))
+XMPP_ROSTER_IN_MEMORY=eval(str(os.getenv('XMPP_ROSTER_IN_MEMORY', True)))
+XMPP_LOG_TRAFFIC=eval(str(os.getenv('XMPP_LOG_TRAFFIC', True)))
