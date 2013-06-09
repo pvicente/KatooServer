@@ -7,8 +7,7 @@ from katoo import conf
 from twisted.python import log
 from twisted.words.protocols.jabber import jid
 from wokkel_extensions import ReauthXMPPClient
-from xmppprotocol import CompleteBotProtocol
-from xmpphandler import GenericXMPPHandler
+from xmppprotocol import CompleteBotProtocol, GenericXMPPHandler
 
 class GoogleHandler(GenericXMPPHandler):
     def __init__(self, client):

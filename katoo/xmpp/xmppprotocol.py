@@ -32,6 +32,42 @@ Created on May 13, 2013
 from wokkel.xmppim import MessageProtocol, PresenceClientProtocol, \
     RosterClientProtocol
 
+class GenericXMPPHandler(object):
+    
+    def __init__(self, client):
+        self.client = client
+        self.protocol = None
+    
+    def setProtocol(self, protocol):
+        self.protocol = protocol
+    
+    def onConnectionEstablished(self):
+        pass
+    
+    def onAuthenticated(self):
+        pass
+    
+    def onConnectionLost(self, reason):
+        pass
+    
+    def onAvailableReceived(self, jid):
+        pass
+    
+    def onUnavailableReceived(self, jid):
+        pass
+    
+    def onRosterSet(self, item):
+        pass
+    
+    def onRosterRemove(self, item):
+        pass
+    
+    def onRosterReceived(self, roster):
+        pass
+    
+    def onMessageReceived(self, msg):
+        pass
+
 class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientProtocol):
     
     def __init__(self, xmpphandler):
