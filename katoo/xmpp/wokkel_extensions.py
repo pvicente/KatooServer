@@ -60,7 +60,7 @@ class ReauthXMPPClient(XMPPClient):
         #TODO: send a push notification to client and save disconnected state in client
         self.stopService()
         return self.disownServiceParent()
-
+    
 class X_FACEBOOK_PLATFORM(object):
     '''
     Implements X_FACEBOOK_PLATFORM authentication: it is injected to SASLInitiatingInitializer class

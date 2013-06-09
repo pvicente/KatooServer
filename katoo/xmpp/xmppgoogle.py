@@ -4,6 +4,7 @@ Created on Jun 5, 2013
 @author: pvicente
 '''
 from katoo import conf
+from twisted.internet import defer
 from twisted.python import log
 from twisted.words.protocols.jabber import jid
 from wokkel_extensions import ReauthXMPPClient
@@ -61,9 +62,18 @@ class XMPPGoogle(ReauthXMPPClient):
         #TODO: implement oauth2 new challenge. Not call to parent method
         ReauthXMPPClient.onAuthenticationRenewal(self, reason)
     
+    def onAuthenticationError(self, reason):
+        return self.disconnect()
+    
+    def disconnect(self, change_state=True):
+        d = defer.maybeDeferred(self.disownServiceParent)
+        if change_state:
+            self.user.connected = False
+            d.addCallback(lambda x: self.user.save())
+        return d
+    
     def __str__(self):
         return '<%s object at %s. name: %s>(user: %s)'%(self.__class__.__name__, hex(id(self)), self.name, vars(self.user))
-
 
 if __name__ == '__main__':
     import sys, os
