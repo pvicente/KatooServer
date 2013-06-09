@@ -50,24 +50,24 @@ class GoogleHandler(MyRequestHandler):
     
     @defer.inlineCallbacks
     def post(self, key):
+        args = login_arguments(self).args
         try:
             user = yield GoogleUser.load(key)
-            if not user is None:
-                self._response_json({'success': False, 'reason': 'Already logged'})
-            else:
-                args = login_arguments(self).args
+            if user is None or not user.connected:
                 user = GoogleUser(_userid=key, **args)
                 yield login(user)
                 self._response_json({'success': True, 'reason': 'ok'})
+            else:
+                self._response_json({'success': False, 'reason': 'Already logged'})
         except XMPPUserAlreadyLogged:
-            self._response_json({'success': True, 'reason': 'ok'})
+            self._response_json({'success': False, 'reason': 'Already logged'})
     
     @defer.inlineCallbacks
     def put(self, key):
-        user = yield GoogleUser.load(key)
-        if user is None:
-            raise cyclone.web.HTTPError(404)
         args = update_arguments(self).args
+        user = yield GoogleUser.load(key)
+        if user is None or not user.connected:
+            raise cyclone.web.HTTPError(404)
         try:
             yield update(key, **args)
             self._response_json({'success': True, 'reason': 'ok'})
@@ -80,7 +80,10 @@ class GoogleHandler(MyRequestHandler):
             user = yield GoogleUser.load(key)
             if user is None:
                 raise cyclone.web.HTTPError(404)
-            yield logout(key)
+            if user.connected:
+                yield logout(key)
+            else:
+                yield user.remove(user.userid)
             self._response_json({'success': True, 'reason': 'ok'})
         except XMPPUserNotLogged as e:
             #Remove user from database
