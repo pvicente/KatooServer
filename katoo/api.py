@@ -40,12 +40,12 @@ def logout(userid):
 
 if __name__ == '__main__':
     from twisted.internet import reactor
-    from katoo.data import XMPPGoogleUser
+    from katoo.data import GoogleUser
     import sys
     
     @defer.inlineCallbacks
     def example():
-        user=XMPPGoogleUser(userid="1", token="asdasdf", refreshtoken="refreshtoken", resource="unknownresource", pushtoken="pushtoken", badgenumber="0", pushsound="asdfasdfas")
+        user=GoogleUser(userid="1", token="asdasdf", refreshtoken="refreshtoken", resource="unknownresource", pushtoken="pushtoken", badgenumber="0", pushsound="asdfasdfas")
         log.msg('User:%s before saving'%(user))
         res = yield user.save()
         log.msg('User %s: saved. Res %s'%(user, res))

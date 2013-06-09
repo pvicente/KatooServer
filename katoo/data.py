@@ -15,11 +15,11 @@ class ModelMixin(Model, MongoMixin):
         self.collection = collectionName
         Model.__init__(self, pool=self.mongo_conn)
     
-class XMPPGoogleUserModel(ModelMixin):
+class GoogleUserModel(ModelMixin):
         pass
 
-class XMPPGoogleUser(object):
-    model = XMPPGoogleUserModel('xmppgoogleuser')
+class GoogleUser(object):
+    model = GoogleUserModel('xmppgoogleuser')
     
     @classmethod
     def load(cls, userid):
@@ -80,17 +80,17 @@ if __name__ == '__main__':
     
     @defer.inlineCallbacks
     def example():
-        user=XMPPGoogleUser(userid="1", token="accesstoken", refreshtoken="refreshtoken", resource="unknownresource", pushtoken="pushtoken", badgenumber="0", pushsound="asdfasdfas")
+        user=GoogleUser(userid="1", token="accesstoken", refreshtoken="refreshtoken", resource="unknownresource", pushtoken="pushtoken", badgenumber="0", pushsound="asdfasdfas")
         yield user.save()
         data = yield user.model.find_one({'appid' : "1"})
         print data
         data2 = yield user.model.find_one({'appid' : "2"})
         print data2
         
-        user2 = yield XMPPGoogleUser.load("1")
+        user2 = yield GoogleUser.load("1")
         print user2
         
-        user3 = yield XMPPGoogleUser.load("2")
+        user3 = yield GoogleUser.load("2")
         print user3
         
     reactor.callLater(1, example)

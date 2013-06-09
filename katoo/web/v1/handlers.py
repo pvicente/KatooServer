@@ -7,7 +7,7 @@ Created on Jun 4, 2013
 from cyclone.escape import json_encode
 from datetime import datetime
 from katoo.api import login, logout, update
-from katoo.data import XMPPGoogleUser
+from katoo.data import GoogleUser
 from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
 from katoo.utils.connections import RedisMixin
 from twisted.internet import defer
@@ -43,7 +43,7 @@ class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
 class GoogleHandler(MyRequestHandler):
     @defer.inlineCallbacks
     def get(self, key):
-        user = yield XMPPGoogleUser.load(key)
+        user = yield GoogleUser.load(key)
         if user is None:
             raise cyclone.web.HTTPError(404)
         self._response_json(user.toDict())
@@ -51,12 +51,12 @@ class GoogleHandler(MyRequestHandler):
     @defer.inlineCallbacks
     def post(self, key):
         try:
-            user = yield XMPPGoogleUser.load(key)
+            user = yield GoogleUser.load(key)
             if not user is None:
                 self._response_json({'success': False, 'reason': 'Already logged'})
             else:
                 args = login_arguments(self).args
-                user = XMPPGoogleUser(userid=key, **args)
+                user = GoogleUser(userid=key, **args)
                 yield login(user)
                 self._response_json({'success': True, 'reason': 'ok'})
         except XMPPUserAlreadyLogged:
@@ -64,7 +64,7 @@ class GoogleHandler(MyRequestHandler):
     
     @defer.inlineCallbacks
     def put(self, key):
-        user = yield XMPPGoogleUser.load(key)
+        user = yield GoogleUser.load(key)
         if user is None:
             raise cyclone.web.HTTPError(404)
         args = update_arguments(self).args
@@ -77,7 +77,7 @@ class GoogleHandler(MyRequestHandler):
     @defer.inlineCallbacks
     def delete(self, key):
         try:
-            user = yield XMPPGoogleUser.load(key)
+            user = yield GoogleUser.load(key)
             if user is None:
                 raise cyclone.web.HTTPError(404)
             yield logout(key)
@@ -90,14 +90,14 @@ class GoogleHandler(MyRequestHandler):
 class GoogleMessagesHandler(MyRequestHandler):
     @defer.inlineCallbacks
     def get(self, key):
-        user = yield XMPPGoogleUser.load(key)
+        user = yield GoogleUser.load(key)
         if user is None:
             raise cyclone.web.HTTPError(404)
         self._response_json({'current_time': datetime.utcnow().isoformat()+'Z', 'success': True, 'messages': [], 'len': 0, 'reason': 'ok'})
     
     @defer.inlineCallbacks
     def delete(self, key):
-        user = yield XMPPGoogleUser.load(key)
+        user = yield GoogleUser.load(key)
         if user is None:
             raise cyclone.web.HTTPError(404)
         #Remove messages from database (pending to implement)
@@ -112,7 +112,7 @@ class GoogleMessagesHandler(MyRequestHandler):
 class AsyncHandler(MyRequestHandler):
     @cyclone.web.asynchronous
     def get(self, key):
-        d = XMPPGoogleUser.load(key)
+        d = GoogleUser.load(key)
         d.addCallback(self._response_get)
         
     def _response_get(self, user):

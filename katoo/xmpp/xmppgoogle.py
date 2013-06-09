@@ -68,11 +68,11 @@ class XMPPGoogle(ReauthXMPPClient):
 if __name__ == '__main__':
     import sys, os
     from twisted.internet import reactor
-    from katoo.data import XMPPGoogleUser
+    from katoo.data import GoogleUser
     from katoo import KatooApp
 
     log.startLogging(sys.stdout)
     app = KatooApp().app
-    XMPPGoogle(XMPPGoogleUser("1", token=os.getenv('TOKEN'), refreshtoken='kk', resource="asdfasdf"), app)
+    XMPPGoogle(GoogleUser("1", token=os.getenv('TOKEN'), refreshtoken='kk', resource="asdfasdf"), app)
     KatooApp().start()
     reactor.run()
