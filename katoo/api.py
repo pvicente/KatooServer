@@ -5,7 +5,7 @@ Created on Jun 5, 2013
 '''
 from katoo import KatooApp
 from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
-from katoo.xmpp.xmppclient import XMPPGoogleClient
+from katoo.xmpp.xmppgoogle import XMPPGoogle
 from twisted.internet import defer
 from twisted.python import log
 
@@ -15,7 +15,7 @@ def login(xmppuser):
     running_client = KatooApp().getService(userid)
     if not running_client is None:
         raise XMPPUserAlreadyLogged('Service %s already running'%(running_client))
-    XMPPGoogleClient(xmppuser, KatooApp().app)
+    XMPPGoogle(xmppuser, KatooApp().app)
     return xmppuser.save()
 
 def update(userid, **kwargs):

@@ -42,7 +42,7 @@ class GoogleHandler(GenericXMPPHandler):
     def onMessageReceived(self, msg):
         pass
     
-class XMPPGoogleClient(ReauthXMPPClient):
+class XMPPGoogle(ReauthXMPPClient):
     def __init__(self, user, app):
         ReauthXMPPClient.__init__(self, jid=jid.internJID("user@gmail.com"), password=user.token, host="talk.google.com", port=5222)
         self.user = user
@@ -74,6 +74,6 @@ if __name__ == '__main__':
 
     log.startLogging(sys.stdout)
     app = KatooApp().app
-    XMPPGoogleClient(XMPPGoogleUser("1", token=os.getenv('TOKEN'), refreshtoken='kk', resource="asdfasdf"), app)
+    XMPPGoogle(XMPPGoogleUser("1", token=os.getenv('TOKEN'), refreshtoken='kk', resource="asdfasdf"), app)
     KatooApp().start()
     reactor.run()
