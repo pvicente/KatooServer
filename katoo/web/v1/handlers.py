@@ -7,7 +7,7 @@ Created on Jun 4, 2013
 from cyclone.escape import json_encode
 from datetime import datetime
 from katoo.api import login, logout, update
-from katoo.data import GoogleUser
+from katoo.data import GoogleUser, GoogleMessage
 from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
 from katoo.utils.connections import RedisMixin
 from twisted.internet import defer
@@ -96,7 +96,8 @@ class GoogleMessagesHandler(MyRequestHandler):
         user = yield GoogleUser.load(key)
         if user is None:
             raise cyclone.web.HTTPError(404)
-        self._response_json({'current_time': datetime.utcnow().isoformat()+'Z', 'success': True, 'messages': [], 'len': 0, 'reason': 'ok'})
+        messages = yield GoogleMessage.getMessages(key)
+        self._response_json({'current_time': datetime.utcnow().isoformat()+'Z', 'success': True, 'messages': messages, 'len': len(messages), 'reason': 'ok'})
     
     @defer.inlineCallbacks
     def delete(self, key):
@@ -106,6 +107,7 @@ class GoogleMessagesHandler(MyRequestHandler):
         #Remove messages from database (pending to implement)
         #update badgenumber
         try:
+            yield GoogleMessage.flushMessages(key)
             yield update(key, **{'_budgenumber': 0})
             self._response_json({'success': True, 'reason': 'ok'})
         except XMPPUserNotLogged as e:

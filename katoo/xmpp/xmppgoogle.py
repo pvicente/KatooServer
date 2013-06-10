@@ -3,7 +3,7 @@ Created on Jun 5, 2013
 
 @author: pvicente
 '''
-from katoo import conf
+from katoo import conf, data
 from twisted.internet import defer
 from twisted.python import log
 from twisted.words.protocols.jabber import jid
@@ -15,7 +15,14 @@ class GoogleHandler(GenericXMPPHandler):
     def __init__(self, client):
         GenericXMPPHandler.__init__(self, client)
         self.user = client.user
-        self.roster = None
+        self.roster = {}
+    
+    def getName(self, jid):
+        try:
+            name = self.roster[jid].name
+            return (name,jid.userhost()) if name else (jid.user, jid.userhost())
+        except KeyError:
+            return (jid.user, jid.userhost())
     
     def onConnectionEstablished(self):
         pass
@@ -42,8 +49,13 @@ class GoogleHandler(GenericXMPPHandler):
     def onRosterRemove(self, item):
         pass
     
-    def onMessageReceived(self, msg):
-        pass
+    def onMessageReceived(self, fromjid, msgid, body):
+        print "received msgid(%s) from(%s): %s"%(msgid, fromjid, body)
+        fromname, barejid = self.getName(fromjid)
+        message = data.GoogleMessage(userid=self.user.userid, fromid=barejid, msgid=msgid, data=body)
+        return message.save()
+
+        
     
 class XMPPGoogle(ReauthXMPPClient):
     def __init__(self, user, app):
@@ -86,6 +98,6 @@ if __name__ == '__main__':
 
     log.startLogging(sys.stdout)
     app = KatooApp().app
-    XMPPGoogle(GoogleUser("1", token=os.getenv('TOKEN'), refreshtoken='kk', resource="asdfasdf"), app)
+    XMPPGoogle(GoogleUser("1", _token=os.getenv('TOKEN'), _refreshtoken='kk', _resource="asdfasdf"), app)
     KatooApp().start()
     reactor.run()

@@ -29,6 +29,7 @@ Created on May 13, 2013
 # 
 #             self.send(reply)
 #===============================================================================
+from twisted.words.protocols.jabber import jid
 from wokkel.xmppim import MessageProtocol, PresenceClientProtocol, \
     RosterClientProtocol
 
@@ -65,7 +66,7 @@ class GenericXMPPHandler(object):
     def onRosterReceived(self, roster):
         pass
     
-    def onMessageReceived(self, msg):
+    def onMessageReceived(self, fromjid, msgid, body):
         pass
 
 class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientProtocol):
@@ -137,5 +138,10 @@ class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientP
         self._xmpphandler.onRosterReceived(roster)
     
     def onMessage(self, msg):
-        self._xmpphandler.onMessageReceived(msg)
+        body = msg.body
+        if msg['type'] == 'chat' and not body is None:
+            msg_id = msg['id']
+            #TODO: LRU jid cache in library
+            from_jid = jid.JID(msg['from']).userhostJID()
+            self._xmpphandler.onMessageReceived(from_jid, msg_id, unicode(body))
     

@@ -7,6 +7,7 @@ Created on Jun 4, 2013
 from katoo.txMongoModel.mongomodel.model import Model
 from katoo.utils.connections import MongoMixin
 from txmongo._pymongo.objectid import ObjectId
+from datetime import datetime
 
 class ModelMixin(Model, MongoMixin):
     def __init__(self, collectionName, mongourl=None):
@@ -15,12 +16,35 @@ class ModelMixin(Model, MongoMixin):
         self.collection = collectionName
         Model.__init__(self, pool=self.mongo_conn)
     
-class GoogleUserModel(ModelMixin):
+class DataModel(ModelMixin):
     def __init__(self, collectionName, mongourl=None):
         ModelMixin.__init__(self, collectionName, mongourl=mongourl)
 
+class GoogleMessage(object):
+    model = DataModel(collectionName='googlemessages')
+    
+    @classmethod
+    def getMessages(cls, userid):
+        return cls.model.find(spec={'userid':userid}, fields={'_id':0, 'time':1, 'fromid':1, 'msgid':1, 'data':1})
+    
+    @classmethod
+    def flushMessages(cls, userid):
+        return cls.model.remove({'userid':userid})
+    
+    def __init__(self, userid, fromid, msgid, data):
+        self.userid = userid
+        self.fromid = fromid
+        self.msgid = msgid
+        self.data = data
+        self.time = datetime.utcnow().isoformat()+'Z'
+    
+    def save(self):
+        data=vars(self)
+        return self.model.insert(**data)
+    
+
 class GoogleUser(object):
-    model = GoogleUserModel(collectionName='googleusers')
+    model = DataModel(collectionName='googleusers')
     
     @classmethod
     def load(cls, userid):
@@ -29,10 +53,10 @@ class GoogleUser(object):
         return d
     
     @classmethod
-    def remove(cls, id_or_userid):
-        if not id_or_userid is ObjectId:
-            id_or_userid ={'_userid': id_or_userid} 
-        return cls.model.remove(id_or_userid)
+    def remove(cls, userid):
+        d = cls.model.remove({'_userid':userid})
+        d.addCallback(GoogleMessage.flushMessages(userid))
+        return d
     
     def __init__(self,
                  _userid, 
@@ -145,7 +169,7 @@ class GoogleUser(object):
     @connected.setter
     def connected(self, value):
         self._connected = bool(value)
-    
+
 if __name__ == '__main__':
     from twisted.internet import defer, reactor
     
