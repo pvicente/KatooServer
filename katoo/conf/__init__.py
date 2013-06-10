@@ -5,6 +5,9 @@ Created on May 29, 2013
 '''
 import os
 
+conf_file = os.path.realpath(__file__)
+conf_dir = os.path.dirname(conf_file)
+
 #WEBSERVICE
 PORT=int(os.getenv('PORT', 5000))
 LISTEN=os.getenv('LISTEN', '0.0.0.0')
@@ -23,3 +26,9 @@ MONGO_POOL=int(os.getenv('MONGO_POOL', 10))
 #XMPP
 XMPP_ROSTER_IN_MEMORY=eval(str(os.getenv('XMPP_ROSTER_IN_MEMORY', True)))
 XMPP_LOG_TRAFFIC=eval(str(os.getenv('XMPP_LOG_TRAFFIC', True)))
+
+#APNS
+APNS_SANDBOX = "sandbox" if os.getenv('PRODUCTION', None) is None else "production"
+APNS_CERT = conf_dir + ('/certificates/development.pem' if APNS_SANDBOX else '/certificates/production.pem')
+APNS_TIMEOUT = int(os.getenv('APNS_TIMEOUT', 5))
+APNSERVICE_NAME= 'APNS'
