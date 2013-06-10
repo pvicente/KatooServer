@@ -109,7 +109,7 @@ class GoogleMessagesHandler(MyRequestHandler):
         try:
             yield GoogleMessage.flushMessages(key)
             if user.connected:
-                yield update(key, **{'_badgenumber': 0})
+                yield update(key, **{'badgenumber': 0})
             self._response_json({'success': True, 'reason': 'ok'})
         except XMPPUserNotLogged as e:
             raise cyclone.web.HTTPError(500, str(e))
