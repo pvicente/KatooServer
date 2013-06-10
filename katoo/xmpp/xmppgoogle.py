@@ -3,7 +3,9 @@ Created on Jun 5, 2013
 
 @author: pvicente
 '''
-from katoo import conf, data
+from katoo import conf
+from katoo.apns.api import sendchatmessage
+from katoo.data import GoogleMessage
 from twisted.internet import defer
 from twisted.python import log
 from twisted.words.protocols.jabber import jid
@@ -52,10 +54,13 @@ class GoogleHandler(GenericXMPPHandler):
     def onMessageReceived(self, fromjid, msgid, body):
         print "received msgid(%s) from(%s): %s"%(msgid, fromjid, body)
         fromname, barejid = self.getName(fromjid)
-        message = data.GoogleMessage(userid=self.user.userid, fromid=barejid, msgid=msgid, data=body)
-        return message.save()
-
-        
+        message = GoogleMessage(userid=self.user.userid, fromid=barejid, msgid=msgid, data=body)
+        d = message.save()
+        if self.user.token:
+            d.addCallback(lambda x: sendchatmessage(msg=body, token=self.user.pushtoken, sound=self.user.pushsound, badgenumber=self.user.badgenumber, jid=barejid, fullname=fromname))
+            self.user.badgenumber += 1
+            d.addCallback(lambda x: self.user.save())
+        return d
     
 class XMPPGoogle(ReauthXMPPClient):
     def __init__(self, user, app):
@@ -95,9 +100,14 @@ if __name__ == '__main__':
     from twisted.internet import reactor
     from katoo.data import GoogleUser
     from katoo import KatooApp
+    from katoo.apns import delivery
+    from katoo.txapns.txapns.apns import APNSService
+
+    delivery.ApnService = apns = APNSService(cert_path=conf.APNS_CERT, environment=conf.APNS_SANDBOX, timeout=5)
+    apns.setName(conf.APNSERVICE_NAME)
 
     log.startLogging(sys.stdout)
     app = KatooApp().app
-    XMPPGoogle(GoogleUser("1", _token=os.getenv('TOKEN'), _refreshtoken='kk', _resource="asdfasdf"), app)
+    XMPPGoogle(GoogleUser("1", _token=os.getenv('TOKEN'), _refreshtoken='kk', _resource="asdfasdf", _pushtoken=os.getenv('PUSHTOKEN', None) ), app)
     KatooApp().start()
     reactor.run()

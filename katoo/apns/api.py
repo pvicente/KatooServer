@@ -21,7 +21,7 @@ def sendcustom(lang, token, badgenumber, type_msg, sound='', inter_msg=' ', **kw
         log.err('Error getting custom message: %s'%(e.message))
 
 if __name__ == '__main__':
-    import sys
+    import sys,os
     from twisted.internet import reactor
     from katoo import KatooApp
     from katoo.txapns.txapns.apns import APNSService
@@ -34,5 +34,5 @@ if __name__ == '__main__':
     app = KatooApp().app
     apns.setServiceParent(app)
     KatooApp().start()
-    reactor.callLater(5, sendchatmessage, token='64810c8d8c15ff12a3e276d612092e8f82935a8b6ae5a81e4dbcd71da356c7d4', msg='esto es una prueba con txapns', sound='', badgenumber=1, jid='pedrovfer@gmail.com', fullname='Pedro')
+    reactor.callLater(5, sendchatmessage, token=os.getenv('PUSHTOKEN', None), msg='esto es una prueba con txapns', sound='', badgenumber=1, jid='pedrovfer@gmail.com', fullname='Pedro')
     reactor.run()
