@@ -1,3 +1,6 @@
 [submodule "katoo/txMongoModel"]
 	path = katoo/txMongoModel
 	url = git://github.com/pvicente/txMongoModel.git
+[submodule "katoo/txapns"]
+	path = katoo/txapns
+	url = git://github.com/pvicente/txapns.git
