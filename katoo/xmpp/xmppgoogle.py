@@ -26,6 +26,9 @@ class GoogleHandler(GenericXMPPHandler):
         except KeyError:
             return (jid.user, jid.userhost())
     
+    def isOwnBareJid(self, jid):
+        return self.client.jid.user == jid.user and self.client.jid.host == jid.host
+    
     def onConnectionEstablished(self):
         pass
     
@@ -36,10 +39,14 @@ class GoogleHandler(GenericXMPPHandler):
         pass
     
     def onAvailableReceived(self, jid):
-        pass
+        if self.isOwnBareJid(jid) and jid.resource == self.user.resource:
+            self.user.away = False
+            return self.user.save()
     
     def onUnavailableReceived(self, jid):
-        pass
+        if self.isOwnBareJid(jid) and jid.resource == self.user.resource:
+            self.user.away = True
+            return self.user.save()
     
     def onRosterReceived(self, roster):
         if self.ROSTER_IN_MEMORY:
@@ -56,7 +63,7 @@ class GoogleHandler(GenericXMPPHandler):
         fromname, barejid = self.getName(fromjid)
         message = GoogleMessage(userid=self.user.userid, fromid=barejid, msgid=msgid, data=body)
         d = message.save()
-        if self.user.pushtoken:
+        if self.user.pushtoken and self.user.away:
             log.msg('sending push to user %s'%(self.user))
             d.addCallback(lambda x: sendchatmessage(msg=body, token=self.user.pushtoken, sound=self.user.pushsound, badgenumber=self.user.badgenumber, jid=barejid, fullname=fromname))
             self.user.badgenumber += 1

@@ -67,6 +67,7 @@ class GoogleUser(object):
                  _pushsound = '',
                  _lang= 'en-US',
                  _connected=True,
+                 _away=False,
                  _id = None):
         self._userid = unicode(_userid)
         self._token = unicode(_token)
@@ -77,6 +78,7 @@ class GoogleUser(object):
         self._pushsound = unicode(_pushsound)
         self._lang = unicode(_lang)
         self._connected = eval(str(_connected))
+        self._away = eval(str(_away))
         if isinstance(_id, ObjectId):
             self._id = _id
     
@@ -128,6 +130,8 @@ class GoogleUser(object):
     @resource.setter
     def resource(self, value):
         self._resource = unicode(value)
+        #If a new resource is setted away state is setted to False
+        self.away = False
     
     @property
     def pushtoken(self):
@@ -168,6 +172,14 @@ class GoogleUser(object):
     @connected.setter
     def connected(self, value):
         self._connected = bool(value)
+    
+    @property
+    def away(self):
+        return self._away
+    
+    @away.setter
+    def away(self, value):
+        self._away = bool(value)
 
 if __name__ == '__main__':
     from twisted.internet import reactor
