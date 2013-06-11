@@ -3,12 +3,15 @@ Created on Jun 11, 2013
 
 @author: pvicente
 '''
-from katoo import KatooApp
+from katoo import KatooApp, conf
+from katoo.txapns.txapns.apns import APNSService
 from katoo.txapns.txapns.encoding import encode_notifications
 from katoo.txapns.txapns.payload import Payload, PayloadTooLargeError, \
     MAX_PAYLOAD_LENGTH
 
-ApnService = KatooApp().getAPNService()
+APNS = APNSService(cert_path=conf.APNS_CERT, environment=conf.APNS_SANDBOX, timeout=conf.APNS_TIMEOUT)
+APNS.setName(conf.APNSERVICE_NAME)
+APNS.setServiceParent(KatooApp().app)
 
 PADDING = "..."
 LEN_PADDING = len(PADDING)
@@ -22,4 +25,4 @@ def sendapn(token, msg=None, sound=None, badgenumber=None, **kwargs):
         msg = msg[:overload]+PADDING
         payload = Payload(alert=msg, sound=sound, badge=badgenumber, custom=kwargs)
     notification = encode_notifications(token, payload.dict())
-    return ApnService.write(notification)
+    return APNS.write(notification)
