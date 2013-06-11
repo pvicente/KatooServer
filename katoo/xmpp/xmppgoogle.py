@@ -52,11 +52,12 @@ class GoogleHandler(GenericXMPPHandler):
         pass
     
     def onMessageReceived(self, fromjid, msgid, body):
-        print "received msgid(%s) from(%s): %s"%(msgid, fromjid, body)
+        log.msg("received msgid(%s) from(%s): %s"%(msgid, fromjid, body))
         fromname, barejid = self.getName(fromjid)
         message = GoogleMessage(userid=self.user.userid, fromid=barejid, msgid=msgid, data=body)
         d = message.save()
-        if self.user.token:
+        if self.user.pushtoken:
+            log.msg('sending push to user %s'%(self.user))
             d.addCallback(lambda x: sendchatmessage(msg=body, token=self.user.pushtoken, sound=self.user.pushsound, badgenumber=self.user.badgenumber, jid=barejid, fullname=fromname))
             self.user.badgenumber += 1
             d.addCallback(lambda x: self.user.save())

@@ -185,6 +185,9 @@ if __name__ == '__main__':
         user2 = yield GoogleUser.load("1")
         print user2
         
+        user2.badgenumber += 1
+        print user2
+        
         user3 = yield GoogleUser.load("2")
         print user3
         
