@@ -29,9 +29,7 @@ class ReauthXMPPClient(XMPPClient):
     
     def initializationFailed(self, reason):
         if not reason.check(SASLAuthError):
-            log.msg('Stream initialization failed')
-            log.err(reason)
-            return
+            return self.onAuthenticationError(reason)
         current_time = time.time()
         if self._authFailureTime is None:
             self._authFailureTime = current_time

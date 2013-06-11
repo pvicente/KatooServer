@@ -94,6 +94,7 @@ class XMPPGoogle(ReauthXMPPClient):
     def onAuthenticationRenewal(self, reason):
         log.msg('Authentication error: requesting new access token for user %s'%(self.user.userid))
         postdata={'client_id': conf.GOOGLE_CLIENT_ID, 'client_secret': conf.GOOGLE_CLIENT_SECRET, 'refresh_token': self.user.refreshtoken, 'grant_type': 'refresh_token'}
+        e = ''
         try:
             #response = yield cyclone.httpclient.fetch(url=conf.GOOGLE_OAUTH2_URL, postdata=postdata)
             response = yield cyclone.httpclient.fetch(conf.GOOGLE_OAUTH2_URL, postdata=urllib.urlencode(postdata))
@@ -104,13 +105,14 @@ class XMPPGoogle(ReauthXMPPClient):
             #Updating authenticator password with new credentials
             self.factory.authenticator.password = self.user.token
             yield self.user.save()
-        except Exception as e:
-            log.err(e)
+        except Exception as ex:
+            e = ex
         finally:
             #Calling to super to perform default behaviour (decrement counter to stop connection in the next retry if not success)
-            ReauthXMPPClient.onAuthenticationRenewal(self, '')
+            ReauthXMPPClient.onAuthenticationRenewal(self, e)
     
     def onAuthenticationError(self, reason):
+        log.err(reason)
         if self.user.pushtoken:
             sendcustom(lang=self.user.lang, token=self.user.pushtoken, badgenumber=self.user.badgenumber, type_msg='auth_failed', sound='')
         return self.disconnect()
