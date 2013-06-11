@@ -4,10 +4,11 @@ Created on Jun 4, 2013
 @author: pvicente
 '''
 
+from datetime import datetime
 from katoo.txMongoModel.mongomodel.model import Model
 from katoo.utils.connections import MongoMixin
+from twisted.internet import defer
 from txmongo._pymongo.objectid import ObjectId
-from datetime import datetime
 
 class ModelMixin(Model, MongoMixin):
     def __init__(self, collectionName, mongourl=None):
@@ -54,9 +55,7 @@ class GoogleUser(object):
     
     @classmethod
     def remove(cls, userid):
-        d = cls.model.remove({'_userid':userid})
-        d.addCallback(lambda x: GoogleMessage.flushMessages, userid)
-        return d
+        return defer.DeferredList([cls.model.remove({'_userid': userid}), GoogleMessage.flushMessages(userid) ])
     
     def __init__(self,
                  _userid, 
@@ -171,7 +170,7 @@ class GoogleUser(object):
         self._connected = bool(value)
 
 if __name__ == '__main__':
-    from twisted.internet import defer, reactor
+    from twisted.internet import reactor
     
     @defer.inlineCallbacks
     def example():
@@ -190,6 +189,9 @@ if __name__ == '__main__':
         
         user3 = yield GoogleUser.load("2")
         print user3
+        
+        res = yield user.remove(user.userid)
+        print res
         
     reactor.callLater(1, example)
     reactor.callLater(2, reactor.stop)
