@@ -4,7 +4,7 @@ Created on Jun 5, 2013
 @author: pvicente
 '''
 from katoo import conf
-from katoo.apns.api import sendchatmessage
+from katoo.apns.api import sendchatmessage, sendcustom
 from katoo.data import GoogleMessage
 from twisted.internet import defer
 from twisted.python import log
@@ -91,6 +91,8 @@ class XMPPGoogle(ReauthXMPPClient):
         ReauthXMPPClient.onAuthenticationRenewal(self, reason)
     
     def onAuthenticationError(self, reason):
+        if self.user.pushtoken:
+            sendcustom(lang=self.user.lang, token=self.user.pushtoken, badgenumber=self.user.badgenumber, type_msg='auth_failed', sound='')
         return self.disconnect()
     
     def disconnect(self, change_state=True):

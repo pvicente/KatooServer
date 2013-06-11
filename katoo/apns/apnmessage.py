@@ -21,8 +21,8 @@ custom_messages={
         'online':     {'en-US': u'went online'},
         'offline':    {'en-US': u'went offline'},
         'disconnect': {'en-US': u'Disconnected due to inactivity'},
-        'retries_exceeded' : {'en-US': u'Disconnected due to problems with Facebook Servers'},
-        'auth_failed' : {'en-US': u'Disconnected due to authentication problem with Facebook'}
+        'retries_exceeded' : {'en-US': u'Disconnected. Max retries exceeded'},
+        'auth_failed' : {'en-US': u'Disconnected. Authentication error'}
 }
 
 class CustomMessageException(StandardError):
