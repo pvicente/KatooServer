@@ -22,12 +22,14 @@ class DefaultArgument(object):
 
 class arguments(object):
     ARGUMENTS = {}
+    PREFIX=''
     def __init__(self, handler):
         self.args = dict([(k,handler.get_argument(k)) if v is RequiredArgument else (k,handler.get_argument(k,v)) for k,v in self.ARGUMENTS.iteritems()])
         #Remove default arguments and add '_' prefix to keys
-        self.args = dict([('_'+k,v) for k,v in self.args.iteritems() if not v is DefaultArgument])
+        self.args = dict([(self.PREFIX+k,v) for k,v in self.args.iteritems() if not v is DefaultArgument])
 
 class login_arguments(arguments):
+    PREFIX='_'
     ARGUMENTS = dict([('token', RequiredArgument), ('refreshtoken', RequiredArgument), ('resource', RequiredArgument),
                       ('pushtoken', ''), ('badgenumber', 0), ('pushsound',''), ('lang','en-US')])
 
