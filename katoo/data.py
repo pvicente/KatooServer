@@ -55,7 +55,7 @@ class GoogleUser(object):
     @classmethod
     def remove(cls, userid):
         d = cls.model.remove({'_userid':userid})
-        d.addCallback(GoogleMessage.flushMessages(userid))
+        d.addCallback(lambda x: GoogleMessage.flushMessages, userid)
         return d
     
     def __init__(self,
