@@ -11,6 +11,10 @@ from twisted.python import log
 from twisted.words.protocols.jabber import jid
 from wokkel_extensions import ReauthXMPPClient
 from xmppprotocol import CompleteBotProtocol, GenericXMPPHandler
+import cyclone.httpclient
+import json
+import urllib
+from wokkel.client import HybridAuthenticator
 
 class GoogleHandler(GenericXMPPHandler):
     ROSTER_IN_MEMORY=conf.XMPP_ROSTER_IN_MEMORY
@@ -86,9 +90,25 @@ class XMPPGoogle(ReauthXMPPClient):
     def name(self):
         return self.user.userid
     
+    @defer.inlineCallbacks
     def onAuthenticationRenewal(self, reason):
-        #TODO: implement oauth2 new challenge. Not call to parent method
-        ReauthXMPPClient.onAuthenticationRenewal(self, reason)
+        log.msg('Authentication error: requesting new access token for user %s'%(self.user.userid))
+        postdata={'client_id': conf.GOOGLE_CLIENT_ID, 'client_secret': conf.GOOGLE_CLIENT_SECRET, 'refresh_token': self.user.refreshtoken, 'grant_type': 'refresh_token'}
+        try:
+            #response = yield cyclone.httpclient.fetch(url=conf.GOOGLE_OAUTH2_URL, postdata=postdata)
+            response = yield cyclone.httpclient.fetch(conf.GOOGLE_OAUTH2_URL, postdata=urllib.urlencode(postdata))
+            if response.code != 200:
+                raise ValueError('Wrong response code:%s. Body: %s'%(response.code, response.body))
+            data = json.loads(response.body)
+            self.user.token = data['access_token']
+            #Updating authenticator password with new credentials
+            self.factory.authenticator.password = self.user.token
+            yield self.user.save()
+        except Exception as e:
+            log.err(e)
+        finally:
+            #Calling to super to perform default behaviour (decrement counter to stop connection in the next retry if not success)
+            ReauthXMPPClient.onAuthenticationRenewal(self, '')
     
     def onAuthenticationError(self, reason):
         if self.user.pushtoken:
@@ -118,6 +138,6 @@ if __name__ == '__main__':
 
     log.startLogging(sys.stdout)
     app = KatooApp().app
-    XMPPGoogle(GoogleUser("1", _token=os.getenv('TOKEN'), _refreshtoken='kk', _resource="asdfasdf", _pushtoken=os.getenv('PUSHTOKEN', None) ), app)
+    XMPPGoogle(GoogleUser("1", _token=os.getenv('TOKEN'), _refreshtoken=os.getenv('REFRESHTOKEN'), _resource="asdfasdf", _pushtoken=os.getenv('PUSHTOKEN', None) ), app)
     KatooApp().start()
     reactor.run()

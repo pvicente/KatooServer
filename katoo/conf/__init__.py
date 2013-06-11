@@ -8,6 +8,11 @@ import os
 conf_file = os.path.realpath(__file__)
 conf_dir = os.path.dirname(conf_file)
 
+#GOOGLE_APP_CREDENTIALS
+GOOGLE_CLIENT_ID=os.getenv('GOOGLE_CLIENT_ID', '1066150010031.apps.googleusercontent.com')
+GOOGLE_CLIENT_SECRET=os.getenv('GOOGLE_CLIENT_SECRET', '8uTcq2n92dDWO8HWaJBC6Lxg')
+GOOGLE_OAUTH2_URL='https://accounts.google.com/o/oauth2/token'
+
 #WEBSERVICE
 PORT=int(os.getenv('PORT', 5000))
 LISTEN=os.getenv('LISTEN', '0.0.0.0')
