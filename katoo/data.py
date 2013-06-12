@@ -48,8 +48,11 @@ class GoogleUser(object):
     model = DataModel(collectionName='googleusers')
     
     @classmethod
-    def load(cls, userid):
-        d = cls.model.find_one({'_userid': userid})
+    def load(cls, userid=None, jid=None, pushtoken=None):
+        if userid is None and jid is None and pushtoken is None:
+            return defer.returnValue(None)
+        search_filter = dict([('_'+k,v) for k,v in locals().iteritems() if k != 'cls' and not v is None])
+        d = cls.model.find_one(search_filter)
         d.addCallback(lambda result: None if not result else cls(**result))
         return d
     

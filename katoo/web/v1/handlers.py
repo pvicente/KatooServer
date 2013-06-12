@@ -55,11 +55,27 @@ class GoogleHandler(MyRequestHandler):
         args = login_arguments(self).args
         try:
             user = yield GoogleUser.load(key)
+            
+            if user is None:
+                #Logout of users with the same pushtoken
+                user_to_logout = yield GoogleUser.load(pushtoken=args['_pushtoken'])
+                if not user_to_logout is None:
+                    log.msg('Logout user %s with the same pushtoken'%(user_to_logout.userid))
+                    yield logout(user_to_logout.userid)
+            elif user.connected:
+                #Logout user with the same appid but other jid
+                user_to_logout = yield GoogleUser.load(userid=key, jid=args['_jid'])
+                if user_to_logout is None:
+                    log.msg('Logout previous user %s with other jid: %s->%s'%(key, user.jid, args['_jid']))
+                    yield logout(key)
+                    user = None
+            
             if user is None or not user.connected:
                 user = GoogleUser(_userid=key, **args)
                 yield login(user)
                 self._response_json({'success': True, 'reason': 'ok'})
             else:
+                
                 self._response_json({'success': False, 'reason': 'Already logged'})
         except XMPPUserAlreadyLogged:
             self._response_json({'success': False, 'reason': 'Already logged'})
