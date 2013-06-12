@@ -144,5 +144,6 @@ class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientP
             msg_id = msg['id']
             #TODO: LRU jid cache in library
             from_jid = jid.JID(msg['from']).userhostJID()
-            self._xmpphandler.onMessageReceived(from_jid, msg_id, unicode(body.children[0]))
+            #TODO: check unicode of children
+            self._xmpphandler.onMessageReceived(from_jid, msg_id, body.children[0])
     
