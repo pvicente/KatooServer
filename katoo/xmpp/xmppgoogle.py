@@ -91,7 +91,7 @@ class XMPPGoogle(ReauthXMPPClient):
     
     @defer.inlineCallbacks
     def onAuthenticationRenewal(self, reason):
-        log.msg('Authentication error: requesting new access token for user %s'%(self.user.userid))
+        log.msg('Authentication error: requesting new access token for user %s with refresh_token %s'%(self.user.userid, self.user.refreshtoken))
         postdata={'client_id': conf.GOOGLE_CLIENT_ID, 'client_secret': conf.GOOGLE_CLIENT_SECRET, 'refresh_token': self.user.refreshtoken, 'grant_type': 'refresh_token'}
         e = ''
         try:
@@ -100,12 +100,14 @@ class XMPPGoogle(ReauthXMPPClient):
             if response.code != 200:
                 raise ValueError('Wrong response code:%s. Body: %s'%(response.code, response.body))
             data = json.loads(response.body)
+            log.msg('Authentication renewal user %s new auth data: %s'%(self.user.userid, data))
             self.user.token = data['access_token']
             #Updating authenticator password with new credentials
             self.factory.authenticator.password = self.user.token
             yield self.user.save()
         except Exception as ex:
             e = ex
+            log.err(e)
         finally:
             #Calling to super to perform default behaviour (decrement counter to stop connection in the next retry if not success)
             ReauthXMPPClient.onAuthenticationRenewal(self, e)

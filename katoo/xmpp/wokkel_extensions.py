@@ -41,7 +41,6 @@ class ReauthXMPPClient(XMPPClient):
         """
         Authentication failed: negotiate new authentication tokens with the server
         """
-        
         #This method must be overrided and not called due to new reconnection will fail
         self._authFailureTime -= self.AUTH_TIMEOUT
     
