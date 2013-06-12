@@ -100,7 +100,7 @@ class XMPPGoogle(ReauthXMPPClient):
             if response.code != 200:
                 raise ValueError('Wrong response code:%s. Body: %s'%(response.code, response.body))
             data = json.loads(response.body)
-            log.msg('Authentication renewal user %s new auth data: %s'%(self.user.userid, data))
+            log.msg('Authentication renewal user %s, jid %s. New auth data: %s'%(self.user.userid, self.user.jid, data))
             self.user.token = data['access_token']
             #Updating authenticator password with new credentials
             self.factory.authenticator.password = self.user.token
@@ -141,6 +141,6 @@ if __name__ == '__main__':
 
     log.startLogging(sys.stdout)
     app = KatooApp().app
-    XMPPGoogle(GoogleUser("1", _token=os.getenv('TOKEN'), _refreshtoken=os.getenv('REFRESHTOKEN'), _resource="asdfasdf", _pushtoken=os.getenv('PUSHTOKEN', None) ), app)
+    XMPPGoogle(GoogleUser("1", _token=os.getenv('TOKEN'), _refreshtoken=os.getenv('REFRESHTOKEN'), _resource="asdfasdf", _pushtoken=os.getenv('PUSHTOKEN', None), _jid="kk@gmail.com" ), app)
     KatooApp().start()
     reactor.run()

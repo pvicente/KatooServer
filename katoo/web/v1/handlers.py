@@ -30,7 +30,7 @@ class arguments(object):
 
 class login_arguments(arguments):
     PREFIX='_'
-    ARGUMENTS = dict([('token', RequiredArgument), ('refreshtoken', RequiredArgument), ('resource', RequiredArgument),
+    ARGUMENTS = dict([('token', RequiredArgument), ('refreshtoken', RequiredArgument), ('resource', RequiredArgument), ('jid', RequiredArgument),
                       ('pushtoken', ''), ('badgenumber', 0), ('pushsound',''), ('lang','en-US')])
 
 class update_arguments(arguments):

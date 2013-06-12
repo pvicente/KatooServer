@@ -63,6 +63,7 @@ class GoogleUser(object):
     
     def __init__(self,
                  _userid, 
+                 _jid,
                  _token,
                  _refreshtoken,
                  _resource,
@@ -74,6 +75,7 @@ class GoogleUser(object):
                  _away=False,
                  _id = None):
         self._userid = unicode(_userid)
+        self._jid = unicode(_jid)
         self._token = unicode(_token)
         self._refreshtoken = unicode(_refreshtoken)
         self._resource = unicode(_resource)
@@ -110,6 +112,10 @@ class GoogleUser(object):
     @property
     def userid(self):
         return self._userid
+    
+    @property
+    def jid(self):
+        return self._jid
     
     @property
     def token(self):
@@ -190,7 +196,7 @@ if __name__ == '__main__':
     
     @defer.inlineCallbacks
     def example():
-        user=GoogleUser(_userid="1", _token="accesstoken", _refreshtoken="refreshtoken", _resource="unknownresource", _pushtoken="pushtoken", _badgenumber="0", _pushsound="asdfasdfas")
+        user=GoogleUser(_userid="1", _token="accesstoken", _refreshtoken="refreshtoken", _resource="unknownresource", _pushtoken="pushtoken", _badgenumber="0", _pushsound="asdfasdfas", _jid='kk@gmail.com')
         yield user.save()
         data = yield user.model.find_one({'appid' : "1"})
         print data
