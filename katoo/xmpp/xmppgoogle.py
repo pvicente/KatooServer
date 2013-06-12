@@ -14,7 +14,6 @@ from xmppprotocol import CompleteBotProtocol, GenericXMPPHandler
 import cyclone.httpclient
 import json
 import urllib
-from wokkel.client import HybridAuthenticator
 
 class GoogleHandler(GenericXMPPHandler):
     ROSTER_IN_MEMORY=conf.XMPP_ROSTER_IN_MEMORY
@@ -63,7 +62,7 @@ class GoogleHandler(GenericXMPPHandler):
         pass
     
     def onMessageReceived(self, fromjid, msgid, body):
-        log.msg("received msgid(%s) from(%s): %s"%(msgid, fromjid, body))
+        log.msg("received msgid(%s) from(%s): %r"%(msgid, fromjid, body))
         fromname, barejid = self.getName(fromjid)
         message = GoogleMessage(userid=self.user.userid, fromid=barejid, msgid=msgid, data=body)
         d = message.save()
