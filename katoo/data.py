@@ -57,6 +57,10 @@ class GoogleUser(object):
     def remove(cls, userid):
         return defer.DeferredList([cls.model.remove({'_userid': userid}), GoogleMessage.flushMessages(userid) ])
     
+    @classmethod
+    def get_connected(cls):
+        return cls.model.find(spec={'_connected': True})
+    
     def __init__(self,
                  _userid, 
                  _token,
