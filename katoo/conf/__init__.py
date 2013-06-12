@@ -37,3 +37,6 @@ APNS_SANDBOX = "sandbox" if os.getenv('PRODUCTION', None) is None else "producti
 APNS_CERT = conf_dir + ('/certificates/development.pem' if APNS_SANDBOX else '/certificates/production.pem')
 APNS_TIMEOUT = int(os.getenv('APNS_TIMEOUT', 5))
 APNSERVICE_NAME= 'APNS'
+
+#HEROKU
+HEROKU_UNIDLING_URL=os.getenv('HEROKU_UNIDLING_URL', None)
