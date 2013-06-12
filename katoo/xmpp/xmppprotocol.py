@@ -83,7 +83,7 @@ class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientP
         PresenceClientProtocol.connectionInitialized(self)
         
         #Send Available and getting roster
-        self.available()
+        self.available(show='away')
         d = self.getRoster()
         d.addCallback(self.onRosterReceived)
         
