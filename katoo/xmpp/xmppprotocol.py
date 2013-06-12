@@ -29,6 +29,7 @@ Created on May 13, 2013
 # 
 #             self.send(reply)
 #===============================================================================
+from twisted.words import xish
 from twisted.words.protocols.jabber import jid
 from wokkel.xmppim import MessageProtocol, PresenceClientProtocol, \
     RosterClientProtocol
@@ -139,9 +140,9 @@ class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientP
     
     def onMessage(self, msg):
         body = msg.body
-        if msg['type'] == 'chat' and not body is None:
+        if msg['type'] == 'chat' and isinstance(body, xish.domish.Element) and body.children:
             msg_id = msg['id']
             #TODO: LRU jid cache in library
             from_jid = jid.JID(msg['from']).userhostJID()
-            self._xmpphandler.onMessageReceived(from_jid, msg_id, unicode(body))
+            self._xmpphandler.onMessageReceived(from_jid, msg_id, unicode(body.children[0]))
     
