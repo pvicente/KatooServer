@@ -33,13 +33,13 @@ class GoogleHandler(GenericXMPPHandler):
         return self.client.jid.user == jid.user and self.client.jid.host == jid.host
     
     def onConnectionEstablished(self):
-        pass
+        log.msg('Connection Established for user: %s jid: %s'%(self.user.userid, self.user.jid))
     
     def onConnectionLost(self, reason):
-        pass
+        log.msg('Connection Lost for user: %s jid: %s. Reason %s'%(self.user.userid, self.user.jid, str(reason)))
     
     def onAuthenticated(self):
-        pass
+        log.msg('Connection Authenticated for user: %s jid: %s'%(self.user.userid, self.user.jid))
     
     def onAvailableReceived(self, jid):
         if self.isOwnBareJid(jid) and jid.resource == self.user.resource:
