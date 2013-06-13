@@ -33,6 +33,9 @@ XMPP_ROSTER_IN_MEMORY=eval(str(os.getenv('XMPP_ROSTER_IN_MEMORY', True)))
 XMPP_LOG_TRAFFIC=eval(str(os.getenv('XMPP_LOG_TRAFFIC', True)))
 XMPP_MAX_RETRIES=int(os.getenv('XMPP_MAX_RETRIES', 3))
 XMPP_MIN_CONNECTED_TIME=int(os.getenv('XMPP_MIN_CONNECTED_TIME', 60))
+XMPP_PRIORITY=int(os.getenv('XMPP_PRIORITY', 0))
+XMPP_STATE=os.getenv('XMPP_STATE', 'away')
+XMPP_RESOURCE=os.getenv('XMPP_STATE', 'server')
 
 #APNS
 APNS_SANDBOX = "sandbox" if os.getenv('PRODUCTION', None) is None else "production"

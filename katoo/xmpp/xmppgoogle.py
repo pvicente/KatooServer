@@ -89,7 +89,7 @@ class GoogleHandler(GenericXMPPHandler):
     
 class XMPPGoogle(ReauthXMPPClient):
     def __init__(self, user, app):
-        ReauthXMPPClient.__init__(self, jid=jid.JID("%s/server"%(user.jid)), password=user.token, host="talk.google.com", port=5222)
+        ReauthXMPPClient.__init__(self, jid=jid.JID("%s/%s"%(user.jid,conf.XMPP_RESOURCE)), password=user.token, host="talk.google.com", port=5222)
         self.user = user
         self.retries = 0
         self.logTraffic = conf.XMPP_LOG_TRAFFIC

@@ -33,6 +33,7 @@ from twisted.words import xish
 from twisted.words.protocols.jabber import jid
 from wokkel.xmppim import MessageProtocol, PresenceClientProtocol, \
     RosterClientProtocol
+from katoo import conf
 
 class GenericXMPPHandler(object):
     
@@ -83,7 +84,7 @@ class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientP
         PresenceClientProtocol.connectionInitialized(self)
         
         #Send Available and getting roster
-        self.available(show='away')
+        self.available(show=conf.XMPP_STATE, priority=conf.XMPP_PRIORITY)
         d = self.getRoster()
         d.addCallback(self.onRosterReceived)
         
