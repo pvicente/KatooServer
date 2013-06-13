@@ -13,6 +13,7 @@ from wokkel_extensions import ReauthXMPPClient
 from xmppprotocol import CompleteBotProtocol, GenericXMPPHandler
 import cyclone.httpclient
 import json
+import time
 import urllib
 
 class GoogleHandler(GenericXMPPHandler):
@@ -21,6 +22,7 @@ class GoogleHandler(GenericXMPPHandler):
         GenericXMPPHandler.__init__(self, client)
         self.user = client.user
         self.roster = {}
+        self.connectionTime = None
     
     def getName(self, jid):
         try:
@@ -33,12 +35,24 @@ class GoogleHandler(GenericXMPPHandler):
         return self.client.jid.user == jid.user and self.client.jid.host == jid.host
     
     def onConnectionEstablished(self):
+        self.connectionTime = None
         log.msg('Connection Established for user: %s jid: %s'%(self.user.userid, self.user.jid))
     
     def onConnectionLost(self, reason):
-        log.msg('Connection Lost for user: %s jid: %s. Reason %s'%(self.user.userid, self.user.jid, str(reason)))
+        connectedTime = 0 if self.connectionTime is None else time.time() - self.connectionTime
+        isAuthenticating = self.client.isAuthenticating()
+        log.msg('Connection Lost for user: %s jid: %s. Connected Time: %s. Authenticating: %s. Reason %s'%(self.user.userid, self.user.jid, connectedTime, isAuthenticating, str(reason)))
+        if not isAuthenticating:
+            if connectedTime < conf.XMPP_MIN_CONNECTED_TIME:
+                self.client.retries += 1
+                if self.client.retries >= conf.XMPP_MAX_RETRIES:
+                    self.client.onMaxRetries()
+                    return
+            else:
+                self.client.retries = 0
     
     def onAuthenticated(self):
+        self.connectionTime = time.time()
         log.msg('Connection Authenticated for user: %s jid: %s'%(self.user.userid, self.user.jid))
     
     def onAvailableReceived(self, jid):
@@ -77,6 +91,7 @@ class XMPPGoogle(ReauthXMPPClient):
     def __init__(self, user, app):
         ReauthXMPPClient.__init__(self, jid=jid.JID("%s/server"%(user.jid)), password=user.token, host="talk.google.com", port=5222)
         self.user = user
+        self.retries = 0
         self.logTraffic = conf.XMPP_LOG_TRAFFIC
         
         #Initialize protocol
@@ -84,6 +99,7 @@ class XMPPGoogle(ReauthXMPPClient):
         protocol = CompleteBotProtocol(handler)
         protocol.setHandlerParent(self)
         self.setServiceParent(app)
+        
     
     @property
     def name(self):
@@ -115,7 +131,12 @@ class XMPPGoogle(ReauthXMPPClient):
     def onAuthenticationError(self, reason):
         log.err(reason)
         if self.user.pushtoken:
-            sendcustom(lang=self.user.lang, token=self.user.pushtoken, badgenumber=self.user.badgenumber, type_msg='auth_failed', sound='')
+            sendcustom(lang=self.user.lang, token=self.user.pushtoken, badgenumber=self.user.badgenumber, type_msg='authfailed', sound='')
+        return self.disconnect()
+    
+    def onMaxRetries(self):
+        if self.user.pushtoken:
+            sendcustom(lang=self.user.lang, token=self.user.pushtoken, badgenumber=self.user.badgenumber, type_msg='maxretries', sound='')
         return self.disconnect()
     
     def disconnect(self, change_state=True):
@@ -141,6 +162,6 @@ if __name__ == '__main__':
 
     log.startLogging(sys.stdout)
     app = KatooApp().app
-    XMPPGoogle(GoogleUser("1", _token=os.getenv('TOKEN'), _refreshtoken=os.getenv('REFRESHTOKEN'), _resource="asdfasdf", _pushtoken=os.getenv('PUSHTOKEN', None), _jid="kk@gmail.com" ), app)
+    XMPPGoogle(GoogleUser("1", _token=os.getenv('TOKEN'), _refreshtoken=os.getenv('REFRESHTOKEN'), _resource="asdfasdf", _pushtoken=os.getenv('PUSHTOKEN', None), _jid=os.getenv('JID')), app)
     KatooApp().start()
     reactor.run()

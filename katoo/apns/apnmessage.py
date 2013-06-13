@@ -13,16 +13,16 @@ emojis={
             'online'     : u'\ue32e',
             'offline'    : u'\ue13c',
             'disconnect' : u'\ue252',
-            'retries_exceeded' : u'\ue252',
-            'auth_failed' : u'\ue252'
+            'maxretries' : u'\ue252',
+            'authfailed' : u'\ue252'
             }
 
 custom_messages={
         'online':     {'en-US': u'went online'},
         'offline':    {'en-US': u'went offline'},
         'disconnect': {'en-US': u'Disconnected due to inactivity'},
-        'retries_exceeded' : {'en-US': u'Disconnected. Max retries exceeded'},
-        'auth_failed' : {'en-US': u'Disconnected. Authentication error'}
+        'maxretries' : {'en-US': u'Disconnected. Connection problem'},
+        'authfailed' : {'en-US': u'Disconnected. Authentication error'}
 }
 
 class CustomMessageException(StandardError):

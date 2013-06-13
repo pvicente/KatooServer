@@ -27,6 +27,9 @@ class ReauthXMPPClient(XMPPClient):
         self._authFailureTime = None
         XMPPClient._authd(self, xs)
     
+    def isAuthenticating(self):
+        return not self._authFailureTime is None
+    
     def initializationFailed(self, reason):
         if not reason.check(SASLAuthError):
             return self.onAuthenticationError(reason)

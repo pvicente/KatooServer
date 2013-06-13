@@ -31,6 +31,8 @@ MONGO_POOL=int(os.getenv('MONGO_POOL', 10))
 #XMPP
 XMPP_ROSTER_IN_MEMORY=eval(str(os.getenv('XMPP_ROSTER_IN_MEMORY', True)))
 XMPP_LOG_TRAFFIC=eval(str(os.getenv('XMPP_LOG_TRAFFIC', True)))
+XMPP_MAX_RETRIES=int(os.getenv('XMPP_MAX_RETRIES', 3))
+XMPP_MIN_CONNECTED_TIME=int(os.getenv('XMPP_MIN_CONNECTED_TIME', 60))
 
 #APNS
 APNS_SANDBOX = "sandbox" if os.getenv('PRODUCTION', None) is None else "production"
