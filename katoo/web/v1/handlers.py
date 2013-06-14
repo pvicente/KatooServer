@@ -53,6 +53,10 @@ class GoogleHandler(MyRequestHandler):
     #===========================================================================
     
     @defer.inlineCallbacks
+    def get(self, key):
+        raise cyclone.web.HTTPError(404)
+    
+    @defer.inlineCallbacks
     def post(self, key):
         args = login_arguments(self).args
         try:
