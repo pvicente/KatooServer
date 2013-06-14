@@ -43,12 +43,14 @@ class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
         self.finish(json_encode(value))
 
 class GoogleHandler(MyRequestHandler):
-    @defer.inlineCallbacks
-    def get(self, key):
-        user = yield GoogleUser.load(key)
-        if user is None:
-            raise cyclone.web.HTTPError(404)
-        self._response_json(user.toDict())
+    #===========================================================================
+    # @defer.inlineCallbacks
+    # def get(self, key):
+    #     user = yield GoogleUser.load(key)
+    #     if user is None:
+    #         raise cyclone.web.HTTPError(404)
+    #     self._response_json(user.toDict())
+    #===========================================================================
     
     @defer.inlineCallbacks
     def post(self, key):
@@ -144,8 +146,3 @@ class AsyncHandler(MyRequestHandler):
             self.send_error(404)
             return
         self._response_json(user.toDict())
-
-class HelloHandler(MyRequestHandler):
-    def get(self):
-        self.set_header("Content-Type", "text/plain")
-        self.finish('Hello World')
