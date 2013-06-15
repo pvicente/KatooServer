@@ -38,9 +38,20 @@ class update_arguments(arguments):
                       ('pushtoken', DefaultArgument), ('badgenumber', DefaultArgument), ('pushsound',DefaultArgument), ('lang', DefaultArgument)])
 
 class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
+    def __init__(self, application, request, **kwargs):
+        cyclone.web.RequestHandler.__init__(self, application, request, **kwargs)
+        self.key = ''
+        self.args = ''
+        self.response = ''
+    
     def _response_json(self, value):
         self.set_header("Content-Type", "application/json")
-        self.finish(json_encode(value))
+        self.response = json_encode(value)
+        self.finish(self.response)
+        
+    def constructor(self, key, args=''):
+        self.key = key
+        self.args = args
 
 class GoogleHandler(MyRequestHandler):
     #===========================================================================
@@ -54,52 +65,53 @@ class GoogleHandler(MyRequestHandler):
     
     @defer.inlineCallbacks
     def get(self, key):
+        self.constructor(key)
         raise cyclone.web.HTTPError(404)
     
     @defer.inlineCallbacks
     def post(self, key):
-        args = login_arguments(self).args
+        self.constructor(key, login_arguments(self).args)
         try:
             user = yield GoogleUser.load(key)
             
             if user is None:
                 #Logout of users with the same pushtoken
-                user_to_logout = yield GoogleUser.load(pushtoken=args['_pushtoken'])
+                user_to_logout = yield GoogleUser.load(pushtoken=self.args['_pushtoken'])
                 if not user_to_logout is None:
-                    log.msg('Logout user %s with the same pushtoken'%(user_to_logout.userid))
+                    log.msg('WEB_HANDLER_LOGOUT %s with the same pushtoken'%(user_to_logout.userid))
                     yield logout(user_to_logout.userid)
             elif user.connected:
                 #Logout user with the same appid but other jid
-                user_to_logout = yield GoogleUser.load(userid=key, jid=args['_jid'])
+                user_to_logout = yield GoogleUser.load(userid=key, jid=self.args['_jid'])
                 if user_to_logout is None:
-                    log.msg('Logout previous user %s with other jid: %s->%s'%(key, user.jid, args['_jid']))
+                    log.msg('WEB_HANDLER_LOGOUT %s with other jid: %s->%s'%(key, user.jid, self.args['_jid']))
                     yield logout(key)
                     user = None
             
             if user is None or not user.connected:
-                user = GoogleUser(_userid=key, **args)
+                user = GoogleUser(_userid=key, **self.args)
                 yield login(user)
                 self._response_json({'success': True, 'reason': 'ok'})
             else:
-                
                 self._response_json({'success': False, 'reason': 'Already logged'})
         except XMPPUserAlreadyLogged:
             self._response_json({'success': False, 'reason': 'Already logged'})
     
     @defer.inlineCallbacks
     def put(self, key):
-        args = update_arguments(self).args
+        self.constructor(key, update_arguments(self).args)
         user = yield GoogleUser.load(key)
         if user is None or not user.connected:
             raise cyclone.web.HTTPError(404)
         try:
-            yield update(key, **args)
+            yield update(key, **self.args)
             self._response_json({'success': True, 'reason': 'ok'})
         except XMPPUserNotLogged as e:
             raise cyclone.web.HTTPError(500, str(e))
     
     @defer.inlineCallbacks
     def delete(self, key):
+        self.constructor(key)
         try:
             user = yield GoogleUser.load(key)
             if user is None:
@@ -117,6 +129,7 @@ class GoogleHandler(MyRequestHandler):
 class GoogleMessagesHandler(MyRequestHandler):
     @defer.inlineCallbacks
     def get(self, key):
+        self.constructor(key)
         user = yield GoogleUser.load(key)
         if user is None:
             raise cyclone.web.HTTPError(404)
@@ -125,6 +138,7 @@ class GoogleMessagesHandler(MyRequestHandler):
     
     @defer.inlineCallbacks
     def delete(self, key):
+        self.constructor(key)
         user = yield GoogleUser.load(key)
         if user is None:
             raise cyclone.web.HTTPError(404)
