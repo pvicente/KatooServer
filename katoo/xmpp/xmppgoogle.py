@@ -36,12 +36,12 @@ class GoogleHandler(GenericXMPPHandler):
     
     def onConnectionEstablished(self):
         self.connectionTime = None
-        log.msg('Connection Established for user: %s jid: %s'%(self.user.userid, self.user.jid))
+        log.msg('CONNECTION_ESTABLISHED %s:%s'%(self.user.userid, self.user.jid))
     
     def onConnectionLost(self, reason):
         connectedTime = 0 if self.connectionTime is None else time.time() - self.connectionTime
         isAuthenticating = self.client.isAuthenticating()
-        log.msg('Connection Lost for user: %s jid: %s. Connected Time: %s. Authenticating: %s. Reason %s'%(self.user.userid, self.user.jid, connectedTime, isAuthenticating, str(reason)))
+        log.msg('CONNECTION_LOST %s:%s. Connected Time: %s. Authenticating: %s. Reason %s'%(self.user.userid, self.user.jid, connectedTime, isAuthenticating, str(reason)))
         if not isAuthenticating:
             if connectedTime < conf.XMPP_MIN_CONNECTED_TIME:
                 self.client.retries += 1
@@ -53,15 +53,17 @@ class GoogleHandler(GenericXMPPHandler):
     
     def onAuthenticated(self):
         self.connectionTime = time.time()
-        log.msg('Connection Authenticated for user: %s jid: %s'%(self.user.userid, self.user.jid))
+        log.msg('CONNECTION_AUTHENTICATED %s:%s'%(self.user.userid, self.user.jid))
     
     def onAvailableReceived(self, jid):
         if self.isOwnBareJid(jid) and jid.resource == self.user.resource:
+            log.msg('GO_ONLINE %s:%s'%(self.user.userid, self.user.jid))
             self.user.away = False
             return self.user.save()
     
     def onUnavailableReceived(self, jid):
         if self.isOwnBareJid(jid) and jid.resource == self.user.resource:
+            log.msg('GO_AWAY %s:%s'%(self.user.userid, self.user.jid))
             self.user.away = True
             return self.user.save()
     
@@ -76,12 +78,12 @@ class GoogleHandler(GenericXMPPHandler):
         pass
     
     def onMessageReceived(self, fromjid, msgid, body):
-        log.msg("received msgid(%s) from(%s): %r"%(msgid, fromjid, body))
+        log.msg("MESSAGE_RECEIVED %s:%s. msgid(%s) from(%s): %r"%(self.user.userid, self.user.jid, msgid, fromjid, body))
         fromname, barejid = self.getName(fromjid)
         message = GoogleMessage(userid=self.user.userid, fromid=barejid, msgid=msgid, data=body)
         d = message.save()
         if self.user.pushtoken and self.user.away:
-            log.msg('sending push to user %s'%(self.user))
+            log.msg('SENDING_PUSH %s:%s. User data: %s'%(self.user.userid, self.user.jid, self.user))
             d.addCallback(lambda x: sendchatmessage(msg=body, token=self.user.pushtoken, sound=self.user.pushsound, badgenumber=self.user.badgenumber, jid=barejid, fullname=fromname))
             self.user.badgenumber += 1
             d.addCallback(lambda x: self.user.save())
@@ -105,9 +107,12 @@ class XMPPGoogle(ReauthXMPPClient):
     def name(self):
         return self.user.userid
     
+    def _onStreamError(self, reason):
+        log.err(reason, 'STREAM_EROR_EVENT %s:%s'%(self.user.userid, self.user.jid))
+    
     @defer.inlineCallbacks
     def onAuthenticationRenewal(self, reason):
-        log.msg('Authentication error: requesting new access token for user %s with refresh_token %s'%(self.user.userid, self.user.refreshtoken))
+        log.msg('AUTH_RENEWAL_EVENT %s:%s. with refresh_token %s'%(self.user.userid, self.user.jid, self.user.refreshtoken))
         postdata={'client_id': conf.GOOGLE_CLIENT_ID, 'client_secret': conf.GOOGLE_CLIENT_SECRET, 'refresh_token': self.user.refreshtoken, 'grant_type': 'refresh_token'}
         e = ''
         try:
@@ -116,30 +121,32 @@ class XMPPGoogle(ReauthXMPPClient):
             if response.code != 200:
                 raise ValueError('Wrong response code:%s. Body: %s'%(response.code, response.body))
             data = json.loads(response.body)
-            log.msg('Authentication renewal user %s, jid %s. New auth data: %s'%(self.user.userid, self.user.jid, data))
+            log.msg('AUTH_RENEWAL_NEW_DATA %s:%s. New auth data: %s'%(self.user.userid, self.user.jid, data))
             self.user.token = data['access_token']
             #Updating authenticator password with new credentials
             self.factory.authenticator.password = self.user.token
             yield self.user.save()
         except Exception as ex:
             e = ex
-            log.err(e)
+            log.err(e, 'AUTH_RENEWAL_ERROR %s:%s'%(self.user.userid, self.user.jid))
         finally:
             #Calling to super to perform default behaviour (decrement counter to stop connection in the next retry if not success)
             ReauthXMPPClient.onAuthenticationRenewal(self, e)
     
     def onAuthenticationError(self, reason):
-        log.err(reason)
+        log.err(reason, 'AUTH_ERROR_EVENT %s:%s'%(self.user.userid, self.user.jid))
         if self.user.pushtoken:
             sendcustom(lang=self.user.lang, token=self.user.pushtoken, badgenumber=self.user.badgenumber, type_msg='authfailed', sound='')
         return self.disconnect()
     
     def onMaxRetries(self):
+        log.err('CONNECTION_MAX_RETRIES %s:%s'%(self.user.userid, self.user.jid))
         if self.user.pushtoken:
             sendcustom(lang=self.user.lang, token=self.user.pushtoken, badgenumber=self.user.badgenumber, type_msg='maxretries', sound='')
         return self.disconnect()
     
     def disconnect(self, change_state=True):
+        log.msg('DISCONNECTED %s:%s'%(self.user.userid, self.user.jid))
         d = defer.maybeDeferred(self.disownServiceParent)
         if change_state:
             self.user.connected = False

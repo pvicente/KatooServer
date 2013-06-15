@@ -61,8 +61,7 @@ class ReauthXMPPClient(XMPPClient):
         """
         #I cannot stop factory retrying and if I set the delay too higher, reconnection delay wil be executed in the future
         #and resetDelay will not work. Instead we wait 60 seconds to negotiate the new credentials
-        log.msg('Authentication Failed: Stopping service for user', self.user.userid)
-        log.err(reason)
+        log.err(reason, 'AUTH_ERROR_EVENT')
         
         #TODO: send a push notification to client and save disconnected state in client
         self.stopService()

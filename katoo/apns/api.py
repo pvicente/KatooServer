@@ -18,7 +18,7 @@ def sendcustom(lang, token, badgenumber, type_msg, sound='', inter_msg=' ', **kw
         message = u'{0}{1}{2}'.format(emoji, inter_msg, message)
         return sendapn(msg = message, token=token, badgenumber=badgenumber, sound=sound, **kwargs)
     except CustomMessageException as e:
-        log.err('Error getting custom message: %s'%(e.message))
+        log.err('APNS_GET_CUSTOM_MESSAGE: %s'%(e.message))
 
 if __name__ == '__main__':
     import sys,os

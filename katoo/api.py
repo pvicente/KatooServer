@@ -9,7 +9,7 @@ from katoo.xmpp.xmppgoogle import XMPPGoogle
 from twisted.python import log
 
 def login(xmppuser):
-    log.msg('Logging of user:', xmppuser)
+    log.msg('LOGIN %s:%s. Data: %s'%(xmppuser.userid, xmppuser.jid, xmppuser))
     userid = xmppuser.userid
     running_client = KatooApp().getService(userid)
     if not running_client is None:
@@ -18,7 +18,7 @@ def login(xmppuser):
     return xmppuser.save()
 
 def update(userid, **kwargs):
-    log.msg('updating user: %s with kwargs:%s'%(userid, kwargs))
+    log.msg('UPDATE %s. Data: %s'%(userid, kwargs))
     running_client = KatooApp().getService(userid)
     if running_client is None:
         raise XMPPUserNotLogged('User %s is not running in current worker'%(userid))
@@ -27,7 +27,7 @@ def update(userid, **kwargs):
     return xmppuser.save()
 
 def logout(userid):
-    log.msg('logout of user:', userid)
+    log.msg('LOGOUT %s'%(userid))
     running_client = KatooApp().getService(userid)
     if running_client is None:
         raise XMPPUserNotLogged('User %s is not running in current worker'%(userid))
