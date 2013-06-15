@@ -17,7 +17,7 @@ class BaseHandler(cyclone.web.Application, RedisMixin):
     
     def log_request(self, handler):
         request_time = 1000.0 * handler.request.request_time()
-        log.msg("[cyclone-%s %s] %s %s %.2f(ms) %s %s"%(handler.request.protocol, handler.key, handler.get_status(), handler._request_summary(), request_time, handler.args, handler.response))
+        log.msg("[cyclone-%s %s] %s %s %.2f(ms) %s %s"%(handler.request.protocol, getattr(handler, 'key', ''), handler.get_status(), handler._request_summary(), request_time, getattr(handler, 'args', ''), getattr(handler, 'response', '')))
 
 class BaseHandlerNoLog(BaseHandler):
     def log_request(self, handler):
