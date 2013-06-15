@@ -5,14 +5,17 @@ Created on May 25, 2013
 '''
 from functools import wraps
 from katoo.utils.decorators import for_methods
+from twisted.internet.tcp import Connection
 from twisted.python import log
 from twisted.words.protocols.jabber.sasl import SASLNoAcceptableMechanism, \
     get_mechanisms, SASLInitiatingInitializer, SASLAuthError
 from twisted.words.protocols.jabber.sasl_mechanisms import ISASLMechanism
+from twisted.words.xish import xmlstream
 from wokkel.client import XMPPClient
 from zope.interface import implements
 import os
 import time
+import traceback
 
 __all__ = ["ReauthXMPPClient"]
 
@@ -21,7 +24,11 @@ class ReauthXMPPClient(XMPPClient):
     
     def __init__(self, jid, password, host=None, port=5222):
         XMPPClient.__init__(self, jid, password, host=host, port=port)
+        self.factory.addBootstrap(xmlstream.STREAM_ERROR_EVENT, self._onStreamError)
         self._authFailureTime = None
+    
+    def _onStreamError(self, reason):
+        log.err(reason, 'STREAM_EROR_EVENT')
     
     def _authd(self, xs):
         self._authFailureTime = None
@@ -144,4 +151,21 @@ def new_auth_methods(f):
 class DecoratedSASLInitiatingInitializer(SASLInitiatingInitializer):
     """Injecting new_auth_methods decorator to setMechanism method"""
     pass
+
+
+#===============================================================================
+# def log_writes(f):
+#     @wraps(f)
+#     def wrapper(self, *args, **kwargs):
+#         traceback.print_stack()
+#         log.msg('log write object %s: *args: %s, **kwargs: %s'%(hex(id(self)), args, kwargs))
+#         return f(self, *args, **kwargs)
+#      
+#     return wrapper
+#  
+# @for_methods(method_list=['write', 'writeSequence'], decorator=log_writes)
+# class MYConnection(Connection):
+#     """Logging all writes of TCPTransport"""
+#     pass
+#===============================================================================
 
