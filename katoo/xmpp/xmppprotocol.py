@@ -141,9 +141,10 @@ class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientP
     
     def onMessage(self, msg):
         body = msg.body
-        if msg['type'] == 'chat' and isinstance(body, xish.domish.Element) and body.children:
-            msg_id = msg['id']
+        from_id = msg.getAttribute('from')
+        if msg.getAttribute('type') == 'chat' and from_id and isinstance(body, xish.domish.Element) and body.children:
+            msg_id = msg.getAttribute('id', '')
             #TODO: LRU jid cache in library
-            from_jid = jid.JID(msg['from']).userhostJID()
+            from_jid = jid.JID(from_id).userhostJID()
             self._xmpphandler.onMessageReceived(from_jid, msg_id, unicode(body.children[0]))
     
