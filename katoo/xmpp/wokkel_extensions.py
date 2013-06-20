@@ -5,13 +5,14 @@ Created on May 25, 2013
 '''
 from functools import wraps
 from katoo.utils.decorators import for_methods
+from twisted.internet import reactor
 from twisted.internet.tcp import Connection
 from twisted.python import log
 from twisted.words.protocols.jabber.sasl import SASLNoAcceptableMechanism, \
     get_mechanisms, SASLInitiatingInitializer, SASLAuthError
 from twisted.words.protocols.jabber.sasl_mechanisms import ISASLMechanism
 from twisted.words.xish import xmlstream
-from wokkel.client import XMPPClient
+from wokkel.client import XMPPClient, XMPPClientConnector
 from zope.interface import implements
 import os
 import time
@@ -66,6 +67,12 @@ class ReauthXMPPClient(XMPPClient):
         #TODO: send a push notification to client and save disconnected state in client
         self.stopService()
         return self.disownServiceParent()
+    
+    def _getConnection(self):
+        #By default pick domains from SRV with XMPPClientConnector
+        c = XMPPClientConnector(reactor, self.domain, self.factory)
+        c.connect()
+        return c
     
 class X_FACEBOOK_PLATFORM(object):
     '''
