@@ -7,7 +7,7 @@ their messages to be retrieved in a near future and sending [push notifications]
 
 It has been developed in Python 2.7 running in [Heroku](http://www.heroku.com/) with python 2.7.4. 
 
-As backend message broker we are using [Redis](http://redis.io/) 2.4.15 and to permanent storage [MongoDB](http://www.mongodb.org/) 2.0.8
+As backend message broker we are using [Redis](http://redis.io/) 2.6.14 and to permanent storage [MongoDB](http://www.mongodb.org/) 2.4.4
 
 # Detailed documentation
 

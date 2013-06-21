@@ -14,12 +14,12 @@ Vagrant::Config.run do |config|
   config.vm.host_name = "client1"
 
   # Every Vagrant virtual environment requires a box to build off of.
-  config.vm.box = "katoo-tsung-mongodb-redis-virtualmachine"
+  config.vm.box = "katooserver"
 
   # The url from where the 'config.vm.box' box will be fetched if it
   # doesn't already exist on the user's system.
-  # gochatserver/ubuntu-10.04.4-server-amd64.box public link of heroku@spartanbits.com on dropbox
-  config.vm.box_url = "https://dl.dropbox.com/s/1rdq9lf347ss7r6/ubuntu-10.04.4-server-amd64.box?dl=1"
+  # public link in dropbox
+  config.vm.box_url = "https://www.dropbox.com/s/v3irlc2m7ubznq7/ubuntu-10.04.4-server-amd64.box"
 
   # Boot with a GUI so you can see the screen. (Default is headless)
   # config.vm.boot_mode = :gui
