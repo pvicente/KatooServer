@@ -5,7 +5,7 @@ Created on Jun 4, 2013
 '''
 
 from datetime import datetime
-from katoo.txMongoModel.mongomodel.model import Model
+from katoo.txMongoModel.mongomodel.model import Model, Indexes
 from katoo.utils.connections import MongoMixin
 from twisted.internet import defer
 from txmongo._pymongo.objectid import ObjectId
@@ -15,14 +15,16 @@ class ModelMixin(Model, MongoMixin):
         self.setup(url=mongourl)
         self.db = self.mongo_db
         self.collection = collectionName
-        Model.__init__(self, pool=self.mongo_conn, indexes=indexes)
+        self.pool = self.mongo_conn
+        self.indexes = indexes
+        Model.__init__(self)
     
 class DataModel(ModelMixin):
     def __init__(self, collectionName, mongourl=None, indexes=None):
         ModelMixin.__init__(self, collectionName, mongourl=mongourl, indexes=indexes)
 
 class GoogleMessage(object):
-    model = DataModel(collectionName='googlemessages', indexes=['userid'])
+    model = DataModel(collectionName='googlemessages', indexes=Indexes(['userid']))
     
     @classmethod
     def getMessages(cls, userid):
@@ -45,7 +47,7 @@ class GoogleMessage(object):
     
 
 class GoogleUser(object):
-    model = DataModel(collectionName='googleusers', indexes=['userid'])
+    model = DataModel(collectionName='googleusers', indexes=Indexes([dict(fields='_userid', unique=True), dict(fields='_pushtoken', unique=True), dict(fields=('_userid, _jid'))]))
     
     @classmethod
     def load(cls, userid=None, jid=None, pushtoken=None):
@@ -199,6 +201,11 @@ if __name__ == '__main__':
     
     @defer.inlineCallbacks
     def example():
+        indexes = GoogleUser.model.indexes
+        for index in indexes.indexes:
+            res = yield GoogleUser.model.ensure_index(index)
+            print res
+
         user=GoogleUser(_userid="1", _token="accesstoken", _refreshtoken="refreshtoken", _resource="unknownresource", _pushtoken="pushtoken", _badgenumber="0", _pushsound="asdfasdfas", _jid='kk@gmail.com')
         yield user.save()
         data = yield user.model.find_one({'appid' : "1"})
@@ -215,10 +222,10 @@ if __name__ == '__main__':
         user3 = yield GoogleUser.load("2")
         print user3
         
-        indexes = GoogleUser.model.indexes
-        for index in indexes.indexes:
-            res = yield GoogleUser.model.ensure_index(index)
-            print res
+        #With pushtoken duplicated
+        dup_user = GoogleUser(_userid="2", _jid="kk@gmail.com", _token="accesstoken", _refreshtoken="refreshtoken", _resource="12345", _pushtoken="pushtoken")
+        ret = yield dup_user.save()
+        print ret
         
         res = yield user.remove(user.userid)
         print res
