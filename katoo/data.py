@@ -11,18 +11,18 @@ from twisted.internet import defer
 from txmongo._pymongo.objectid import ObjectId
 
 class ModelMixin(Model, MongoMixin):
-    def __init__(self, collectionName, mongourl=None):
+    def __init__(self, collectionName, mongourl=None, indexes=None):
         self.setup(url=mongourl)
         self.db = self.mongo_db
         self.collection = collectionName
-        Model.__init__(self, pool=self.mongo_conn)
+        Model.__init__(self, pool=self.mongo_conn, indexes=indexes)
     
 class DataModel(ModelMixin):
-    def __init__(self, collectionName, mongourl=None):
-        ModelMixin.__init__(self, collectionName, mongourl=mongourl)
+    def __init__(self, collectionName, mongourl=None, indexes=None):
+        ModelMixin.__init__(self, collectionName, mongourl=mongourl, indexes=indexes)
 
 class GoogleMessage(object):
-    model = DataModel(collectionName='googlemessages')
+    model = DataModel(collectionName='googlemessages', indexes=['userid'])
     
     @classmethod
     def getMessages(cls, userid):
@@ -45,7 +45,7 @@ class GoogleMessage(object):
     
 
 class GoogleUser(object):
-    model = DataModel(collectionName='googleusers')
+    model = DataModel(collectionName='googleusers', indexes=['userid'])
     
     @classmethod
     def load(cls, userid=None, jid=None, pushtoken=None):
@@ -215,11 +215,16 @@ if __name__ == '__main__':
         user3 = yield GoogleUser.load("2")
         print user3
         
+        indexes = GoogleUser.model.indexes
+        for index in indexes.indexes:
+            res = yield GoogleUser.model.ensure_index(index)
+            print res
+        
         res = yield user.remove(user.userid)
         print res
         
     reactor.callLater(1, example)
-    reactor.callLater(2, reactor.stop)
+    reactor.callLater(10, reactor.stop)
     reactor.run()
     
     
