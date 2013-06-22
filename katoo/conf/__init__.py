@@ -36,6 +36,7 @@ XMPP_MIN_CONNECTED_TIME=int(os.getenv('XMPP_MIN_CONNECTED_TIME', 60))
 XMPP_PRIORITY=int(os.getenv('XMPP_PRIORITY', 0))
 XMPP_STATE=os.getenv('XMPP_STATE', 'away')
 XMPP_RESOURCE=os.getenv('XMPP_STATE', 'server')
+XMPP_DISCONNECTION_TIME=int(os.getenv('XMPP_DISCONNECTION_TIME', 28800)) #8 hours by default
 
 #APNS
 APNS_SANDBOX = "sandbox" if os.getenv('PRODUCTION', None) is None else "production"

@@ -36,6 +36,14 @@ def logout(userid):
     d.addCallback(lambda x: user.remove(userid))
     return d
 
+def disconnect(userid, change_state=True):
+    log.msg('DISCONNECT %s'%(userid))
+    running_client = KatooApp().getService(userid)
+    if running_client is None:
+        raise XMPPUserNotLogged('User %s is not running in current worker'%(userid))
+    return running_client.disconnect(change_state)
+    
+
 if __name__ == '__main__':
     from twisted.internet import reactor, defer
     from katoo.data import GoogleUser

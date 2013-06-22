@@ -4,11 +4,12 @@ Created on Jun 4, 2013
 @author: pvicente
 '''
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from katoo.txMongoModel.mongomodel.model import Model, Indexes
 from katoo.utils.connections import MongoMixin
 from twisted.internet import defer
 from txmongo._pymongo.objectid import ObjectId
+import conf
 
 class ModelMixin(Model, MongoMixin):
     def __init__(self, collectionName, mongourl=None, indexes=None):
@@ -47,7 +48,7 @@ class GoogleMessage(object):
     
 
 class GoogleUser(object):
-    model = DataModel(collectionName='googleusers', indexes=Indexes([dict(fields='_userid', unique=True), dict(fields='_pushtoken', unique=True), dict(fields=('_userid, _jid'))]))
+    model = DataModel(collectionName='googleusers', indexes=Indexes([dict(fields='_userid', unique=True), dict(fields='_pushtoken', unique=True), ('_userid, _jid'), ('_connected'), ]))
     
     @classmethod
     def load(cls, userid=None, jid=None, pushtoken=None):
@@ -66,6 +67,11 @@ class GoogleUser(object):
     def get_connected(cls):
         return cls.model.find(spec={'_connected': True})
     
+    @classmethod
+    def get_away(cls):
+        disconnected_time = datetime.utcnow() - timedelta(seconds=conf.XMPP_DISCONNECTION_TIME)
+        return cls.model.find(spec={'_away': True, '_lastTimeConnected': {"$lt": disconnected_time}})
+    
     def __init__(self,
                  _userid, 
                  _jid,
@@ -78,7 +84,8 @@ class GoogleUser(object):
                  _lang= 'en-US',
                  _connected=True,
                  _away=False,
-                 _id = None):
+                 _id = None,
+                 _lastTimeConnected=None):
         self._userid = unicode(_userid)
         self._jid = unicode(_jid)
         self._token = unicode(_token)
@@ -90,6 +97,7 @@ class GoogleUser(object):
         self._lang = unicode(_lang)
         self._connected = eval(str(_connected))
         self._away = eval(str(_away))
+        self._lastTimeConnected=_lastTimeConnected
         if isinstance(_id, ObjectId):
             self._id = _id
     
@@ -195,6 +203,14 @@ class GoogleUser(object):
     @away.setter
     def away(self, value):
         self._away = bool(value)
+        if self._away:
+            self._lastTimeConnected = datetime.utcnow()
+        else:
+            self._lastTimeConnected = None
+    
+    @property
+    def lastTimeConnected(self):
+        return self._lastTimeConnected
 
 if __name__ == '__main__':
     from twisted.internet import reactor
@@ -207,6 +223,7 @@ if __name__ == '__main__':
             print res
 
         user=GoogleUser(_userid="1", _token="accesstoken", _refreshtoken="refreshtoken", _resource="unknownresource", _pushtoken="pushtoken", _badgenumber="0", _pushsound="asdfasdfas", _jid='kk@gmail.com')
+        user.away=True
         yield user.save()
         data = yield user.model.find_one({'appid' : "1"})
         print data
@@ -226,6 +243,9 @@ if __name__ == '__main__':
         dup_user = GoogleUser(_userid="2", _jid="kk@gmail.com", _token="accesstoken", _refreshtoken="refreshtoken", _resource="12345", _pushtoken="pushtoken")
         ret = yield dup_user.save()
         print ret
+        
+        res = yield GoogleUser.get_away()
+        print "Away user to be disconnected", res
         
         res = yield user.remove(user.userid)
         print res
