@@ -163,11 +163,11 @@ class GoogleContactsHandler(MyRequestHandler):
     def get(self, key):
         self.constructor(key)
         contact = yield GoogleContact.exists(key)
-        if contact is None:
+        user = yield GoogleUser.load(key)
+        if contact is None or user is None:
             raise cyclone.web.HTTPError(404)
         
-        user = yield GoogleUser.load(key)
-        if not user is None and user.connected and not contact.removeTime is None:
+        if user.connected and not contact.removeTime is None:
             #Update remove time to avoid TTL remove in Mongo
             GoogleContact.updateRemoveTime(user.userid, None)
         
