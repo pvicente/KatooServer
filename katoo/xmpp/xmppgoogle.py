@@ -151,8 +151,10 @@ class XMPPGoogle(ReauthXMPPClient):
         log.msg('DISCONNECTED %s:%s'%(self.user.userid, self.user.jid))
         d = defer.maybeDeferred(self.disownServiceParent)
         if change_state:
+            self.user.away = True
             self.user.connected = False
             d.addCallback(lambda x: self.user.save())
+            d.addCallback(lambda x: GoogleMessage.updateRemoveTime(self.user.userid, self.user.lastTimeConnected))
         return d
     
     def __str__(self):

@@ -25,7 +25,7 @@ class DataModel(ModelMixin):
         ModelMixin.__init__(self, collectionName, mongourl=mongourl, indexes=indexes)
 
 class GoogleMessage(object):
-    model = DataModel(collectionName='googlemessages', indexes=Indexes(['userid']))
+    model = DataModel(collectionName='googlemessages', indexes=Indexes(['userid', dict(fields='removeTime', expireAfterSeconds=conf.XMPP_REMOVE_TIME)]))
     
     @classmethod
     def getMessages(cls, userid):
@@ -35,12 +35,17 @@ class GoogleMessage(object):
     def flushMessages(cls, userid):
         return cls.model.remove({'userid':userid})
     
+    @classmethod
+    def updateRemoveTime(cls, userid, time):
+        return cls.model.update(spec={'userid':userid}, multi=True, **{'$set': { 'removeTime': time}})
+    
     def __init__(self, userid, fromid, msgid, data):
         self.userid = userid
         self.fromid = fromid
         self.msgid = msgid
         self.data = data
         self.time = datetime.utcnow().isoformat()+'Z'
+        self.removeTime=None
     
     def save(self):
         data=vars(self)
@@ -48,7 +53,7 @@ class GoogleMessage(object):
     
 
 class GoogleUser(object):
-    model = DataModel(collectionName='googleusers', indexes=Indexes([dict(fields='_userid', unique=True), dict(fields='_pushtoken', unique=True), ('_userid, _jid'), ('_connected'), ]))
+    model = DataModel(collectionName='googleusers', indexes=Indexes([dict(fields='_userid', unique=True), dict(fields='_pushtoken', unique=True), ('_userid, _jid'), ('_connected'), dict(fields='_lastTimeConnected', expireAfterSeconds=conf.XMPP_REMOVE_TIME) ]))
     
     @classmethod
     def load(cls, userid=None, jid=None, pushtoken=None):
