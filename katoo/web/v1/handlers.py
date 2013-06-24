@@ -184,7 +184,6 @@ class GoogleContactsHandler(MyRequestHandler):
         contact = yield GoogleContact.load(userid=key, jid=jid)
         if contact is None:
             contact = GoogleContact(_userid=key, _jid=jid)
-            log.msg('New contact: %s'%(contact))
         
         contact.update(**self.args)
         yield contact.save()

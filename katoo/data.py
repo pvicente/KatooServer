@@ -8,7 +8,6 @@ from datetime import datetime, timedelta
 from katoo.txMongoModel.mongomodel.model import Model, Indexes
 from katoo.utils.connections import MongoMixin
 from twisted.internet import defer
-from twisted.python import log
 from txmongo._pymongo.objectid import ObjectId
 import conf
 
@@ -86,7 +85,6 @@ class GoogleContact(object):
     
     def save(self):
         data=vars(self)
-        log.msg('Saving: %s'%(data))
         d = self.model.update({'_userid': self.userid, '_jid': self.jid}, upsert=True, multi=False, **data)
         #Avoid remove by TTL if we update one register of user
         if not self._removeTime is None:
