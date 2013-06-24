@@ -87,6 +87,9 @@ class GoogleHandler(MyRequestHandler):
                     log.msg('WEB_HANDLER_LOGOUT %s with other jid: %s->%s'%(key, user.jid, self.args['_jid']))
                     yield logout(key)
                     user = None
+            else:
+                #user not connected removing from database
+                yield user.remove(user.userid)
             
             if user is None or not user.connected:
                 user = GoogleUser(_userid=key, **self.args)
@@ -134,7 +137,7 @@ class GoogleMessagesHandler(MyRequestHandler):
         if user is None:
             raise cyclone.web.HTTPError(404)
         messages = yield GoogleMessage.getMessages(key)
-        self._response_json({'current_time': datetime.utcnow().isoformat()+'Z', 'success': True, 'messages': messages, 'len': len(messages), 'reason': 'ok'})
+        self._response_json({'current_time': datetime.utcnow().isoformat()+'Z', 'success': True, 'messages': messages, 'len': len(messages), 'reason': 'ok', 'connected': user.connected})
     
     @defer.inlineCallbacks
     def delete(self, key):
