@@ -8,6 +8,7 @@ class BaseHandler(cyclone.web.Application, RedisMixin):
     def __init__(self):
             handlers = [
                 (r"/1/google/messages/(.+)", v1.handlers.GoogleMessagesHandler),
+                (r"/1/google/contacts/(.+)", v1.handlers.GoogleContactsHandler),
                 (r"/1/google/(.+)", v1.handlers.GoogleHandler)
             ]
             settings = dict(

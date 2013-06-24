@@ -5,7 +5,7 @@ Created on Jun 5, 2013
 '''
 from katoo import conf
 from katoo.apns.api import sendchatmessage, sendcustom
-from katoo.data import GoogleMessage
+from katoo.data import GoogleMessage, GoogleContact
 from twisted.internet import defer
 from twisted.python import log
 from twisted.words.protocols.jabber import jid
@@ -155,6 +155,7 @@ class XMPPGoogle(ReauthXMPPClient):
             self.user.connected = False
             d.addCallback(lambda x: self.user.save())
             d.addCallback(lambda x: GoogleMessage.updateRemoveTime(self.user.userid, self.user.lastTimeConnected))
+            d.addCallback(lambda x: GoogleContact.updateRemoveTime(self.user.userid, self.user.lastTimeConnected))
         return d
     
     def __str__(self):

@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from katoo.txMongoModel.mongomodel.model import Model, Indexes
 from katoo.utils.connections import MongoMixin
 from twisted.internet import defer
+from twisted.python import log
 from txmongo._pymongo.objectid import ObjectId
 import conf
 
@@ -51,6 +52,84 @@ class GoogleMessage(object):
         data=vars(self)
         return self.model.insert(**data)
     
+class GoogleContact(object):
+    model = DataModel(collectionName='googlecontacts', indexes=Indexes(['_userid', ('_userid','_jid'), dict(fields='_removeTime', expireAfterSeconds=conf.XMPP_REMOVE_TIME)]))
+    
+    @classmethod
+    def exists(cls, userid):
+        d = cls.model.find_one(spec={'_userid': userid})
+        d.addCallback(lambda result: None if not result else cls(**result))
+        return d
+    
+    @classmethod
+    def remove(cls, userid):
+        return cls.model.remove({'_userid': userid})
+    
+    @classmethod
+    def updateRemoveTime(cls, userid, time):
+        return cls.model.update(spec={'_userid': userid}, multi=True, **{'$set': { '_removeTime': time}})
+    
+    @classmethod
+    def load(cls, userid, jid):
+        d = cls.model.find_one(spec={'_userid': userid, '_jid': jid})
+        d.addCallback(lambda result: None if not result else cls(**result))
+        return d
+    
+    def __init__(self, _userid, _jid, _name=None, _favorite=False, _id=None, _removeTime=None):
+        self._userid = _userid
+        self._jid = _jid
+        self._name = _name
+        self._favorite = eval(str(_favorite))
+        self._removeTime = _removeTime
+        if isinstance(_id, ObjectId):
+            self._id = _id
+    
+    def save(self):
+        data=vars(self)
+        log.msg('Saving: %s'%(data))
+        d = self.model.update({'_userid': self.userid, '_jid': self.jid}, upsert=True, multi=False, **data)
+        #Avoid remove by TTL if we update one register of user
+        if not self._removeTime is None:
+            d.addCallback(lambda x: self.updateRemoveTime(self.userid, None))
+        return d
+    
+    def update(self, **kwargs):
+        for k,v in kwargs.iteritems():
+            setattr(self,k,v);
+    
+    def __str__(self):
+        return '<%s object at %s>(%s)'%(self.__class__.__name__, hex(id(self)), vars(self))
+    
+    def __repr__(self):
+        return '<%s object at %s (_id:%s, appid:%s)>'%(self.__class__.__name__, hex(id(self)), getattr(self, '_id', None), self.userid)
+    
+    @property
+    def userid(self):
+        return self._userid
+    
+    @property
+    def jid(self):
+        return self._jid
+    
+    @property
+    def name(self):
+        return self._name
+    
+    @name.setter
+    def name(self, value):
+        self._name = value
+    
+    @property
+    def favorite(self):
+        return self._favorite
+    
+    @favorite.setter
+    def favorite(self, value):
+        self._favorite = bool(value)
+    
+    @property
+    def removeTime(self):
+        return self._removeTime
 
 class GoogleUser(object):
     model = DataModel(collectionName='googleusers', indexes=Indexes([dict(fields='_userid', unique=True), dict(fields='_pushtoken', unique=True), ('_userid, _jid'), ('_connected'), dict(fields='_lastTimeConnected', expireAfterSeconds=conf.XMPP_REMOVE_TIME) ]))
@@ -66,7 +145,7 @@ class GoogleUser(object):
     
     @classmethod
     def remove(cls, userid):
-        return defer.DeferredList([cls.model.remove({'_userid': userid}), GoogleMessage.flushMessages(userid) ])
+        return defer.DeferredList([cls.model.remove({'_userid': userid}), GoogleMessage.flushMessages(userid)])
     
     @classmethod
     def get_connected(cls):
@@ -216,12 +295,12 @@ class GoogleUser(object):
     @property
     def lastTimeConnected(self):
         return self._lastTimeConnected
-
+    
 if __name__ == '__main__':
     from twisted.internet import reactor
     
     @defer.inlineCallbacks
-    def example():
+    def example_users():
         indexes = GoogleUser.model.indexes
         for index in indexes.indexes:
             res = yield GoogleUser.model.ensure_index(index)
@@ -254,8 +333,34 @@ if __name__ == '__main__':
         
         res = yield user.remove(user.userid)
         print res
+    
+    @defer.inlineCallbacks
+    def example_contacts():
+        contact=GoogleContact(_userid="2", _jid='kk@gmail.com')
+        yield contact.save()
         
-    reactor.callLater(1, example)
+        ret = yield GoogleContact.exists("2")
+        print ret
+        
+        contact2=GoogleContact(_userid="2", _jid='pp@gmail.com', _favorite=True)
+        yield contact2.save()
+        
+        
+        yield GoogleContact.updateRemoveTime("2", datetime.utcnow())
+        tmp = yield GoogleContact.load("2", "pp@gmail.com")
+        print tmp
+        
+        tmp.favorite = False
+        yield tmp.save()
+        
+        tmp = yield GoogleContact.load("2", "pp@gmail.com")
+        print tmp
+        
+        ret = yield GoogleContact.remove("2")
+        print ret
+    
+    reactor.callLater(1, example_users)
+    reactor.callLater(5, example_contacts)
     reactor.callLater(10, reactor.stop)
     reactor.run()
     

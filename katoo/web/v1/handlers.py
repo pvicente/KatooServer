@@ -7,7 +7,7 @@ Created on Jun 4, 2013
 from cyclone.escape import json_encode
 from datetime import datetime
 from katoo.api import login, logout, update
-from katoo.data import GoogleUser, GoogleMessage
+from katoo.data import GoogleUser, GoogleMessage, GoogleContact
 from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
 from katoo.utils.connections import RedisMixin
 from twisted.internet import defer
@@ -36,6 +36,9 @@ class login_arguments(arguments):
 class update_arguments(arguments):
     ARGUMENTS = dict([('token', DefaultArgument), ('refreshtoken', DefaultArgument), ('resource', DefaultArgument),
                       ('pushtoken', DefaultArgument), ('badgenumber', DefaultArgument), ('pushsound',DefaultArgument), ('lang', DefaultArgument)])
+
+class contact_arguments(arguments):
+    ARGUMENTS = dict([('jid', RequiredArgument), ('name', None), ('favorite', DefaultArgument)])
 
 class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
     def __init__(self, application, request, **kwargs):
@@ -154,7 +157,49 @@ class GoogleMessagesHandler(MyRequestHandler):
             self._response_json({'success': True, 'reason': 'ok'})
         except XMPPUserNotLogged as e:
             raise cyclone.web.HTTPError(500, str(e))
+    
+class GoogleContactsHandler(MyRequestHandler):
+    @defer.inlineCallbacks
+    def get(self, key):
+        self.constructor(key)
+        contact = yield GoogleContact.exists(key)
+        if contact is None:
+            raise cyclone.web.HTTPError(404)
         
+        user = yield GoogleUser.load(key)
+        if not user is None and user.connected and not contact.removeTime is None:
+            #Update remove time to avoid TTL remove in Mongo
+            GoogleContact.updateRemoveTime(user.userid, None)
+        
+        self._response_json({'success': True, 'reason': 'ok'})
+    
+    @defer.inlineCallbacks
+    def put(self, key):
+        self.constructor(key, contact_arguments(self).args)
+        user = yield GoogleUser.load(key)
+        if user is None or not user.connected:
+            raise cyclone.web.HTTPError(404)
+        
+        jid = self.args.pop('jid')
+        contact = yield GoogleContact.load(userid=key, jid=jid)
+        if contact is None:
+            contact = GoogleContact(_userid=key, _jid=jid)
+            log.msg('New contact: %s'%(contact))
+        
+        contact.update(**self.args)
+        yield contact.save()
+        self._response_json({'success': True, 'reason': 'ok'})
+    
+    @defer.inlineCallbacks
+    def delete(self, key):
+        self.constructor(key)
+        user = yield GoogleUser.load(key)
+        if user is None or not user.connected:
+            raise cyclone.web.HTTPError(404)
+        
+        #Remove contacts from mongo
+        yield GoogleContact.remove(user.userid)
+        self._response_json({'success': True, 'reason': 'ok'})
 
 class AsyncHandler(MyRequestHandler):
     @cyclone.web.asynchronous
