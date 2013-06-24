@@ -60,14 +60,14 @@ class GoogleHandler(GenericXMPPHandler):
             log.msg('APP_GO_ONLINE %s:%s'%(self.user.userid, self.user.jid))
             self.user.away = False
             return self.user.save()
-        log.msg('XMPP_GO_ONLINE %s:%s -> %s@%s/%s'%(self.user.userid, self.user.jid, jid.user, jid.host, jid.resource))
+        log.msg('XMPP_GO_ONLINE %s:%s -> %s@%s/%r'%(self.user.userid, self.user.jid, jid.user, jid.host, jid.resource))
     
     def onUnavailableReceived(self, jid):
         if self.isOwnBareJid(jid) and jid.resource == self.user.resource:
             log.msg('APP_GO_AWAY %s:%s'%(self.user.userid, self.user.jid))
             self.user.away = True
             return self.user.save()
-        log.msg('XMPP_GO_OFFLINE %s:%s -> %s@%s/%s'%(self.user.userid, self.user.jid, jid.user, jid.host, jid.resource))
+        log.msg('XMPP_GO_OFFLINE %s:%s -> %s@%s/%r'%(self.user.userid, self.user.jid, jid.user, jid.host, jid.resource))
     
     def onRosterReceived(self, roster):
         if self.ROSTER_IN_MEMORY:

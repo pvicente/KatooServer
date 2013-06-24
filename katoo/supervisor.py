@@ -26,6 +26,7 @@ class Supervisor(service.Service):
     @defer.inlineCallbacks
     def reconnectUsers(self):
         connected_users = yield GoogleUser.get_connected()
+        log.msg('RECONNECTING_USERS', len(connected_users))
         for data in connected_users:
             try:
                 user = GoogleUser(**data)
@@ -37,11 +38,11 @@ class Supervisor(service.Service):
     def disconnectAwayUsers(self):
         away_users = yield GoogleUser.get_away()
         away_users  = [] if not away_users else away_users
-        log.msg('Disconnecting away users: %s'%(len(away_users)))
+        log.msg('DISCONNECTING_AWAY_USERS: %s'%(len(away_users)))
         for data in away_users:
             try:
                 user = GoogleUser(**data)
-                yield disconnect()
+                yield disconnect(user.userid)
                 yield sendcustom(lang=user.lang, token=user.pushtoken, badgenumber=user.badgenumber, type_msg='disconnect', sound='')
             except Exception as e:
                 log.err('Exception %s disconnecting user %s'%(e, data['_userid']))
@@ -51,7 +52,7 @@ class Supervisor(service.Service):
             t = LoopingCall(self.avoidHerokuUnidling, conf.HEROKU_UNIDLING_URL)
             t.start(1800, now = True)
         t = LoopingCall(self.disconnectAwayUsers)
-        t.start(300, now = False)
+        t.start(conf.TASK_DISCONNECT_SECONDS, now = False)
         reactor.callLater(5, self.reconnectUsers)
         return service.Service.startService(self)
     

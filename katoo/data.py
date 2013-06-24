@@ -70,7 +70,7 @@ class GoogleUser(object):
     @classmethod
     def get_away(cls):
         disconnected_time = datetime.utcnow() - timedelta(seconds=conf.XMPP_DISCONNECTION_TIME)
-        return cls.model.find(spec={'_away': True, '_lastTimeConnected': {"$lt": disconnected_time}})
+        return cls.model.find(spec={'_connected': True, '_away': True, '_lastTimeConnected': {"$lt": disconnected_time}})
     
     def __init__(self,
                  _userid, 

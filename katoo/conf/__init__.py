@@ -44,5 +44,8 @@ APNS_CERT = conf_dir + ('/certificates/development.pem' if APNS_SANDBOX else '/c
 APNS_TIMEOUT = int(os.getenv('APNS_TIMEOUT', 5))
 APNSERVICE_NAME= 'APNS'
 
+#SUPERVISOR
+TASK_DISCONNECT_SECONDS = int(os.getenv('TASK_DISCONNECT_SECONDS', 300))
+
 #HEROKU
 HEROKU_UNIDLING_URL=os.getenv('HEROKU_UNIDLING_URL', None)

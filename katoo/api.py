@@ -37,7 +37,7 @@ def logout(userid):
     return d
 
 def disconnect(userid, change_state=True):
-    log.msg('DISCONNECT %s'%(userid))
+    log.msg('DISCONNECTING %s'%(userid))
     running_client = KatooApp().getService(userid)
     if running_client is None:
         raise XMPPUserNotLogged('User %s is not running in current worker'%(userid))
