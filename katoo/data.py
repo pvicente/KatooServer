@@ -164,6 +164,7 @@ class GoogleUser(object):
                  _pushtoken = '',
                  _badgenumber = 0,
                  _pushsound = '',
+                 _favoritesound= '',
                  _lang= 'en-US',
                  _connected=True,
                  _away=False,
@@ -177,6 +178,7 @@ class GoogleUser(object):
         self._pushtoken = unicode(_pushtoken)
         self._badgenumber = int(_badgenumber)
         self._pushsound = unicode(_pushsound)
+        self._favoritesound = unicode(_favoritesound)
         self._lang = unicode(_lang)
         self._connected = eval(str(_connected))
         self._away = eval(str(_away))
@@ -262,6 +264,14 @@ class GoogleUser(object):
     @pushsound.setter
     def pushsound(self, value):
         self._pushsound = unicode(value)
+    
+    @property
+    def favoritesound(self):
+        return self._favoritesound
+    
+    @favoritesound.setter
+    def favoritesound(self, value):
+        self._favoritesound = unicode(value)
     
     @property
     def lang(self):
