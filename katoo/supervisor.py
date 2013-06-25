@@ -38,7 +38,7 @@ class Supervisor(service.Service):
     def disconnectAwayUsers(self):
         away_users = yield GoogleUser.get_away()
         away_users  = [] if not away_users else away_users
-        log.msg('DISCONNECTING_AWAY_USERS: %s'%(len(away_users)))
+        log.msg('PULLING_FROM_AWAY_USERS: %s'%(len(away_users)))
         for data in away_users:
             try:
                 user = GoogleUser(**data)
