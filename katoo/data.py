@@ -123,7 +123,7 @@ class GoogleContact(object):
     
     @favorite.setter
     def favorite(self, value):
-        self._favorite = bool(value)
+        self._favorite = eval(str(value))
     
     @property
     def removeTime(self):
