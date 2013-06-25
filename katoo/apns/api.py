@@ -7,9 +7,9 @@ from apnmessage import PushParser, get_custom_message, CustomMessageException
 from delivery import sendapn
 from twisted.python import log
 
-def sendchatmessage(msg, token, sound, badgenumber, jid, fullname):
+def sendchatmessage(msg, token, sound, badgenumber, jid, fullname, emoji):
     message = PushParser.parse_message(msg)
-    return sendapn(token=token , msg=u'{0}: {1}'.format(fullname, message), sound=sound, badgenumber=badgenumber, jid=jid)
+    return sendapn(token=token , msg=u'{0}{1}: {2}'.format(emoji, fullname, message), sound=sound, badgenumber=badgenumber, jid=jid)
     
 def sendcustom(lang, token, badgenumber, type_msg, sound='', inter_msg=' ', **kwargs):
     '''send custom push notifications and kwargs are extra parameters in push_notification'''

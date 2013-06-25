@@ -16,6 +16,36 @@ import json
 import time
 import urllib
 
+class ContactInformation(object):
+    @classmethod
+    def _load_callback(cls, xmppclient, jid, contact):
+        return cls(xmppclient, jid, contact)
+    
+    @classmethod
+    def load(cls, handler, jid):
+        barejid = jid.userhost()
+        d = GoogleContact.load(handler.user.userid, barejid)
+        d.addCallback(lambda x: cls._load_callback(handler, jid, x))
+        return d
+        
+    def __init__(self, handler, jid, contact):
+        item = handler.roster.get(jid, None)
+        self.name = jid.user if item is None or not getattr(item, 'name') else getattr(item, 'name') 
+        self.barejid = jid.userhost()
+        self.favorite = False
+        self.emoji = ''
+        self.sound = handler.user.pushsound
+        if not contact is None:
+            self.name = contact.name if contact.name else self.name
+            if contact.favorite:
+                self.favorite=True
+                self.emoji = u'\ue335'
+                if self.sound:
+                    self.sound = handler.user.favoritesound
+    
+    def __str__(self):
+        return '<%s object at %s>(%s)'%(self.__class__.__name__, hex(id(self)), vars(self))
+    
 class GoogleHandler(GenericXMPPHandler):
     ROSTER_IN_MEMORY=conf.XMPP_ROSTER_IN_MEMORY
     def __init__(self, client):
@@ -23,13 +53,6 @@ class GoogleHandler(GenericXMPPHandler):
         self.user = client.user
         self.roster = {}
         self.connectionTime = None
-    
-    def getName(self, jid):
-        try:
-            name = self.roster[jid].name
-            return (name,jid.userhost()) if name else (jid.user, jid.userhost())
-        except KeyError:
-            return (jid.user, jid.userhost())
     
     def isOwnBareJid(self, jid):
         return self.client.jid.user == jid.user and self.client.jid.host == jid.host
@@ -79,17 +102,18 @@ class GoogleHandler(GenericXMPPHandler):
     def onRosterRemove(self, item):
         pass
     
+    @defer.inlineCallbacks
     def onMessageReceived(self, fromjid, msgid, body):
         log.msg("MESSAGE_RECEIVED %s:%s. msgid(%s) from(%s): %r"%(self.user.userid, self.user.jid, msgid, fromjid, body))
-        fromname, barejid = self.getName(fromjid)
-        message = GoogleMessage(userid=self.user.userid, fromid=barejid, msgid=msgid, data=body)
-        d = message.save()
+        
+        contact_info = yield ContactInformation.load(self, fromjid)
+        message = GoogleMessage(userid=self.user.userid, fromid=contact_info.barejid, msgid=msgid, data=body)
+        yield message.save()
         if self.user.pushtoken and self.user.away:
-            log.msg('SENDING_PUSH %s:%s. User data: %s'%(self.user.userid, self.user.jid, self.user))
-            d.addCallback(lambda x: sendchatmessage(msg=body, token=self.user.pushtoken, sound=self.user.pushsound, badgenumber=self.user.badgenumber, jid=barejid, fullname=fromname))
+            log.msg('SENDING_PUSH %s:%s. Contact Info: %s, User data: %s'%(self.user.userid, self.user.jid, contact_info, self.user))
+            yield sendchatmessage(msg=body, token=self.user.pushtoken, badgenumber=self.user.badgenumber, jid=contact_info.barejid, fullname=contact_info.name, sound=contact_info.sound, emoji=contact_info.emoji)
             self.user.badgenumber += 1
-            d.addCallback(lambda x: self.user.save())
-        return d
+            yield self.user.save()
     
 class XMPPGoogle(ReauthXMPPClient):
     def __init__(self, user, app):
@@ -174,6 +198,6 @@ if __name__ == '__main__':
 
     log.startLogging(sys.stdout)
     app = KatooApp().app
-    XMPPGoogle(GoogleUser("1", _token=os.getenv('TOKEN'), _refreshtoken=os.getenv('REFRESHTOKEN'), _resource="asdfasdf", _pushtoken=os.getenv('PUSHTOKEN', None), _jid=os.getenv('JID')), app)
+    XMPPGoogle(GoogleUser("1", _token=os.getenv('TOKEN'), _refreshtoken=os.getenv('REFRESHTOKEN'), _resource="asdfasdf", _pushtoken=os.getenv('PUSHTOKEN', None), _jid=os.getenv('JID'), _pushsound='cell1.aif', _favoritesound='cell7.aif', _away=True), app)
     KatooApp().start()
     reactor.run()
