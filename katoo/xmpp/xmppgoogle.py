@@ -106,10 +106,10 @@ class GoogleHandler(GenericXMPPHandler):
     def onMessageReceived(self, fromjid, msgid, body):
         log.msg("MESSAGE_RECEIVED %s:%s. msgid(%s) from(%s): %r"%(self.user.userid, self.user.jid, msgid, fromjid, body))
         
-        contact_info = yield ContactInformation.load(self, fromjid)
-        message = GoogleMessage(userid=self.user.userid, fromid=contact_info.barejid, msgid=msgid, data=body)
+        message = GoogleMessage(userid=self.user.userid, fromid=fromjid.userhost(), msgid=msgid, data=body)
         yield message.save()
         if self.user.pushtoken and self.user.away:
+            contact_info = yield ContactInformation.load(self, fromjid)
             log.msg('SENDING_PUSH %s:%s. Contact Info: %s, User data: %s'%(self.user.userid, self.user.jid, contact_info, self.user))
             yield sendchatmessage(msg=body, token=self.user.pushtoken, badgenumber=self.user.badgenumber, jid=contact_info.barejid, fullname=contact_info.name, sound=contact_info.sound, emoji=contact_info.emoji)
             self.user.badgenumber += 1
