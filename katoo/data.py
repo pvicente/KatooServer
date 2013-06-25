@@ -143,6 +143,7 @@ class GoogleUser(object):
     
     @classmethod
     def remove(cls, userid):
+        #Not remove GoogleContacts due to Remove is performed in Login if connection state is disconnected
         return defer.DeferredList([cls.model.remove({'_userid': userid}), GoogleMessage.flushMessages(userid)])
     
     @classmethod
