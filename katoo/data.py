@@ -50,7 +50,68 @@ class GoogleMessage(object):
     def save(self):
         data=vars(self)
         return self.model.insert(**data)
+
+class GoogleRosterItem(object):
+    model = DataModel(collectionName='googleroster', indexes=Indexes(['_userid', ('_userid','_jid')]))
     
+    @classmethod
+    def exists(cls, userid):
+        d = cls.model.find_one(spec={'_userid': userid})
+        d.addCallback(lambda result: None if not result else cls(**result))
+        return d
+    
+    @classmethod
+    def remove(cls, userid, jid=None):
+        if jid is None:
+            return cls.model.remove({'_userid': userid})
+        else:
+            return cls.model.remove({'_userid': userid, '_jid': jid})
+    
+    @classmethod
+    def load(cls, userid, jid):
+        d = cls.model.find_one(spec={'_userid': userid, '_jid': jid})
+        d.addCallback(lambda result: None if not result else cls(**result))
+        return d
+    
+    def __init__(self, _userid, _jid, _name=None, _id=None):
+        self._userid = _userid
+        self._jid = _jid
+        self._name = _name
+        if isinstance(_id, ObjectId):
+            self._id = _id
+    
+    def save(self):
+        data=vars(self)
+        d = self.model.update({'_userid': self.userid, '_jid': self.jid}, upsert=True, multi=False, **data)
+        return d
+    
+    def update(self, **kwargs):
+        for k,v in kwargs.iteritems():
+            setattr(self,k,v);
+    
+    def __str__(self):
+        return '<%s object at %s>(%s)'%(self.__class__.__name__, hex(id(self)), vars(self))
+    
+    def __repr__(self):
+        return '<%s object at %s (_id:%s, appid:%s)>'%(self.__class__.__name__, hex(id(self)), getattr(self, '_id', None), self.userid)
+    
+    @property
+    def userid(self):
+        return self._userid
+    
+    @property
+    def jid(self):
+        return self._jid
+    
+    @property
+    def name(self):
+        return self._name
+    
+    @name.setter
+    def name(self, value):
+        self._name = value
+    
+
 class GoogleContact(object):
     model = DataModel(collectionName='googlecontacts', indexes=Indexes(['_userid', ('_userid','_jid')]))
     
@@ -70,7 +131,7 @@ class GoogleContact(object):
         d.addCallback(lambda result: None if not result else cls(**result))
         return d
     
-    def __init__(self, _userid, _jid, _name=None, _favorite=False, _id=None, _removeTime=None):
+    def __init__(self, _userid, _jid, _name=None, _favorite=False, _id=None):
         self._userid = _userid
         self._jid = _jid
         self._name = _name
@@ -131,8 +192,7 @@ class GoogleUser(object):
     
     @classmethod
     def remove(cls, userid):
-        #Not remove GoogleContacts due to Remove is performed in Login if connection state is disconnected
-        return defer.DeferredList([cls.model.remove({'_userid': userid}), GoogleMessage.flushMessages(userid), GoogleContact.remove(userid)])
+        return defer.DeferredList([cls.model.remove({'_userid': userid}), GoogleMessage.flushMessages(userid), GoogleContact.remove(userid)], GoogleRosterItem.remove(userid))
     
     @classmethod
     def get_connected(cls):
