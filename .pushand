@@ -13,7 +13,7 @@ virtualenv --relocatable $VENV
 
 echo "----------------------------------------------------------"
 echo "Deploy completed successful"
-echo "To run GoChatServer:"
+echo "To run KatooServer:"
 echo "1. Connect to $HOSTNAME (vagrant ssh)"
 echo "2. cd $PWD"
 echo "3. Enable virtualenv: source $VENV/bin/activate"

@@ -19,7 +19,7 @@ Vagrant::Config.run do |config|
   # The url from where the 'config.vm.box' box will be fetched if it
   # doesn't already exist on the user's system.
   # public link in dropbox
-  config.vm.box_url = "https://www.dropbox.com/s/v3irlc2m7ubznq7/ubuntu-10.04.4-server-amd64.box"
+  config.vm.box_url = "https://www.dropbox.com/s/d6ikwxbseceuhts/katooserver.box"
 
   # Boot with a GUI so you can see the screen. (Default is headless)
   # config.vm.boot_mode = :gui
