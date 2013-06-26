@@ -52,7 +52,7 @@ class GoogleMessage(object):
         return self.model.insert(**data)
     
 class GoogleContact(object):
-    model = DataModel(collectionName='googlecontacts', indexes=Indexes(['_userid', ('_userid','_jid'), dict(fields='_removeTime', expireAfterSeconds=conf.XMPP_REMOVE_TIME)]))
+    model = DataModel(collectionName='googlecontacts', indexes=Indexes(['_userid', ('_userid','_jid')]))
     
     @classmethod
     def exists(cls, userid):
@@ -65,10 +65,6 @@ class GoogleContact(object):
         return cls.model.remove({'_userid': userid})
     
     @classmethod
-    def updateRemoveTime(cls, userid, time):
-        return cls.model.update(spec={'_userid': userid}, multi=True, **{'$set': { '_removeTime': time}})
-    
-    @classmethod
     def load(cls, userid, jid):
         d = cls.model.find_one(spec={'_userid': userid, '_jid': jid})
         d.addCallback(lambda result: None if not result else cls(**result))
@@ -79,16 +75,12 @@ class GoogleContact(object):
         self._jid = _jid
         self._name = _name
         self._favorite = eval(str(_favorite))
-        self._removeTime = _removeTime
         if isinstance(_id, ObjectId):
             self._id = _id
     
     def save(self):
         data=vars(self)
         d = self.model.update({'_userid': self.userid, '_jid': self.jid}, upsert=True, multi=False, **data)
-        #Avoid remove by TTL if we update one register of user
-        if not self._removeTime is None:
-            d.addCallback(lambda x: self.updateRemoveTime(self.userid, None))
         return d
     
     def update(self, **kwargs):
@@ -125,10 +117,6 @@ class GoogleContact(object):
     def favorite(self, value):
         self._favorite = eval(str(value))
     
-    @property
-    def removeTime(self):
-        return self._removeTime
-
 class GoogleUser(object):
     model = DataModel(collectionName='googleusers', indexes=Indexes([dict(fields='_userid', unique=True), dict(fields='_pushtoken', unique=True), ('_userid, _jid'), ('_connected'), dict(fields='_lastTimeConnected', expireAfterSeconds=conf.XMPP_REMOVE_TIME) ]))
     
@@ -144,7 +132,7 @@ class GoogleUser(object):
     @classmethod
     def remove(cls, userid):
         #Not remove GoogleContacts due to Remove is performed in Login if connection state is disconnected
-        return defer.DeferredList([cls.model.remove({'_userid': userid}), GoogleMessage.flushMessages(userid)])
+        return defer.DeferredList([cls.model.remove({'_userid': userid}), GoogleMessage.flushMessages(userid), GoogleContact.remove(userid)])
     
     @classmethod
     def get_connected(cls):
@@ -354,8 +342,6 @@ if __name__ == '__main__':
         contact2=GoogleContact(_userid="2", _jid='pp@gmail.com', _favorite=True)
         yield contact2.save()
         
-        
-        yield GoogleContact.updateRemoveTime("2", datetime.utcnow())
         tmp = yield GoogleContact.load("2", "pp@gmail.com")
         print tmp
         

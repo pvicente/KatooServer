@@ -167,10 +167,6 @@ class GoogleContactsHandler(MyRequestHandler):
         if contact is None or user is None:
             raise cyclone.web.HTTPError(404)
         
-        if user.connected and not contact.removeTime is None:
-            #Update remove time to avoid TTL remove in Mongo
-            GoogleContact.updateRemoveTime(user.userid, None)
-        
         self._response_json({'success': True, 'reason': 'ok'})
     
     @defer.inlineCallbacks

@@ -179,7 +179,7 @@ class XMPPGoogle(ReauthXMPPClient):
             self.user.connected = False
             d.addCallback(lambda x: self.user.save())
             d.addCallback(lambda x: GoogleMessage.updateRemoveTime(self.user.userid, self.user.lastTimeConnected))
-            d.addCallback(lambda x: GoogleContact.updateRemoveTime(self.user.userid, self.user.lastTimeConnected))
+            d.addCallback(lambda x: GoogleContact.remove(self.user.userid))
         return d
     
     def __str__(self):
