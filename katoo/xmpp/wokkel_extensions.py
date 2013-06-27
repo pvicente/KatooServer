@@ -6,7 +6,6 @@ Created on May 25, 2013
 from functools import wraps
 from katoo.utils.decorators import for_methods
 from twisted.internet import reactor
-from twisted.internet.tcp import Connection
 from twisted.python import log
 from twisted.words.protocols.jabber.sasl import SASLNoAcceptableMechanism, \
     get_mechanisms, SASLInitiatingInitializer, SASLAuthError
@@ -16,7 +15,6 @@ from wokkel.client import XMPPClient, XMPPClientConnector
 from zope.interface import implements
 import os
 import time
-import traceback
 
 __all__ = ["ReauthXMPPClient"]
 
