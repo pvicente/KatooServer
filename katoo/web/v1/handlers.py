@@ -39,7 +39,7 @@ class update_arguments(arguments):
                       ('pushtoken', DefaultArgument), ('badgenumber', DefaultArgument), ('pushsound',DefaultArgument), ('favoritesound', DefaultArgument), ('lang', DefaultArgument)])
 
 class contact_arguments(arguments):
-    ARGUMENTS = dict([('jid', RequiredArgument), ('name', None), ('favorite', DefaultArgument)])
+    ARGUMENTS = dict([('jid', RequiredArgument), ('name', DefaultArgument), ('favorite', DefaultArgument)])
 
 class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
     def __init__(self, application, request, **kwargs):
