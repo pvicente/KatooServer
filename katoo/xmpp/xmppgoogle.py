@@ -211,15 +211,15 @@ class XMPPGoogle(ReauthXMPPClient):
     
     def disconnect(self, change_state=True):
         log.msg('DISCONNECTED %s:%s'%(self.user.userid, self.user.jid))
-        d = defer.maybeDeferred(self.disownServiceParent)
+        deferred_list = [defer.maybeDeferred(self.disownServiceParent)]
         if change_state:
             self.user.away = True
             self.user.connected = False
-            d.addCallback(lambda x: self.user.save())
-            d.addCallback(lambda x: GoogleMessage.updateRemoveTime(self.user.userid, self.user.lastTimeConnected))
-            d.addCallback(lambda x: GoogleContact.remove(self.user.userid))
-            d.addCallback(lambda x: GoogleRosterItem.remove(self.user.userid))
-        return d
+            deferred_list.append(self.user.save())
+            deferred_list.append(GoogleMessage.updateRemoveTime(self.user.userid, self.user.lastTimeConnected))
+            deferred_list.append(GoogleContact.remove(self.user.userid))
+            deferred_list.append(GoogleRosterItem.remove(self.user.userid))
+        return defer.DeferredList(deferred_list, consumeErrors=True)
     
     def __str__(self):
         return '<%s object at %s. name: %s>(user: %s)'%(self.__class__.__name__, hex(id(self)), self.name, vars(self.user))
