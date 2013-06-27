@@ -13,6 +13,7 @@ from katoo.utils.connections import RedisMixin
 from twisted.internet import defer
 from twisted.python import log
 import cyclone.web
+from katoo import conf
 
 class RequiredArgument(object):
     pass
@@ -102,7 +103,7 @@ class GoogleHandler(MyRequestHandler):
             raise cyclone.web.HTTPError(404)
         try:
             yield update(key, **self.args)
-            self._response_json({'success': True, 'reason': 'ok'})
+            self._response_json({'success': True, 'reason': 'ok', 'background_time': conf.XMPP_BACKGROUND_TIME, 'resource_prefix': conf.XMPP_RESOURCE})
         except XMPPUserNotLogged as e:
             raise cyclone.web.HTTPError(500, str(e))
     
