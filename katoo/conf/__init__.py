@@ -41,7 +41,7 @@ XMPP_STATE=os.getenv('XMPP_STATE', 'away')
 XMPP_DISCONNECTION_TIME=int(os.getenv('XMPP_DISCONNECTION_TIME', 43200)) #12 hours by default
 XMPP_REMOVE_TIME=int(os.getenv('XMPP_REMOVE_TIME', 604800)) #7 days
 XMPP_BACKGROUND_TIME=int(os.getenv('XMPP_BACKGROUND_TIME', 180))
-XMPP_RESOURCE=os.getenv('XMPP_STATE', 'katooserver')
+XMPP_RESOURCE=os.getenv('XMPP_STATE', 'katooserv')
 
 #APNS
 APNS_SANDBOX = "sandbox" if os.getenv('PRODUCTION', None) is None else "production"
