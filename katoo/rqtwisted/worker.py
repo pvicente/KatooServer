@@ -20,6 +20,7 @@ import sys
 import time
 import times
 import traceback
+from katoo import conf
 
 DEFAULT_RESULT_TTL = 5
 DEFAULT_WORKER_TTL = 420
@@ -203,8 +204,8 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
                 yield self.connection.expire(job.key, result_ttl)
     
     def startService(self):
-        reactor.callLater(1, self.register_birth)
-        reactor.callLater(2, self.work)
+        reactor.callLater(conf.TWISTED_WARMUP, self.register_birth)
+        reactor.callLater(conf.TWISTED_WARMUP, self.work)
         service.Service.startService(self)
 
     def stopService(self):

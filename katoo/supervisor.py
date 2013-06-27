@@ -53,6 +53,6 @@ class Supervisor(service.Service):
             t.start(1800, now = True)
         t = LoopingCall(self.disconnectAwayUsers)
         t.start(conf.TASK_DISCONNECT_SECONDS, now = False)
-        reactor.callLater(5, self.reconnectUsers)
+        reactor.callLater(conf.TWISTED_WARMUP, self.reconnectUsers)
         return service.Service.startService(self)
     

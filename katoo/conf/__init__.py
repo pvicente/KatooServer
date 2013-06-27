@@ -8,6 +8,9 @@ import os
 conf_file = os.path.realpath(__file__)
 conf_dir = os.path.dirname(conf_file)
 
+#PARAMETERS
+TWISTED_WARMUP=os.getenv('TWISTED_WARMUP', 2)
+
 #GOOGLE_APP_CREDENTIALS
 GOOGLE_CLIENT_ID=os.getenv('GOOGLE_CLIENT_ID', '1066150010031.apps.googleusercontent.com')
 GOOGLE_CLIENT_SECRET=os.getenv('GOOGLE_CLIENT_SECRET', '8uTcq2n92dDWO8HWaJBC6Lxg')
