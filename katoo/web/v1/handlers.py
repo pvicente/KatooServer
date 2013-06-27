@@ -57,15 +57,6 @@ class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
         self.args = args
 
 class GoogleHandler(MyRequestHandler):
-    #===========================================================================
-    # @defer.inlineCallbacks
-    # def get(self, key):
-    #     user = yield GoogleUser.load(key)
-    #     if user is None:
-    #         raise cyclone.web.HTTPError(404)
-    #     self._response_json(user.toDict())
-    #===========================================================================
-    
     @defer.inlineCallbacks
     def get(self, key):
         self.constructor(key)
@@ -143,6 +134,16 @@ class GoogleMessagesHandler(MyRequestHandler):
         self._response_json({'current_time': datetime.utcnow().isoformat()+'Z', 'success': True, 'messages': messages, 'len': len(messages), 'reason': 'ok', 'connected': user.connected})
     
     @defer.inlineCallbacks
+    def post(self, key):
+        self.constructor(key)
+        raise cyclone.web.HTTPError(404)
+    
+    @defer.inlineCallbacks
+    def put(self, key):
+        self.constructor(key)
+        raise cyclone.web.HTTPError(404)
+    
+    @defer.inlineCallbacks
     def delete(self, key):
         self.constructor(key)
         user = yield GoogleUser.load(key)
@@ -170,6 +171,11 @@ class GoogleContactsHandler(MyRequestHandler):
         self._response_json({'success': True, 'reason': 'ok'})
     
     @defer.inlineCallbacks
+    def post(self, key):
+        self.constructor(key)
+        raise cyclone.web.HTTPError(404)
+    
+    @defer.inlineCallbacks
     def put(self, key):
         self.constructor(key, contact_arguments(self).args)
         user = yield GoogleUser.load(key)
@@ -195,15 +201,3 @@ class GoogleContactsHandler(MyRequestHandler):
         #Remove contacts from mongo
         yield GoogleContact.remove(user.userid)
         self._response_json({'success': True, 'reason': 'ok'})
-
-class AsyncHandler(MyRequestHandler):
-    @cyclone.web.asynchronous
-    def get(self, key):
-        d = GoogleUser.load(key)
-        d.addCallback(self._response_get)
-        
-    def _response_get(self, user):
-        if user is None:
-            self.send_error(404)
-            return
-        self._response_json(user.toDict())
