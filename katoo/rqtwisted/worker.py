@@ -205,7 +205,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     
     def startService(self):
         reactor.callLater(conf.TWISTED_WARMUP, self.register_birth)
-        reactor.callLater(conf.TWISTED_WARMUP, self.work)
+        reactor.callLater(conf.TWISTED_WARMUP+1, self.work)
         service.Service.startService(self)
 
     def stopService(self):
