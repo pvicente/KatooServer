@@ -42,11 +42,12 @@ class PushParser():
     _emoji_string = u"\s+((\(((\^((\^((\^(\)))))))|(y(\)))))|(\-((\_(\-))))|(3((\:(\)|(\-(\)))))))|(\:((\'(\())|\(|\)|\*|(\-(\(|\)|\*|\/|D|O|P|\\|o|p))|\/|3|D|O|P|\[|\\|\]|o|p|(\|(\]))))|(\;(\)|(\-(\)))))|(\<((\(((\"(\)))))|3))|(\=(\(|\)|D|P))|(\>((\:(\(|(\-(\(|O|o))|O|o))))|(O((\.(o))|(\:(\)|(\-(\)))))))|(\^((\_(\^))))|(o((\.(O)))))\s+"
     _emoji_dict = {':/': u'\ue40e', ':(': u'\ue058', ':)': u'\ue415', ':*': u'\ue418', 'O.o': u'\ue108', '>:-O': u'\ue416', ':-D': u'\ue057', '3:)': u'\ue11a', ':-\\': u'\ue40e', ':-P': u'\ue409', ':-O': u'\ue40b', ':\\': u'\ue40e', '(^^^)': u'\ue019', ':-o': u'\ue40b', ':|]': u'\ue12b', '=)': u'\ue415', '>:(': u'\ue059', '>:-o': u'\ue416', 'O:)': u'\ue04e', '=D': u'\ue057', 'o.O': u'\ue108', ':-p': u'\ue409', ':3': u'\ue04f', ';-)': u'\ue405', ':o': u'\ue40b', '<3': u'\ue022', '>:O': u'\ue416', '<(")': u'\ue055', '^_^': u'\ue056', ':O': u'\ue40b', 'O:-)': u'\ue04e', ';)': u'\ue405', ':p': u'\ue409', '=(': u'\ue058', '=P': u'\ue409', ':-*': u'\ue418', '3:-)': u'\ue11a', ':-(': u'\ue058', ':-)': u'\ue415', ':-/': u'\ue40e', '-_-': u'\ue403', ':D': u'\ue057', '(y)': u'\ue00e', '>:-(': u'\ue059', '>:o': u'\ue416', ":'(": u'\ue413', ':]': u'\ue415', ':[': u'\ue058', ':P': u'\ue409'}
     #url parser
-    _KATOO_URL = u'http://katooshare.herokuapp.com/'
+    _KATOO_URL = u'http://share.katooapp.com/'
     _KATOO_URL_LEN = len(_KATOO_URL)
     _MAPS_URL = u'http://maps.google.com/?q='
-    _atachment_string = u'{0}p\S+|{0}v\S+|{0}a\S+|{1}\S+'.format(re.escape(_KATOO_URL), re.escape(_MAPS_URL))
-    _atachment_dict = {_KATOO_URL+'p': u'\ue44a Image received', _KATOO_URL+'v': u'\ue324 Video received', _KATOO_URL+'a': u'\ue141 Audio received', _MAPS_URL: u'\ue130 Location received'}
+    _GPLUS_IMAGE_URL = u'https://plus.google.com/photos/albums/p'
+    _atachment_string = u'{0}p\S+|{0}v\S+|{0}a\S+|{1}\S+|{2}\S+'.format(re.escape(_KATOO_URL), re.escape(_MAPS_URL), re.escape(_GPLUS_IMAGE_URL))
+    _atachment_dict = {_KATOO_URL+'p': u'\ue44a Image received', _KATOO_URL+'v': u'\ue324 Video received', _KATOO_URL+'a': u'\ue141 Audio received', _MAPS_URL: u'\ue130 Location received', _GPLUS_IMAGE_URL: u'\ue44a Image received'}
     _regex_string = u'(' + _atachment_string + u'|' + _emoji_string + u')'
     #final regexp
     _regex_dict = dict(_emoji_dict.items()+_atachment_dict.items())
@@ -73,6 +74,8 @@ class PushParser():
                 #it must be an attachment
                 if regex_key.find(cls._KATOO_URL) != -1:
                     regex_key = regex_key[:cls._KATOO_URL_LEN+1] #getting extra parameter p,v,a
+                elif regex_key.find(cls._GPLUS_IMAGE_URL) != -1:
+                    regex_key = cls._GPLUS_IMAGE_URL
                 else:
                     regex_key = cls._MAPS_URL
                 msg = u' {0} '.format(cls._regex_dict[regex_key]) #with whitespaces
