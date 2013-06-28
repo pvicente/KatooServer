@@ -44,7 +44,9 @@ class TwistedLogging(Singleton, log.PythonLoggingObserver):
     
     def error(self, msg, *args, **kwargs):
         self.logger.error(msg, *args, **kwargs)
-
+    
+    def getLogger(self, name):
+        return logging.getLogger(name)
 
 if __name__ == '__main__':
     from twisted.internet import reactor
