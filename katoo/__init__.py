@@ -1,5 +1,5 @@
 from katoo import conf
-from katoo.utils import Singleton
+from katoo.utils.patterns import Singleton
 from katoo.utils.connections import RedisMixin, MongoMixin
 from twisted.application import service
 
