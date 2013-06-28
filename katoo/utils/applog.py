@@ -3,9 +3,9 @@ Created on Jun 28, 2013
 
 @author: pvicente
 '''
-import logging
-from twisted.python import log
 from patterns import Singleton
+from twisted.python import log
+import logging
 
 class TwistedLogging(Singleton, log.PythonLoggingObserver):
     
@@ -21,16 +21,11 @@ class TwistedLogging(Singleton, log.PythonLoggingObserver):
         finally:
             return ret
     
-    def constructor(self):
-        fmt="[%(levelname)s] [%(filename)s:%(funcName)s:%(lineno)d] %(message)s"
-        level="DEBUG"
+    def constructor(self, app, fmt, level):
         logging.basicConfig(format=fmt, level=self.getLevelFromStr(level))
-        log.PythonLoggingObserver.__init__(self,'katootwisted') 
-        log.PythonLoggingObserver.start(self)
+        log.PythonLoggingObserver.__init__(self,'katootwisted')
+        app.setComponent(log.ILogObserver, self.emit)
         
-    def start(self):
-        #Do nothing started in constructor
-        pass
     
     def debug(self, msg, *args, **kwargs):
         self.logger.debug(msg, *args, **kwargs)
