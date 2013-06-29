@@ -53,9 +53,9 @@ class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
         self.response = json_encode(value)
         self.finish(self.response)
         
-    def constructor(self, key, args=''):
+    def constructor(self, key, args_class=None):
         self.key = key
-        self.args = args
+        self.args = '' if args_class is None else args_class(self).args
 
 class GoogleHandler(MyRequestHandler):
     @defer.inlineCallbacks
@@ -65,7 +65,7 @@ class GoogleHandler(MyRequestHandler):
     
     @defer.inlineCallbacks
     def post(self, key):
-        self.constructor(key, login_arguments(self).args)
+        self.constructor(key, login_arguments)
         try:
             user = yield GoogleUser.load(key)
             
@@ -97,7 +97,7 @@ class GoogleHandler(MyRequestHandler):
     
     @defer.inlineCallbacks
     def put(self, key):
-        self.constructor(key, update_arguments(self).args)
+        self.constructor(key, update_arguments)
         user = yield GoogleUser.load(key)
         if user is None or not user.connected:
             raise cyclone.web.HTTPError(404)
@@ -178,7 +178,7 @@ class GoogleContactsHandler(MyRequestHandler):
     
     @defer.inlineCallbacks
     def put(self, key):
-        self.constructor(key, contact_arguments(self).args)
+        self.constructor(key, contact_arguments)
         user = yield GoogleUser.load(key)
         if user is None or not user.connected:
             raise cyclone.web.HTTPError(404)
