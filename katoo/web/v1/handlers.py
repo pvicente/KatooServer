@@ -7,7 +7,7 @@ Created on Jun 4, 2013
 from cyclone.escape import json_encode
 from datetime import datetime
 from katoo import conf
-from katoo.api import login, logout, update
+from katoo.api import API
 from katoo.data import GoogleUser, GoogleMessage, GoogleContact
 from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
 from katoo.utils.applog import getLoggerAdapter, getLogger
@@ -78,13 +78,13 @@ class GoogleHandler(MyRequestHandler):
                 user_to_logout = yield GoogleUser.load(pushtoken=self.args['_pushtoken'])
                 if not user_to_logout is None:
                     self.log.msg('WEB_HANDLER_LOGOUT %s with the same pushtoken'%(user_to_logout.userid))
-                    yield logout(user_to_logout.userid)
+                    yield API(key).logout(user_to_logout.userid)
             elif user.connected:
                 #Logout user with the same appid but other jid
                 user_to_logout = yield GoogleUser.load(userid=key, jid=self.args['_jid'])
                 if user_to_logout is None:
                     self.log.msg('WEB_HANDLER_LOGOUT %s with other jid: %s->%s'%(key, user.jid, self.args['_jid']))
-                    yield logout(key)
+                    yield API(key).logout(key)
                     user = None
             else:
                 #user not connected removing from database
@@ -92,7 +92,7 @@ class GoogleHandler(MyRequestHandler):
             
             if user is None or not user.connected:
                 user = GoogleUser(_userid=key, **self.args)
-                yield login(user)
+                yield API(key).login(user)
                 self._response_json({'success': True, 'reason': 'ok'})
             else:
                 self._response_json({'success': False, 'reason': 'Already logged'})
@@ -106,7 +106,7 @@ class GoogleHandler(MyRequestHandler):
         if user is None or not user.connected:
             raise cyclone.web.HTTPError(404)
         try:
-            yield update(key, **self.args)
+            yield API(key).update(key, **self.args)
             self._response_json({'success': True, 'reason': 'ok', 'background_time': conf.XMPP_BACKGROUND_TIME, 'resource_prefix': conf.XMPP_RESOURCE})
         except XMPPUserNotLogged as e:
             raise cyclone.web.HTTPError(500, str(e))
@@ -119,7 +119,7 @@ class GoogleHandler(MyRequestHandler):
             if user is None:
                 raise cyclone.web.HTTPError(404)
             if user.connected:
-                yield logout(key)
+                yield API(key).logout(key)
             else:
                 yield user.remove(user.userid)
             self._response_json({'success': True, 'reason': 'ok'})
@@ -159,7 +159,7 @@ class GoogleMessagesHandler(MyRequestHandler):
         try:
             yield GoogleMessage.flushMessages(key)
             if user.connected:
-                yield update(key, **{'badgenumber': 0})
+                yield API(key).update(key, **{'badgenumber': 0})
             self._response_json({'success': True, 'reason': 'ok'})
         except XMPPUserNotLogged as e:
             raise cyclone.web.HTTPError(500, str(e))

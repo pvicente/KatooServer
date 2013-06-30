@@ -4,7 +4,7 @@ Created on Jun 12, 2013
 @author: pvicente
 '''
 from katoo import conf
-from katoo.api import login, disconnect
+from katoo.api import API
 from katoo.apns.api import sendcustom
 from katoo.data import GoogleUser
 from twisted.application import service
@@ -30,7 +30,7 @@ class Supervisor(service.Service):
         for data in connected_users:
             try:
                 user = GoogleUser(**data)
-                yield login(user)
+                yield API(user.userid).login(user)
             except Exception as e:
                 log.err('Exception %s reconnecting user %s'%(e, data['_userid']))
     
@@ -42,7 +42,7 @@ class Supervisor(service.Service):
         for data in away_users:
             try:
                 user = GoogleUser(**data)
-                yield disconnect(user.userid)
+                yield API(user.userid).disconnect(user.userid)
                 yield sendcustom(lang=user.lang, token=user.pushtoken, badgenumber=user.badgenumber, type_msg='disconnect', sound='')
             except Exception as e:
                 log.err('Exception %s disconnecting user %s'%(e, data['_userid']))
