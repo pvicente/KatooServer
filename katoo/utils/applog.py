@@ -6,7 +6,7 @@ Created on Jun 28, 2013
 from functools import wraps
 from katoo.utils.decorators import for_methods
 from patterns import Singleton
-from twisted.python import log
+from twisted.python import log, failure
 import logging
 
 DEFAULT_CONTEXT=dict(id='-')
@@ -28,7 +28,28 @@ class AppLoggingAdapter(logging.LoggerAdapter):
             self.extra.update(DEFAULT_CONTEXT)
     
     msg = logging.LoggerAdapter.info
-    err = logging.LoggerAdapter.error
+    
+    def err(self, _stuff=None, _why=None, **kw):
+        msg = None
+        if _stuff is None:
+            error = failure.Failure()
+        if not _why is None:
+            msg = _why
+        if isinstance(_stuff, failure.Failure):
+            error = _stuff 
+        elif not _stuff is None and isinstance(_stuff, Exception):
+            error = failure.Failure(_stuff)
+        else:
+            error = None
+            if msg is None:
+                self.error("Error: %s", repr(_stuff))
+            else:
+                self.error("%s. Error: %s", msg, repr(_stuff))
+        if not error is None:
+            if msg is None:
+                self.error("%s",error.getBriefTraceback())
+            else:
+                self.error("%s. %s", msg, error.getBriefTraceback())
 
 def getLogger(name):
     return logging.getLogger(name)
@@ -57,44 +78,33 @@ class TwistedLogging(Singleton, log.PythonLoggingObserver):
     def constructor(self, app, fmt, level):
         logging.basicConfig(format=self.getLoggerDefaultFormat(fmt), level=self.getLevelFromStr(level))
         log.PythonLoggingObserver.__init__(self,'katootwisted')
-        self.logger = logging.LoggerAdapter(self.logger, DEFAULT_CONTEXT)
+        self.logger = AppLoggingAdapter(self.logger, {})
         app.setComponent(log.ILogObserver, self.emit)
-        
-    
-    def debug(self, msg, *args, **kwargs):
-        self.logger.debug(msg, *args, **kwargs)
-    
-    def info(self, msg, *args, **kwargs):
-        self.logger.info(msg, *args, **kwargs)
-    
-    def warn(self, msg, *args, **kwargs):
-        self.logger.warning(msg, *args, **kwargs)
-    
-    def warning(self, msg, *args, **kwargs):
-        self.logger.warning(msg, *args, **kwargs)
-    
-    def critical(self, msg, *args, **kwargs):
-        self.logger.critical(msg, *args, **kwargs)
-    
-    def error(self, msg, *args, **kwargs):
-        self.logger.error(msg, *args, **kwargs)
-    
-    def getLogger(self, name):
-        return logging.getLogger(name)
 
 if __name__ == '__main__':
     from twisted.application import service
-    from twisted.internet import reactor
+    from twisted.internet import reactor, defer
     from twisted.internet.task import LoopingCall
     import sys
     
     app_log = getLoggerAdapter(getLogger(__name__), id='kk')
     logging_log = logging.LoggerAdapter(logging.getLogger(__name__), {})
     
+    def raising_error():
+        raise ValueError('Raising Error')
+    
+    def reporting_error():
+        app_log.err(ValueError('Reporting Error'), 'Test why')
+    
     def testing_logs():
         log.msg('Testing twisted log')
         logging_log.debug('Testing logging log')
         app_log.debug('Testing app log')
+        
+        d = defer.maybeDeferred(raising_error)
+        d.addErrback(app_log.err)
+        d = defer.maybeDeferred(reporting_error)
+        d.addErrback(app_log.err)
     
     app = service.Application('KatooApp')
     TwistedLogging(app, "", "DEBUG")
@@ -102,6 +112,4 @@ if __name__ == '__main__':
     l = LoopingCall(testing_logs)
     l.start(3, now=False)
     reactor.run()
-    
-    
 
