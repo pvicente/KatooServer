@@ -7,6 +7,10 @@ from patterns import Singleton
 from twisted.python import log
 import logging
 
+DEFAULT_CONTEXT=dict(id='-')
+DEFAULT_CONTEXT_FMT="[%(id)s]"
+
+
 class TwistedLogging(Singleton, log.PythonLoggingObserver):
     
     @classmethod
@@ -23,11 +27,12 @@ class TwistedLogging(Singleton, log.PythonLoggingObserver):
     
     @classmethod
     def getLoggerDefaultFormat(cls, fmt):
-        return "%s %s"%(fmt, "%(message)s")
+        return "%s %s %s"%(fmt, DEFAULT_CONTEXT_FMT, "%(message)s")
     
     def constructor(self, app, fmt, level):
         logging.basicConfig(format=self.getLoggerDefaultFormat(fmt), level=self.getLevelFromStr(level))
         log.PythonLoggingObserver.__init__(self,'katootwisted')
+        self.logger = logging.LoggerAdapter(self.logger, DEFAULT_CONTEXT)
         app.setComponent(log.ILogObserver, self.emit)
         
     
