@@ -4,7 +4,7 @@ Created on Jun 5, 2013
 @author: pvicente
 '''
 from katoo import conf
-from katoo.apns.api import sendchatmessage, sendcustom
+from katoo.apns.api import API
 from katoo.data import GoogleMessage, GoogleContact, GoogleRosterItem
 from twisted.internet import defer
 from twisted.words.protocols.jabber import jid
@@ -147,9 +147,10 @@ class GoogleHandler(GenericXMPPHandler):
                 if roster_item is None:
                     roster_item = GoogleRosterItem(_userid=self.user.userid, _jid=barefromjid, _name=fromjid.user)
                 contact_info = yield ContactInformation.load(self.user, roster_item)
-                self.log.debug('SENDING_PUSH %s. RosterItem: %s Contact Info: %s, User data: %s', self.user.jid, roster_item, contact_info, self.user)
                 self.user.badgenumber += 1
-                yield sendchatmessage(msg=body, token=self.user.pushtoken, badgenumber=self.user.badgenumber, jid=contact_info.barejid, fullname=contact_info.name, sound=contact_info.sound, emoji=contact_info.emoji)
+                self.log.debug('SENDING_PUSH %s. RosterItem: %s Contact Info: %s, User data: %s', self.user.jid, roster_item, contact_info, self.user)
+                yield API(self.user.userid).sendchatmessage(msg=body, token=self.user.pushtoken, badgenumber=self.user.badgenumber, jid=contact_info.barejid, fullname=contact_info.name, sound=contact_info.sound, emoji=contact_info.emoji)
+                self.log.debug('PUSH SENT %s', self.user.jid)
                 yield self.user.save()
         except Exception as e:
             self.log.err(e, 'ON_MESSAGE_RECEIVED_EXCEPTION')
@@ -201,13 +202,13 @@ class XMPPGoogle(ReauthXMPPClient):
     def onAuthenticationError(self, reason):
         self.log.err(reason, 'AUTH_ERROR_EVENT %s'%(self.user.jid))
         if self.user.pushtoken:
-            sendcustom(lang=self.user.lang, token=self.user.pushtoken, badgenumber=self.user.badgenumber, type_msg='authfailed', sound='')
+            API(self.user.userid).sendcustom(lang=self.user.lang, token=self.user.pushtoken, badgenumber=self.user.badgenumber, type_msg='authfailed', sound='')
         return self.disconnect()
     
     def onMaxRetries(self):
         self.log.error('CONNECTION_MAX_RETRIES %s', self.user.jid)
         if self.user.pushtoken:
-            sendcustom(lang=self.user.lang, token=self.user.pushtoken, badgenumber=self.user.badgenumber, type_msg='maxretries', sound='')
+            API(self.user.userid).sendcustom(lang=self.user.lang, token=self.user.pushtoken, badgenumber=self.user.badgenumber, type_msg='maxretries', sound='')
         return self.disconnect()
     
     def disconnect(self, change_state=True):
@@ -240,5 +241,4 @@ if __name__ == '__main__':
     import twisted.python.log
     twisted.python.log.startLogging(sys.stdout)
     XMPPGoogle(GoogleUser("1", _token=os.getenv('TOKEN'), _refreshtoken=os.getenv('REFRESHTOKEN'), _resource="asdfasdf", _pushtoken=os.getenv('PUSHTOKEN', None), _jid=os.getenv('JID'), _pushsound='cell1.aif', _favoritesound='cell7.aif', _away=True), app)
-    KatooApp().start()
     reactor.run()

@@ -4,8 +4,8 @@ Created on Jun 12, 2013
 @author: pvicente
 '''
 from katoo import conf
+from katoo.apns.api import API as APNSAPI
 from katoo.api import API
-from katoo.apns.api import sendcustom
 from katoo.data import GoogleUser
 from twisted.application import service
 from twisted.internet import defer, reactor
@@ -47,7 +47,7 @@ class Supervisor(service.Service):
             try:
                 user = GoogleUser(**data)
                 yield API(user.userid).disconnect(user.userid)
-                yield sendcustom(lang=user.lang, token=user.pushtoken, badgenumber=user.badgenumber, type_msg='disconnect', sound='')
+                yield APNSAPI(user.userid).sendcustom(lang=user.lang, token=user.pushtoken, badgenumber=user.badgenumber, type_msg='disconnect', sound='')
             except Exception as e:
                 self.log.error('Exception %s disconnecting user %s', e, data['_userid'])
     
