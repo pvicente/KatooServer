@@ -1,10 +1,10 @@
 from katoo import conf
 from katoo.utils.connections import RedisMixin
 import cyclone.bottle
-import katoo
+import logging
 import v1.handlers
 
-log = katoo.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 class BaseHandler(cyclone.web.Application, RedisMixin):
     def __init__(self):

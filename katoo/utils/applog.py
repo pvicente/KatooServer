@@ -21,8 +21,12 @@ class TwistedLogging(Singleton, log.PythonLoggingObserver):
         finally:
             return ret
     
+    @classmethod
+    def getLoggerDefaultFormat(cls, fmt):
+        return "%s %s"%(fmt, "%(message)s")
+    
     def constructor(self, app, fmt, level):
-        logging.basicConfig(format=fmt, level=self.getLevelFromStr(level))
+        logging.basicConfig(format=self.getLoggerDefaultFormat(fmt), level=self.getLevelFromStr(level))
         log.PythonLoggingObserver.__init__(self,'katootwisted')
         app.setComponent(log.ILogObserver, self.emit)
         
@@ -48,12 +52,3 @@ class TwistedLogging(Singleton, log.PythonLoggingObserver):
     def getLogger(self, name):
         return logging.getLogger(name)
 
-if __name__ == '__main__':
-    from twisted.internet import reactor
-    TwistedLogging()
-    
-    def test():
-        log.msg('Hola q critical')
-     
-    reactor.callLater(1, test)
-    reactor.run()
