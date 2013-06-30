@@ -4,8 +4,6 @@ import cyclone.bottle
 import logging
 import v1.handlers
 
-log = logging.getLogger(__name__)
-
 class BaseHandler(cyclone.web.Application, RedisMixin):
     def __init__(self):
             handlers = [
@@ -20,7 +18,7 @@ class BaseHandler(cyclone.web.Application, RedisMixin):
     
     def log_request(self, handler):
         request_time = 1000.0 * handler.request.request_time()
-        log.info("[cyclone %s] %s %s %.2f(ms) %s %s", getattr(handler, 'key', '-'), handler.get_status(), handler._request_summary(), request_time, getattr(handler, 'args', ''), getattr(handler, 'response', ''))
+        handler.log.info("%s %s %.2f(ms) %s %s", handler.get_status(), handler._request_summary(), request_time, getattr(handler, 'args', ''), getattr(handler, 'response', ''))
 
 class BaseHandlerNoLog(BaseHandler):
     def log_request(self, handler):

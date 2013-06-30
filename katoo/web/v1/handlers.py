@@ -6,14 +6,16 @@ Created on Jun 4, 2013
 
 from cyclone.escape import json_encode
 from datetime import datetime
+from katoo import conf
 from katoo.api import login, logout, update
 from katoo.data import GoogleUser, GoogleMessage, GoogleContact
 from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
+from katoo.utils.applog import getLoggerAdapter, getLogger
 from katoo.utils.connections import RedisMixin
 from twisted.internet import defer
-from twisted.python import log
 import cyclone.web
-from katoo import conf
+
+log = getLogger(__name__)
 
 class RequiredArgument(object):
     pass
@@ -44,6 +46,7 @@ class contact_arguments(arguments):
 class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
     def __init__(self, application, request, **kwargs):
         cyclone.web.RequestHandler.__init__(self, application, request, **kwargs)
+        self.log = getLoggerAdapter(log)
         self.key = ''
         self.args = ''
         self.response = ''
@@ -54,6 +57,7 @@ class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
         self.finish(self.response)
         
     def constructor(self, key, args_class=None):
+        self.log = getLoggerAdapter(log, id=key)
         self.key = key
         self.args = '' if args_class is None else args_class(self).args
 
@@ -73,13 +77,13 @@ class GoogleHandler(MyRequestHandler):
                 #Logout of users with the same pushtoken
                 user_to_logout = yield GoogleUser.load(pushtoken=self.args['_pushtoken'])
                 if not user_to_logout is None:
-                    log.msg('WEB_HANDLER_LOGOUT %s with the same pushtoken'%(user_to_logout.userid))
+                    self.log.msg('WEB_HANDLER_LOGOUT %s with the same pushtoken'%(user_to_logout.userid))
                     yield logout(user_to_logout.userid)
             elif user.connected:
                 #Logout user with the same appid but other jid
                 user_to_logout = yield GoogleUser.load(userid=key, jid=self.args['_jid'])
                 if user_to_logout is None:
-                    log.msg('WEB_HANDLER_LOGOUT %s with other jid: %s->%s'%(key, user.jid, self.args['_jid']))
+                    self.log.msg('WEB_HANDLER_LOGOUT %s with other jid: %s->%s'%(key, user.jid, self.args['_jid']))
                     yield logout(key)
                     user = None
             else:
