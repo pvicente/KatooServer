@@ -10,10 +10,13 @@ from katoo.data import GoogleUser
 from twisted.application import service
 from twisted.internet import defer, reactor
 from twisted.internet.task import LoopingCall
-from twisted.python import log
 import cyclone.httpclient
+from katoo.utils.applog import getLogger, getLoggerAdapter
+
+log = getLogger(__name__)
 
 class Supervisor(service.Service):
+    log = getLoggerAdapter(log, id='SUPERVISOR')
     
     @property
     def name(self):
@@ -21,31 +24,32 @@ class Supervisor(service.Service):
     
     @defer.inlineCallbacks
     def avoidHerokuUnidling(self, url):
+        self.log.info('AVOIDING HEROKU IDLING: %s', url)
         yield cyclone.httpclient.fetch(url)
     
     @defer.inlineCallbacks
     def reconnectUsers(self):
         connected_users = yield GoogleUser.get_connected()
-        log.msg('RECONNECTING_USERS', len(connected_users))
+        self.log.info('RECONNECTING_USERS: %s', len(connected_users))
         for data in connected_users:
             try:
                 user = GoogleUser(**data)
                 yield API(user.userid).login(user)
             except Exception as e:
-                log.err('Exception %s reconnecting user %s'%(e, data['_userid']))
+                self.log.error('Exception %s reconnecting user %s', e, data['_userid'])
     
     @defer.inlineCallbacks
     def disconnectAwayUsers(self):
         away_users = yield GoogleUser.get_away()
         away_users  = [] if not away_users else away_users
-        log.msg('PULLING_FROM_AWAY_USERS: %s'%(len(away_users)))
+        self.log.info('CHECKING_AWAY_USERS: %s', len(away_users))
         for data in away_users:
             try:
                 user = GoogleUser(**data)
                 yield API(user.userid).disconnect(user.userid)
                 yield sendcustom(lang=user.lang, token=user.pushtoken, badgenumber=user.badgenumber, type_msg='disconnect', sound='')
             except Exception as e:
-                log.err('Exception %s disconnecting user %s'%(e, data['_userid']))
+                self.log.error('Exception %s disconnecting user %s', e, data['_userid'])
     
     def startService(self):
         if not conf.HEROKU_UNIDLING_URL is None:
