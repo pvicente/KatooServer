@@ -4,9 +4,9 @@ Created on May 25, 2013
 @author: pvicente
 '''
 from functools import wraps
+from katoo.utils.applog import getLogger, getLoggerAdapter
 from katoo.utils.decorators import for_methods
 from twisted.internet import reactor
-from twisted.python import log
 from twisted.words.protocols.jabber.sasl import SASLNoAcceptableMechanism, \
     get_mechanisms, SASLInitiatingInitializer, SASLAuthError
 from twisted.words.protocols.jabber.sasl_mechanisms import ISASLMechanism
@@ -18,16 +18,31 @@ import time
 
 __all__ = ["ReauthXMPPClient"]
 
+log = getLogger(__name__)
+
 class ReauthXMPPClient(XMPPClient):
     AUTH_TIMEOUT=60
     
-    def __init__(self, jid, password, host=None, port=5222):
+    def __init__(self, jid, password, host=None, port=5222, logid=None):
         XMPPClient.__init__(self, jid, password, host=host, port=port)
+        self.log = getLoggerAdapter(log) if logid is None else getLoggerAdapter(log, id=logid)
         self.factory.addBootstrap(xmlstream.STREAM_ERROR_EVENT, self._onStreamError)
         self._authFailureTime = None
     
     def _onStreamError(self, reason):
-        log.err(reason, 'STREAM_EROR_EVENT')
+        self.log.err(reason, 'STREAM_EROR_EVENT')
+    
+    def _connected(self, xs):
+        XMPPClient._connected(self, xs)
+        def logDataIn(buf):
+            self.log.debug("RECV: %r", buf)
+
+        def logDataOut(buf):
+            self.log.debug("SEND: %r", buf)
+        
+        if self.logTraffic:
+            self.xmlstream.rawDataInFn = logDataIn
+            self.xmlstream.rawDataOutFn = logDataOut
     
     def _authd(self, xs):
         self._authFailureTime = None
@@ -60,7 +75,7 @@ class ReauthXMPPClient(XMPPClient):
         """
         #I cannot stop factory retrying and if I set the delay too higher, reconnection delay wil be executed in the future
         #and resetDelay will not work. Instead we wait 60 seconds to negotiate the new credentials
-        log.err(reason, 'AUTH_ERROR_EVENT')
+        self.log.err(reason, 'AUTH_ERROR_EVENT')
         
         #TODO: send a push notification to client and save disconnected state in client
         self.stopService()

@@ -39,6 +39,7 @@ class GenericXMPPHandler(object):
     
     def __init__(self, client):
         self.client = client
+        self.log = client.log
         self.protocol = None
     
     def setProtocol(self, protocol):

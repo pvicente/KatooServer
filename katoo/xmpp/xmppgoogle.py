@@ -4,10 +4,9 @@ Created on Jun 5, 2013
 @author: pvicente
 '''
 from katoo import conf
-from katoo.apns.api import sendchatmessage, sendcustom
+from katoo.apns.api import API
 from katoo.data import GoogleMessage, GoogleContact, GoogleRosterItem
 from twisted.internet import defer
-from twisted.python import log
 from twisted.words.protocols.jabber import jid
 from wokkel_extensions import ReauthXMPPClient
 from xmppprotocol import CompleteBotProtocol, GenericXMPPHandler
@@ -63,7 +62,6 @@ class ContactInformation(object):
     def load(cls, user, roster_item):
         d = GoogleContact.load(user.userid, roster_item.jid)
         d.addCallback(lambda x: cls._load_callback(user, roster_item, x))
-        d.addErrback(log.err)
         return d
     
     def __init__(self, user, roster_item, contact):
@@ -95,12 +93,12 @@ class GoogleHandler(GenericXMPPHandler):
     
     def onConnectionEstablished(self):
         self.connectionTime = None
-        log.msg('CONNECTION_ESTABLISHED %s:%s'%(self.user.userid, self.user.jid))
+        self.log.info('CONNECTION_ESTABLISHED %s', self.user.jid)
     
     def onConnectionLost(self, reason):
         connectedTime = 0 if self.connectionTime is None else time.time() - self.connectionTime
         isAuthenticating = self.client.isAuthenticating()
-        log.msg('CONNECTION_LOST %s:%s. Connected Time: %s. Authenticating: %s. Reason %s'%(self.user.userid, self.user.jid, connectedTime, isAuthenticating, str(reason)))
+        self.log.info('CONNECTION_LOST %s. Connected Time: %s. Authenticating: %s. Reason %s', self.user.jid, connectedTime, isAuthenticating, str(reason))
         if not isAuthenticating:
             if connectedTime < conf.XMPP_MIN_CONNECTED_TIME:
                 self.client.retries += 1
@@ -112,21 +110,21 @@ class GoogleHandler(GenericXMPPHandler):
     
     def onAuthenticated(self):
         self.connectionTime = time.time()
-        log.msg('CONNECTION_AUTHENTICATED %s:%s'%(self.user.userid, self.user.jid))
+        self.log.info('CONNECTION_AUTHENTICATED %s', self.user.jid)
     
     def onAvailableReceived(self, jid):
         if self.isOwnBareJid(jid) and jid.resource == self.user.resource:
-            log.msg('APP_GO_ONLINE %s:%s'%(self.user.userid, self.user.jid))
+            self.log.info('APP_GO_ONLINE %s',self.user.jid)
             self.user.away = False
             return self.user.save()
-        log.msg('XMPP_GO_ONLINE %s:%s -> %s@%s/%r'%(self.user.userid, self.user.jid, jid.user, jid.host, jid.resource))
+        self.log.debug('XMPP_GO_ONLINE %s <- %s@%s/%r', self.user.jid, jid.user, jid.host, jid.resource)
     
     def onUnavailableReceived(self, jid):
         if self.isOwnBareJid(jid) and jid.resource == self.user.resource:
-            log.msg('APP_GO_AWAY %s:%s'%(self.user.userid, self.user.jid))
+            self.log.info('APP_GO_AWAY %s', self.user.jid)
             self.user.away = True
             return self.user.save()
-        log.msg('XMPP_GO_OFFLINE %s:%s -> %s@%s/%r'%(self.user.userid, self.user.jid, jid.user, jid.host, jid.resource))
+        self.log.debug('XMPP_GO_OFFLINE %s <- %s@%s/%r', self.user.jid, jid.user, jid.host, jid.resource)
     
     def onRosterReceived(self, roster):
         self.roster.processRoster(roster)
@@ -139,23 +137,27 @@ class GoogleHandler(GenericXMPPHandler):
     
     @defer.inlineCallbacks
     def onMessageReceived(self, fromjid, msgid, body):
-        log.msg("MESSAGE_RECEIVED %s:%s. msgid(%s) from(%s): %r"%(self.user.userid, self.user.jid, msgid, fromjid, body))
+        self.log.debug("MESSAGE_RECEIVED to %s. msgid(%s) from(%s): %r", self.user.jid, msgid, fromjid, body)
         barefromjid=fromjid.userhost()
         message = GoogleMessage(userid=self.user.userid, fromid=barefromjid, msgid=msgid, data=body)
-        yield message.save()
-        if self.user.pushtoken and self.user.away:
-            roster_item = yield self.roster.get(barefromjid)
-            if roster_item is None:
-                roster_item = GoogleRosterItem(_userid=self.user.userid, _jid=barefromjid, _name=fromjid.user)
-            contact_info = yield ContactInformation.load(self.user, roster_item)
-            log.msg('SENDING_PUSH %s:%s. RosterItem: %s Contact Info: %s, User data: %s'%(self.user.userid, self.user.jid, roster_item, contact_info, self.user))
-            self.user.badgenumber += 1
-            yield sendchatmessage(msg=body, token=self.user.pushtoken, badgenumber=self.user.badgenumber, jid=contact_info.barejid, fullname=contact_info.name, sound=contact_info.sound, emoji=contact_info.emoji)
-            yield self.user.save()
+        try:
+            yield message.save()
+            if self.user.pushtoken and self.user.away:
+                roster_item = yield self.roster.get(barefromjid)
+                if roster_item is None:
+                    roster_item = GoogleRosterItem(_userid=self.user.userid, _jid=barefromjid, _name=fromjid.user)
+                contact_info = yield ContactInformation.load(self.user, roster_item)
+                self.user.badgenumber += 1
+                self.log.debug('SENDING_PUSH %s. RosterItem: %s Contact Info: %s, User data: %s', self.user.jid, roster_item, contact_info, self.user)
+                yield API(self.user.userid).sendchatmessage(msg=body, token=self.user.pushtoken, badgenumber=self.user.badgenumber, jid=contact_info.barejid, fullname=contact_info.name, sound=contact_info.sound, emoji=contact_info.emoji)
+                self.log.debug('PUSH SENT %s', self.user.jid)
+                yield self.user.save()
+        except Exception as e:
+            self.log.err(e, 'ON_MESSAGE_RECEIVED_EXCEPTION')
     
 class XMPPGoogle(ReauthXMPPClient):
     def __init__(self, user, app):
-        ReauthXMPPClient.__init__(self, jid=jid.JID("%s/%s"%(user.jid,conf.XMPP_RESOURCE)), password=user.token, host="talk.google.com", port=5222)
+        ReauthXMPPClient.__init__(self, jid=jid.JID("%s/%s"%(user.jid,conf.XMPP_RESOURCE)), password=user.token, host="talk.google.com", port=5222, logid=user.userid)
         self.user = user
         self.retries = 0
         self.logTraffic = conf.XMPP_LOG_TRAFFIC
@@ -172,11 +174,11 @@ class XMPPGoogle(ReauthXMPPClient):
         return self.user.userid
     
     def _onStreamError(self, reason):
-        log.err(reason, 'STREAM_EROR_EVENT %s:%s'%(self.user.userid, self.user.jid))
+        self.log.err(reason, 'STREAM_EROR_EVENT %s'%(self.user.jid))
     
     @defer.inlineCallbacks
     def onAuthenticationRenewal(self, reason):
-        log.msg('AUTH_RENEWAL_EVENT %s:%s. with refresh_token %s'%(self.user.userid, self.user.jid, self.user.refreshtoken))
+        self.log.info('AUTH_RENEWAL_EVENT %s', self.user.jid)
         postdata={'client_id': conf.GOOGLE_CLIENT_ID, 'client_secret': conf.GOOGLE_CLIENT_SECRET, 'refresh_token': self.user.refreshtoken, 'grant_type': 'refresh_token'}
         e = ''
         try:
@@ -185,32 +187,32 @@ class XMPPGoogle(ReauthXMPPClient):
             if response.code != 200:
                 raise ValueError('Wrong response code:%s. Body: %s'%(response.code, response.body))
             data = json.loads(response.body)
-            log.msg('AUTH_RENEWAL_NEW_DATA %s:%s. New auth data: %s'%(self.user.userid, self.user.jid, data))
+            self.log.debug('AUTH_RENEWAL_NEW_DATA %s. New auth data: %s', self.user.jid, data)
             self.user.token = data['access_token']
             #Updating authenticator password with new credentials
             self.factory.authenticator.password = self.user.token
             yield self.user.save()
         except Exception as ex:
             e = ex
-            log.err(e, 'AUTH_RENEWAL_ERROR %s:%s'%(self.user.userid, self.user.jid))
+            self.log.err(e, 'AUTH_RENEWAL_ERROR %s'%(self.user.jid))
         finally:
             #Calling to super to perform default behaviour (decrement counter to stop connection in the next retry if not success)
             ReauthXMPPClient.onAuthenticationRenewal(self, e)
     
     def onAuthenticationError(self, reason):
-        log.err(reason, 'AUTH_ERROR_EVENT %s:%s'%(self.user.userid, self.user.jid))
+        self.log.err(reason, 'AUTH_ERROR_EVENT %s'%(self.user.jid))
         if self.user.pushtoken:
-            sendcustom(lang=self.user.lang, token=self.user.pushtoken, badgenumber=self.user.badgenumber, type_msg='authfailed', sound='')
+            API(self.user.userid).sendcustom(lang=self.user.lang, token=self.user.pushtoken, badgenumber=self.user.badgenumber, type_msg='authfailed', sound='')
         return self.disconnect()
     
     def onMaxRetries(self):
-        log.err('CONNECTION_MAX_RETRIES %s:%s'%(self.user.userid, self.user.jid))
+        self.log.error('CONNECTION_MAX_RETRIES %s', self.user.jid)
         if self.user.pushtoken:
-            sendcustom(lang=self.user.lang, token=self.user.pushtoken, badgenumber=self.user.badgenumber, type_msg='maxretries', sound='')
+            API(self.user.userid).sendcustom(lang=self.user.lang, token=self.user.pushtoken, badgenumber=self.user.badgenumber, type_msg='maxretries', sound='')
         return self.disconnect()
     
     def disconnect(self, change_state=True):
-        log.msg('DISCONNECTED %s:%s'%(self.user.userid, self.user.jid))
+        self.log.info('DISCONNECTED %s', self.user.jid)
         deferred_list = [defer.maybeDeferred(self.disownServiceParent)]
         if change_state:
             self.user.away = True
@@ -235,8 +237,8 @@ if __name__ == '__main__':
     delivery.ApnService = apns = APNSService(cert_path=conf.APNS_CERT, environment=conf.APNS_SANDBOX, timeout=5)
     apns.setName(conf.APNSERVICE_NAME)
 
-    log.startLogging(sys.stdout)
     app = KatooApp().app
+    import twisted.python.log
+    twisted.python.log.startLogging(sys.stdout)
     XMPPGoogle(GoogleUser("1", _token=os.getenv('TOKEN'), _refreshtoken=os.getenv('REFRESHTOKEN'), _resource="asdfasdf", _pushtoken=os.getenv('PUSHTOKEN', None), _jid=os.getenv('JID'), _pushsound='cell1.aif', _favoritesound='cell7.aif', _away=True), app)
-    KatooApp().start()
     reactor.run()
