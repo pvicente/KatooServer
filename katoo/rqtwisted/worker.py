@@ -30,7 +30,7 @@ yellow = make_colorizer('darkyellow')
 blue = make_colorizer('darkblue')
 
 class Worker(service.Service, RedisMixin, rq.worker.Worker):
-    def __init__(self, queues, name=None, 
+    def __init__(self, queues, name=None, loops = 1, blocking_time = 1,
         default_result_ttl=DEFAULT_RESULT_TTL, connection=None, 
         exc_handler=None, default_worker_ttl=DEFAULT_WORKER_TTL):
         if connection is None:
@@ -50,7 +50,8 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         self._stopped = False
         self.log = log
         self.failed_queue = FailedQueue(connection=self.connection)
-        self.blocking_time = 1
+        self.blocking_time = blocking_time
+        self.loops = loops
     
     @classmethod
     def default_name(cls):
@@ -91,7 +92,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     
     def register_death(self):
         """Registers its own death."""
-        self.log.msg('Registering death of worker', self.name)
+        self.log.msg('Registering death of worker %s'%(self.name))
         d1 = self.connection.srem(self.redis_workers_keys, self.key)
         d2 = self.connection.hset(self.key, 'death', time.time())
         
@@ -164,15 +165,15 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
                 d = threads.deferToThread(job.perform)
                 d.addCallback(self.callback_perform_job)
                 d.addErrback(self.errback_perform_job, job=job)
-            except cyclone.redis.ConnectionError:
-                log.err()
+            except cyclone.redis.ConnectionError as e:
+                self.log.err(e, 'REDIS_CONNECTION_ERROR')
                 connection_errors += 1
                 if connection_errors >= 3:
                     self._stopped = True
-                    log.msg('Exiting due too many connection errors (%s) with redis'%(connection_errors))
+                    self.log.msg('Exiting due too many connection errors (%s) with redis'%(connection_errors))
                     reactor.stop()
-            except Exception:
-                log.err()
+            except Exception as e:
+                self.log.err(e, 'UNKNOWN_EXCEPTION')
                 if not job is None:
                     job.status = Status.FAILED
                     self.move_to_failed_queue(job, *sys.exc_info())
@@ -205,7 +206,8 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     
     def startService(self):
         reactor.callLater(conf.TWISTED_WARMUP, self.register_birth)
-        reactor.callLater(conf.TWISTED_WARMUP+1, self.work)
+        for _ in xrange(self.loops):
+            reactor.callLater(conf.TWISTED_WARMUP+1, self.work)
         service.Service.startService(self)
 
     def stopService(self):

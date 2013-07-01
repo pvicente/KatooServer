@@ -8,6 +8,7 @@ from katoo.rqtwisted.worker import Worker
 from katoo.web import app
 from twisted.application import internet
 from katoo.supervisor import Supervisor
+from katoo.utils.applog import getLoggerAdapter, getLogger
 
 application = KatooApp().app
 webservice = internet.TCPServer(conf.PORT, app, interface=conf.LISTEN) 
@@ -17,5 +18,6 @@ supervisor = Supervisor()
 supervisor.setServiceParent(application)
 
 if conf.REDIS_WORKERS > 0:
-    w=Worker(['default'])
+    w=Worker(['default'], name=conf.MACHINEID, loops=conf.REDIS_WORKERS)
+    w.log = getLoggerAdapter(getLogger('WORKER'), id='WORKER')
     w.setServiceParent(application)
