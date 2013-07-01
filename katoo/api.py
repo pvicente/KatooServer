@@ -16,7 +16,7 @@ class API(object):
         self.log = getLoggerAdapter(log, id=userid)
 
     def login(self, xmppuser):
-        self.log.msg('LOGIN %s:%s. Data: %s'%(xmppuser.userid, xmppuser.jid, xmppuser))
+        self.log.info('LOGIN %s. Data: %s', xmppuser.jid, xmppuser)
         userid = xmppuser.userid
         running_client = KatooApp().getService(userid)
         if not running_client is None:
@@ -26,7 +26,7 @@ class API(object):
         return xmppuser.save()
 
     def update(self, userid, **kwargs):
-        self.log.msg('UPDATE %s. Data: %s'%(userid, kwargs))
+        self.log.info('UPDATE. Data: %s', kwargs)
         running_client = KatooApp().getService(userid)
         if running_client is None:
             raise XMPPUserNotLogged('User %s is not running in current worker'%(userid))
@@ -35,7 +35,7 @@ class API(object):
         return xmppuser.save()
     
     def logout(self, userid):
-        self.log.msg('LOGOUT %s'%(userid))
+        self.log.info('LOGOUT')
         running_client = KatooApp().getService(userid)
         if running_client is None:
             raise XMPPUserNotLogged('User %s is not running in current worker'%(userid))
@@ -45,7 +45,7 @@ class API(object):
         return d
     
     def disconnect(self, userid, change_state=True):
-        self.log.msg('DISCONNECTING %s'%(userid))
+        self.log.info('DISCONNECTING')
         running_client = KatooApp().getService(userid)
         if running_client is None:
             raise XMPPUserNotLogged('User %s is not running in current worker'%(userid))
