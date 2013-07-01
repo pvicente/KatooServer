@@ -13,10 +13,10 @@ from twisted.internet.task import LoopingCall
 import cyclone.httpclient
 from katoo.utils.applog import getLogger, getLoggerAdapter
 
-log = getLogger(__name__)
+log = getLogger(__name__, level='INFO')
 
 class Supervisor(service.Service):
-    log = getLoggerAdapter(log, id='SUPERVISOR')
+    log = getLoggerAdapter(log, id='SUPERVISOR-%s'%(conf.MACHINEID))
     
     @property
     def name(self):
