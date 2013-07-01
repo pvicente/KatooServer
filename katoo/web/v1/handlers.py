@@ -90,14 +90,15 @@ class GoogleHandler(MyRequestHandler):
                 #user not connected removing from database
                 yield user.remove(user.userid)
             
+            response_data = {'success': False, 'reason': 'Already logged'}
             if user is None or not user.connected:
                 user = GoogleUser(_userid=key, **self.args)
                 yield API(key).login(user)
-                self._response_json({'success': True, 'reason': 'ok'})
-            else:
-                self._response_json({'success': False, 'reason': 'Already logged'})
+                response_data = {'success': True, 'reason': 'ok'}
         except XMPPUserAlreadyLogged:
-            self._response_json({'success': False, 'reason': 'Already logged'})
+            pass
+        response_data.update(dict(background_time=conf.XMPP_BACKGROUND_TIME, resource_prefix=conf.XMPP_RESOURCE))
+        self._response_json(response_data)
     
     @defer.inlineCallbacks
     def put(self, key):
