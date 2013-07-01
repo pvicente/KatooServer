@@ -217,7 +217,8 @@ class GoogleUser(object):
                  _connected=True,
                  _away=False,
                  _id = None,
-                 _lastTimeConnected=None):
+                 _lastTimeConnected=None,
+                 _worker=conf.MACHINEID):
         self._userid = unicode(_userid)
         self._jid = unicode(_jid)
         self._token = unicode(_token)
@@ -231,6 +232,7 @@ class GoogleUser(object):
         self._connected = eval(str(_connected))
         self._away = eval(str(_away))
         self._lastTimeConnected=_lastTimeConnected
+        self._worker=_worker
         if isinstance(_id, ObjectId):
             self._id = _id
     
@@ -352,6 +354,14 @@ class GoogleUser(object):
     @property
     def lastTimeConnected(self):
         return self._lastTimeConnected
+    
+    @property
+    def worker(self):
+        return self._worker
+    
+    @worker.setter
+    def worker(self, value):
+        self._worker=value
     
 if __name__ == '__main__':
     from twisted.internet import reactor

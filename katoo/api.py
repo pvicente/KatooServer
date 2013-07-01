@@ -3,7 +3,7 @@ Created on Jun 5, 2013
 
 @author: pvicente
 '''
-from katoo import KatooApp
+from katoo import KatooApp, conf
 from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
 from katoo.utils.applog import getLogger, getLoggerAdapter
 from katoo.xmpp.xmppgoogle import XMPPGoogle
@@ -22,6 +22,7 @@ class API(object):
         if not running_client is None:
             raise XMPPUserAlreadyLogged('Service %s already running'%(running_client))
         XMPPGoogle(xmppuser, KatooApp().app)
+        xmppuser.worker=conf.MACHINEID
         return xmppuser.save()
 
     def update(self, userid, **kwargs):
