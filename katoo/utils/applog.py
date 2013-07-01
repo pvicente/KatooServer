@@ -51,8 +51,11 @@ class AppLoggingAdapter(logging.LoggerAdapter):
             else:
                 self.error("%s. %s", msg, error.getBriefTraceback())
 
-def getLogger(name):
-    return logging.getLogger(name)
+def getLogger(name, level=None):
+    ret = logging.getLogger(name)
+    if not level is None:
+        ret.setLevel(TwistedLogging.getLevelFromStr(level))
+    return ret
  
 def getLoggerAdapter(logger, id=None):
     return AppLoggingAdapter(logger, dict(id=id))
