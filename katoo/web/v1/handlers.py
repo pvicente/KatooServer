@@ -70,26 +70,33 @@ class GoogleHandler(MyRequestHandler):
     @defer.inlineCallbacks
     def post(self, key):
         self.constructor(key, login_arguments)
-        try:
-            user = yield GoogleUser.load(key)
-            
-            if user is None:
-                #Logout of users with the same pushtoken
-                user_to_logout = yield GoogleUser.load(pushtoken=self.args['_pushtoken'])
-                if not user_to_logout is None:
+        
+        user = yield GoogleUser.load(key)
+        
+        if user is None:
+            #Logout of users with the same pushtoken
+            user_to_logout = yield GoogleUser.load(pushtoken=self.args['_pushtoken'])
+            if not user_to_logout is None:
+                try:
                     self.log.msg('WEB_HANDLER_LOGOUT %s with the same pushtoken'%(user_to_logout.userid))
                     yield API(key).logout(user_to_logout.userid)
-            elif user.connected:
-                #Logout user with the same appid but other jid
-                user_to_logout = yield GoogleUser.load(userid=key, jid=self.args['_jid'])
-                if user_to_logout is None:
+                except XMPPUserNotLogged:
+                    yield GoogleUser.remove(user_to_logout.userid)
+        elif user.connected:
+            #Logout user with the same appid but other jid
+            user_to_logout = yield GoogleUser.load(userid=key, jid=self.args['_jid'])
+            if user_to_logout is None:
+                try:
                     self.log.msg('WEB_HANDLER_LOGOUT %s with other jid: %s->%s'%(key, user.jid, self.args['_jid']))
                     yield API(key).logout(key)
-                    user = None
-            else:
-                #user not connected removing from database
-                yield user.remove(user.userid)
-            
+                except XMPPUserNotLogged:
+                    yield GoogleUser.remove(key)
+                user = None
+        else:
+            #user not connected removing from database
+            yield GoogleUser.remove(user.userid)
+        
+        try:
             response_data = {'success': False, 'reason': 'Already logged'}
             if user is None or not user.connected:
                 user = GoogleUser(_userid=key, **self.args)
