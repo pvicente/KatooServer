@@ -76,35 +76,16 @@ class Job(rq.job.Job):
 
     status = property(_get_status, _set_status)
 
-    def _result_impl(self, value):
-        if value is not None:
-                # cache the result
-                self._result = loads(value)
-        return defer.succeed(self._result)  
-
-    @property
-    def result(self):
-        """Returns the return value of the job.
-
-        Initially, right after enqueueing a job, the return value will be
-        None.  But when the job has been executed, and had a return value or
-        exception, this will return that value or exception.
-
-        Note that, when the job has no return value (i.e. returns None), the
-        ReadOnlyJob object is useless, as the result won't be written back to
-        Redis.
-
-        Also note that you cannot draw the conclusion that a job has _not_
-        been executed when its return value is None, since return values
-        written back to Redis will expire after a given amount of time (500
-        seconds by default).
-        """
+    @defer.inlineCallbacks
+    def _get_result(self):
         if self._result is None:
-            d = self.connection.hget(self.key, 'result')
-            d.addCallback(self._result_impl)
-            return d
-        return defer.succeed(self._result)
-
+            rv = yield self.connection.hget(self.key, 'result')
+            if rv is not None:
+                self._result = loads(str(rv))
+        defer.returnValue(self._result)
+    
+    result = property(_get_result)
+    
     """Backwards-compatibility accessor property `return_value`."""
     return_value = result
     

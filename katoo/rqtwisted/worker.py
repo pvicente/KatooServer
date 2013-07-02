@@ -186,13 +186,17 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     @defer.inlineCallbacks
     def callback_perform_job(self, result):
         rv, job = result
+        if isinstance(rv, defer.Deferred):
+            rv = yield rv
         pickled_rv = dumps(rv)
         job._status = Status.FINISHED
         job.ended_at = times.now()
-#             if rv is None:
-#                 self.log.msg('Job OK')
-#             else:
-#                 self.log.msg('Job OK, result = %s' % (yellow(unicode(rv)),))
+        
+        if rv is None:
+            self.log.msg('Job OK')
+        else:
+            self.log.msg('Job OK, result = %r' % unicode(rv))
+        
         result_ttl =  self.default_result_ttl if job.result_ttl is None else job.result_ttl
         if result_ttl == 0:
             yield job.delete()
