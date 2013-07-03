@@ -7,7 +7,7 @@ from functools import wraps
 from katoo.rqtwisted.job import Job
 from katoo.rqtwisted.queue import Queue, Status
 from twisted.internet import defer, reactor
-import sys
+from katoo.exceptions import XMPPUserNotLogged
 
 def sleep(secs):
     d = defer.Deferred()
@@ -23,12 +23,13 @@ def get_result(job_id):
         status = yield job.status
     
     ret = None
-    if status == Status.FAILED:
-        job = yield job.fetch(job_id, job.connection)
-        exc_info = job.exc_info
-        print exc_info
-    elif status == Status.FINISHED:
+    if status == Status.FINISHED:
         ret = yield job.result
+    elif status == Status.FAILED:
+        job = yield job.fetch(job_id, job.connection)
+        failure = job.exc_info
+        if not failure is None:
+            failure.raiseException()
     defer.returnValue(ret)
 
 def synchronous_action(f):
@@ -65,8 +66,6 @@ if __name__ == '__main__':
         yield job.connection.hset(job.key, 'result', pickled_rv)
         res= yield job.result
         
-
-        
         user=GoogleUser(_userid="1", _token="asdasdf", _refreshtoken="refreshtoken", _resource="unknownresource", _pushtoken="", _badgenumber="0", _pushsound="asdfasdfas", _jid='kk@gmail.com')
         my_log.info('User:%s before saving'%(user))
         res = yield user.save()
@@ -75,8 +74,15 @@ if __name__ == '__main__':
         my_log.info('Login result %s. Sleeping 10 seconds', ret)
         yield sleep(10)
         my_log.info('Result login %s', ret)
-        ret = yield API(user.userid, 'default').logout(user.userid)
-        my_log.info('Result logout %s', ret)
+        try:
+            ret = yield API(user.userid, 'default').logout(user.userid)
+        except XMPPUserNotLogged as e:
+            my_log.error('Exception launch %s', e)
+        try:
+            ret = yield API(user.userid).logout(user.userid)
+        except XMPPUserNotLogged as e:
+            my_log.error('Exception launch %s', e)
+        
 #        reactor.callLater(5, API(user.userid).login, user)
 #        reactor.callLater(7, API(user.userid).update, user.userid, token="ya29.AHES6ZRDTu4pDWdA_LBrNWF1vnI5NEtdB8V0v6JN46QTaw")
 #        reactor.callLater(10, API(user.userid).logout, user.userid)

@@ -114,7 +114,7 @@ class Job(rq.job.Job):
         self.enqueued_at = to_date(obj.get('enqueued_at'))
         self.ended_at = to_date(obj.get('ended_at'))
         self._result = unpickle(str(obj.get('result'))) if obj.get('result') else None  # noqa
-        self.exc_info = obj.get('exc_info')
+        self.exc_info = unpickle(str(obj.get('exc_info'))) if obj.get('exc_info') else None  # noqa
         self.timeout = int(obj.get('timeout')) if obj.get('timeout') else None
         self.result_ttl = int(obj.get('result_ttl')) if obj.get('result_ttl') else None # noqa
         self._status = obj.get('status') if obj.get('status') else None

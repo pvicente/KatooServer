@@ -3,6 +3,7 @@ Created on Jun 2, 2013
 
 @author: pvicente
 '''
+from katoo import conf
 from katoo.rqtwisted.queue import Queue, FailedQueue
 from katoo.utils.connections import RedisMixin
 from pickle import dumps
@@ -12,6 +13,7 @@ from rq.utils import make_colorizer
 from twisted.application import service
 from twisted.internet import defer, threads, reactor
 from twisted.python import log
+from twisted.python.failure import Failure
 import cyclone.redis
 import os
 import platform
@@ -20,7 +22,6 @@ import sys
 import time
 import times
 import traceback
-from katoo import conf
 
 DEFAULT_RESULT_TTL = 5
 DEFAULT_WORKER_TTL = 420
@@ -143,9 +144,9 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         """Default exception handler: move the job to the failed queue."""
         failure = kwargs.get('failure')
         if failure is None:
-            exc_string = ''.join(traceback.format_exception(*exc_info))
+            exc_string = dumps(Failure(exc_info[0], exc_info[1], exc_info[2]))
         else:
-            exc_string = failure.getTraceback()
+            exc_string = dumps(failure)
         yield self.failed_queue.quarantine(job, exc_info=exc_string)
     
     @defer.inlineCallbacks
