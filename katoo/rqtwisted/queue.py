@@ -99,19 +99,21 @@ class Queue(rq.queue.Queue):
     def compact(self):
         raise NotImplemented()
     
+    @defer.inlineCallbacks
     def push_job_id(self, job_or_id):  # noqa
         """Pushes a job ID on the corresponding Redis queue."""
         job_id = job_or_id.id if isinstance(job_or_id, Job) else job_or_id
-        d = self.connection.rpush(self.key, job_id)
-        d.addCallback(lambda x: job_id)
-        return d
-
+        yield self.connection.rpush(self.key, job_id)
+        defer.returnValue(job_id)
     
+    @defer.inlineCallbacks
     def pop_job_id(self):
         """Pops a given job ID from this Redis queue."""
-        return self.connection.lpop(self.key)
+        ret = yield self.connection.lpop(self.key)
+        defer.returnValue(ret)
     
 
+    @defer.inlineCallbacks
     def enqueue_call(self, func, args=None, kwargs=None, timeout=None, result_ttl=None): #noqa
         """Creates a job to represent the delayed function call and enqueues
         it.
@@ -123,8 +125,10 @@ class Queue(rq.queue.Queue):
         timeout = timeout or self._default_timeout
         job = Job.create(func, args, kwargs, connection=self.connection,
                          result_ttl=result_ttl, status=Status.QUEUED)
-        return self.enqueue_job(job, timeout=timeout)
+        ret = yield self.enqueue_job(job, timeout=timeout)
+        defer.returnValue(ret)
 
+    @defer.inlineCallbacks
     def enqueue(self, f, *args, **kwargs):
         """Creates a job to represent the delayed function call and enqueues
         it.
@@ -155,9 +159,11 @@ class Queue(rq.queue.Queue):
             result_ttl = kwargs.pop('result_ttl', None)
             kwargs = kwargs.pop('kwargs', None)
 
-        return self.enqueue_call(func=f, args=args, kwargs=kwargs,
+        ret = yield self.enqueue_call(func=f, args=args, kwargs=kwargs,
                                  timeout=timeout, result_ttl=result_ttl)
+        defer.returnValue(ret)
 
+    @defer.inlineCallbacks
     def enqueue_job(self, job, timeout=None, set_meta_data=True):
         """Enqueues a job for delayed execution.
 
@@ -178,9 +184,9 @@ class Queue(rq.queue.Queue):
             job.timeout = timeout  # _timeout_in_seconds(timeout)
         else:
             job.timeout = 180  # default
-        d = job.save()
-        d.addCallback(self.push_job_id)
-        return d
+        job = yield job.save()
+        ret = yield self.push_job_id(job)
+        defer.returnValue(ret)
 
     @classmethod
     def lpop(cls, queue_keys, timeout, connection=None):
@@ -222,6 +228,7 @@ class FailedQueue(Queue):
     def __init__(self, connection=None):
         super(FailedQueue, self).__init__('failed', connection=connection)
 
+    @defer.inlineCallbacks
     def quarantine(self, job, exc_info):
         """Puts the given Job in quarantine (i.e. put it on the failed
         queue).
@@ -232,7 +239,9 @@ class FailedQueue(Queue):
         """
         job.ended_at = times.now()
         job.exc_info = exc_info
-        return self.enqueue_job(job, timeout=job.timeout, set_meta_data=False)
+        job.status = Status.FAILED
+        ret = yield self.enqueue_job(job, timeout=job.timeout, set_meta_data=False)
+        defer.returnValue(ret)
 
     def requeue(self, job_id):
         """Requeues the job with the given job ID."""

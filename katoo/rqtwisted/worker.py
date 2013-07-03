@@ -137,7 +137,8 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
                 raise NoQueueError('Give each worker at least one Queue.')
             final_queue.append(queue)
         self.queues = final_queue
-
+    
+    @defer.inlineCallbacks
     def move_to_failed_queue(self, job, *exc_info,**kwargs ):
         """Default exception handler: move the job to the failed queue."""
         failure = kwargs.get('failure')
@@ -145,7 +146,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
             exc_string = ''.join(traceback.format_exception(*exc_info))
         else:
             exc_string = failure.getTraceback()
-        return self.failed_queue.quarantine(job, exc_info=exc_string)
+        yield self.failed_queue.quarantine(job, exc_info=exc_string)
     
     @defer.inlineCallbacks
     def work(self):
@@ -176,12 +177,12 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
                 self.log.err(e, 'UNKNOWN_EXCEPTION')
                 if not job is None:
                     job.status = Status.FAILED
-                    self.move_to_failed_queue(job, *sys.exc_info())
+                    yield self.move_to_failed_queue(job, *sys.exc_info())
     
+    @defer.inlineCallbacks
     def errback_perform_job(self, failure, job):
         self.log.msg('errback perform job: %s. Failure: %s'%(job, failure))
-        job.status = Status.FAILED
-        return self.move_to_failed_queue(job, failure=failure)
+        yield self.move_to_failed_queue(job, failure=failure)
     
     @defer.inlineCallbacks
     def callback_perform_job(self, result):

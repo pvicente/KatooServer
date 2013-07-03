@@ -14,9 +14,13 @@ log = getLogger(__name__)
 class API(object):
     def __init__(self, userid=None, queue_name=None):
         self.userid = userid
-        self._log = None
+        self._log = getLoggerAdapter(log, id=self.userid)
         self.queue_name = queue_name
         self.enqueued = False
+    
+    def __getstate__(self):
+        self._log = None
+        return self.__dict__
     
     @property
     def log(self):

@@ -66,10 +66,8 @@ class Job(rq.job.Job):
         self._status = yield self.connection.hget(self.key, 'status')
         defer.returnValue(self._status)
     
-    @defer.inlineCallbacks
     def _set_status(self, status):
         self._status = status
-        yield self.connection.hset(self.key, 'status', self._status)
 
     status = property(_get_status, _set_status)
 
@@ -115,7 +113,7 @@ class Job(rq.job.Job):
         self.description = obj.get('description')
         self.enqueued_at = to_date(obj.get('enqueued_at'))
         self.ended_at = to_date(obj.get('ended_at'))
-        self._result = unpickle(obj.get('result')) if obj.get('result') else None  # noqa
+        self._result = unpickle(str(obj.get('result'))) if obj.get('result') else None  # noqa
         self.exc_info = obj.get('exc_info')
         self.timeout = int(obj.get('timeout')) if obj.get('timeout') else None
         self.result_ttl = int(obj.get('result_ttl')) if obj.get('result_ttl') else None # noqa
@@ -133,6 +131,7 @@ class Job(rq.job.Job):
         d.addCallback(self.refresh_impl)
         return d
     
+    @defer.inlineCallbacks
     def save(self):
         """Persists the current job instance to its corresponding Redis key."""
         key = self.key
@@ -163,10 +162,9 @@ class Job(rq.job.Job):
         if self.meta:
             obj['meta'] = dumps(self.meta)
         
-        d = self.connection.hmset(key, obj)
-        d.addCallback(lambda x: self.id)
-        return d
-
+        yield self.connection.hmset(key, obj)
+        defer.returnValue(self.id)
+        
     def delete(self):
         """Deletes the job hash from Redis."""
         return self.connection.delete(self.key)
