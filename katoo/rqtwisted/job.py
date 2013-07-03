@@ -60,19 +60,16 @@ class Job(rq.job.Job):
             return defer.succeed(None)
         job = cls(job_id, connection=connection)
         return job.refresh()
-
-    def _get_status_impl(self, value):
-        self._status = value
-        return defer.succeed(self._status)
     
+    @defer.inlineCallbacks
     def _get_status(self):
-        d = self.connection.hget(self.key, 'status')
-        d.addCallback(self._get_status_impl)
-        return d
-        
+        self._status = yield self.connection.hget(self.key, 'status')
+        defer.returnValue(self._status)
+    
+    @defer.inlineCallbacks
     def _set_status(self, status):
         self._status = status
-        return self.connection.hset(self.key, 'status', self._status)
+        yield self.connection.hset(self.key, 'status', self._status)
 
     status = property(_get_status, _set_status)
 
