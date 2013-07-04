@@ -4,19 +4,18 @@ Created on Jun 5, 2013
 @author: pvicente
 '''
 from katoo import KatooApp, conf
-from katoo.action import synchronous_action
+from katoo.action import synchronous_action, DistributedAPI
 from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
 from katoo.utils.applog import getLogger, getLoggerAdapter
 from katoo.xmpp.xmppgoogle import XMPPGoogle
 
 log = getLogger(__name__)
 
-class API(object):
+class API(DistributedAPI):
     def __init__(self, userid=None, queue_name=None):
+        DistributedAPI.__init__(self, queue_name)
         self.userid = userid
         self._log = getLoggerAdapter(log, id=self.userid)
-        self.queue_name = queue_name
-        self.enqueued = False
     
     def __getstate__(self):
         self._log = None

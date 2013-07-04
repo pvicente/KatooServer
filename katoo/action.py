@@ -9,6 +9,11 @@ from katoo.rqtwisted.queue import Queue, Status
 from twisted.internet import defer, reactor
 from katoo.exceptions import XMPPUserNotLogged
 
+class DistributedAPI(object):
+    def __init__(self, queue_name=None):
+        self.queue_name = queue_name
+        self.enqueued = False
+
 def sleep(secs):
     d = defer.Deferred()
     reactor.callLater(secs, d.callback, None)
