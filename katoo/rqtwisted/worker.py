@@ -186,9 +186,9 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         
         #TODO: Remove log
         if rv is None:
-            self.log.msg('Job OK')
+            self.log.msg('[%s] Job OK'%(job))
         else:
-            self.log.msg('Job OK, result = %r' % unicode(rv))
+            self.log.msg('[%s] Job OK, result = %r' % (job, rv))
         
         result_ttl =  self.default_result_ttl if job.result_ttl is None else job.result_ttl
         if result_ttl == 0:

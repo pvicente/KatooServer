@@ -46,7 +46,7 @@ class Supervisor(service.Service):
         for data in away_users:
             try:
                 user = GoogleUser(**data)
-                yield API(user.userid).disconnect(user.userid)
+                yield API(user.userid, queue=user.worker).disconnect(user.userid)
                 yield APNSAPI(user.userid).sendcustom(lang=user.lang, token=user.pushtoken, badgenumber=user.badgenumber, type_msg='disconnect', sound='')
             except Exception as e:
                 self.log.error('Exception %s disconnecting user %s', e, data['_userid'])
