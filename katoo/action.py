@@ -4,6 +4,7 @@ Created on Jul 2, 2013
 @author: pvicente
 '''
 from functools import wraps
+from katoo import conf
 from katoo.exceptions import XMPPUserNotLogged
 from katoo.rqtwisted.job import Job
 from katoo.rqtwisted.queue import Queue, Status
@@ -11,24 +12,24 @@ from katoo.utils.time import sleep
 from twisted.internet import defer
 
 class DistributedAPI(object):
+    """API wiht distributed behaviour must subclass it to be performed"""
     def __init__(self, queue_name=None):
-        #TODO: Initialize if REDIS_WORKERS have been launched
-        self.queue_name = queue_name
+        self.queue_name = None if conf.DIST_DISABLED else queue_name
         self.enqueued = False
 
 class SynchronousCall(object):
+    """Make a synchronous call enqueing job in queue and returning result"""
     def __init__(self, queue):
-        #TODO: Initialize if REDIS_WORKERS has been launched
-        self.queue_name=queue
+        self.queue_name=None if conf.DIST_DISABLED else queue
     
     @defer.inlineCallbacks
     def get_result(self, job_id):
+        #TODO: launch timeout exception if it is reached
         #TODO: get previous job to optimize fetch
         job = yield Job.fetch(job_id)
         status = yield job.status
         while status == Status.QUEUED:
-            #TODO: Pulling time configurable
-            yield sleep(0.5)
+            yield sleep(conf.DIST_PULL_TIME)
             status = yield job.status
         
         ret = None
@@ -49,12 +50,15 @@ class SynchronousCall(object):
                 raise TypeError('SynchronousCall must be called with a DistributedAPI object')
             calling_self = args[0]
             args = args[1:]
-            self.queue_name = self.queue_name if self.queue_name else calling_self.queue_name
-            if calling_self.enqueued or self.queue_name is None:
+            
+            #More precedence queue_name of DistributedAPI than decorated method
+            queue_name = calling_self.queue_name if calling_self.queue_name else self.queue_name
+            
+            if calling_self.enqueued or not queue_name:
                 ret = yield f(calling_self, *args, **kwargs)
             else:
                 function = getattr(calling_self, getattr(f, 'func_name'))
-                queue = Queue(self.queue_name)
+                queue = Queue(queue_name)
                 calling_self.enqueued = True
                 #TODO: Return Job instead of job_id to optimize fetch
                 job_id = yield queue.enqueue_call(func=function, args=args, kwargs=kwargs)
@@ -63,7 +67,7 @@ class SynchronousCall(object):
         return wrapped_f
 
 if __name__ == '__main__':
-    from katoo import KatooApp, conf
+    from katoo import KatooApp
     from katoo.api import API
     from katoo.utils.applog import getLoggerAdapter, getLogger
     from twisted.internet import reactor
@@ -85,12 +89,12 @@ if __name__ == '__main__':
         my_log.info('User:%s before saving'%(user))
         res = yield user.save()
         my_log.info('User %s: saved. Res %s'%(user, res))
-        ret = yield API(user.userid, 'default').login(user)
+        ret = yield API(user.userid).login(user)
         my_log.info('Login result %s. Sleeping 10 seconds', ret)
         yield sleep(10)
         my_log.info('Result login %s', ret)
         try:
-            ret = yield API(user.userid, 'default').logout(user.userid)
+            ret = yield API(user.userid, conf.MACHINEID).logout(user.userid)
         except XMPPUserNotLogged as e:
             my_log.error('Exception launch %s', e)
         try:
@@ -106,7 +110,7 @@ if __name__ == '__main__':
     #log.startLogging(sys.stdout)
     
     app = KatooApp().app
-    w=Worker(['default'], name=conf.MACHINEID, loops=conf.REDIS_WORKERS)
+    w=Worker([conf.MACHINEID, conf.DIST_QUEUE_LOGIN], name=conf.MACHINEID, loops=conf.REDIS_WORKERS)
     w.log = getLoggerAdapter(getLogger('WORKER', level='INFO'), id='WORKER-%s'%(conf.MACHINEID))
     w.setServiceParent(app)
     KatooApp().service.startService()

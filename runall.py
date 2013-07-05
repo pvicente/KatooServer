@@ -18,6 +18,6 @@ supervisor = Supervisor()
 supervisor.setServiceParent(application)
 
 if conf.REDIS_WORKERS > 0:
-    w=Worker(['default'], name=conf.MACHINEID, loops=conf.REDIS_WORKERS)
+    w=Worker([conf.MACHINEID, conf.DIST_QUEUE_LOGIN], name=conf.MACHINEID, loops=conf.REDIS_WORKERS)
     w.log = getLoggerAdapter(getLogger('WORKER', level='INFO'), id='WORKER-%s'%(conf.MACHINEID))
     w.setServiceParent(application)

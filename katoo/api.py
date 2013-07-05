@@ -27,7 +27,7 @@ class API(DistributedAPI):
             self._log = getLoggerAdapter(log, id=self.userid)
         return self._log
     
-    @SynchronousCall(queue=None)
+    @SynchronousCall(queue=conf.DIST_QUEUE_LOGIN)
     def login(self, xmppuser):
         self.log.info('LOGIN %s. Data: %s', xmppuser.jid, xmppuser)
         userid = xmppuser.userid
@@ -38,7 +38,7 @@ class API(DistributedAPI):
         xmppuser.worker=conf.MACHINEID
         return xmppuser.save()
     
-    @SynchronousCall(queue=None)
+    @SynchronousCall(queue=None) #Queue is assigned at run time
     def update(self, userid, **kwargs):
         self.log.info('UPDATE. Data: %s', kwargs)
         running_client = KatooApp().getService(userid)
@@ -48,7 +48,7 @@ class API(DistributedAPI):
         xmppuser.update(**kwargs)
         return xmppuser.save()
     
-    @SynchronousCall(queue=None)
+    @SynchronousCall(queue=None) #Queue is assigned at run time
     def logout(self, userid):
         self.log.info('LOGOUT')
         running_client = KatooApp().getService(userid)
@@ -59,7 +59,7 @@ class API(DistributedAPI):
         d.addCallback(lambda x: user.remove(userid))
         return d
     
-    @SynchronousCall(queue=None)
+    @SynchronousCall(queue=None) #Queue is assigned at run time
     def disconnect(self, userid, change_state=True):
         self.log.info('DISCONNECTING')
         running_client = KatooApp().getService(userid)
