@@ -6,26 +6,9 @@ Created on Jun 5, 2013
 from katoo import KatooApp, conf
 from katoo.system import DistributedAPI, SynchronousCall
 from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
-from katoo.utils.applog import getLogger, getLoggerAdapter
 from katoo.xmpp.xmppgoogle import XMPPGoogle
 
-log = getLogger(__name__)
-
 class API(DistributedAPI):
-    def __init__(self, userid=None, queue=None):
-        DistributedAPI.__init__(self, queue)
-        self.userid = userid
-        self._log = getLoggerAdapter(log, id=self.userid)
-    
-    def __getstate__(self):
-        self._log = None
-        return self.__dict__
-    
-    @property
-    def log(self):
-        if self._log is None:
-            self._log = getLoggerAdapter(log, id=self.userid)
-        return self._log
     
     @SynchronousCall(queue=conf.DIST_QUEUE_LOGIN)
     def login(self, xmppuser):
@@ -66,5 +49,4 @@ class API(DistributedAPI):
         if running_client is None:
             raise XMPPUserNotLogged('User %s is not running in current worker'%(userid))
         return running_client.disconnect(change_state)
-    
     

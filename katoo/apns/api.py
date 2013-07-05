@@ -1,19 +1,14 @@
 '''
-Created on Aug 1, 2012
+Created on Jun 11, 2013
 
-@author: pedro.vicente
+@author: pvicente
 '''
 from apnmessage import PushParser, get_custom_message, CustomMessageException
 from delivery import sendapn
-from katoo.utils.applog import getLoggerAdapter, getLogger
+from katoo.system import DistributedAPI
 
-log = getLogger(__name__)
-
-class API(object):
-    def __init__(self, userid=None):
-        self.userid = userid
-        self.log = getLoggerAdapter(log, id=userid)
-
+class API(DistributedAPI):
+    
     def sendchatmessage(self, msg, token, sound, badgenumber, jid, fullname, emoji):
         message = u'{0}{1}: {2}'.format(emoji, fullname, PushParser.parse_message(msg))
         self.log.debug('SEND_CHAT_MESSAGE jid: %r fullname: %r badgenumber: %r sound: %r token: %r . %r. Raw msg: %r', jid, fullname, badgenumber, sound, token, message, msg)

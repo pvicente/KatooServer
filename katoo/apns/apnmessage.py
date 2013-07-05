@@ -1,7 +1,7 @@
 '''
-Created on Oct 30, 2012
+Created on Jun 11, 2013
 
-@author: pedro.vicente
+@author: pvicente
 '''
 
 import re

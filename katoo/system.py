@@ -5,19 +5,34 @@ Created on Jul 2, 2013
 '''
 from functools import wraps
 from katoo import conf
-from katoo.exceptions import XMPPUserNotLogged, DistributedJobTimeout,\
+from katoo.exceptions import XMPPUserNotLogged, DistributedJobTimeout, \
     DistributedJobFailure
 from katoo.rqtwisted.job import Job
 from katoo.rqtwisted.queue import Queue, Status
+from katoo.utils.applog import getLogger, getLoggerAdapter
 from katoo.utils.time import sleep
 from twisted.internet import defer
 
+log = getLogger(__name__)
+
 class DistributedAPI(object):
     """API with distributed behaviour must subclass it to be performed"""
-    def __init__(self, queue=None):
+    def __init__(self, key=None, queue=None):
+        self.key = key
         self.queue_name = None if conf.DIST_DISABLED else queue
         self.enqueued = False
-
+        self._log = getLoggerAdapter(log, id=self.key)
+    
+    def __getstate__(self):
+        self._log = None
+        return self.__dict__
+    
+    @property
+    def log(self):
+        if self._log is None:
+            self._log = getLoggerAdapter(log, id=self.key)
+        return self._log
+    
 class SynchronousCall(object):
     """Make a synchronous call enqueing job in queue and returning result"""
     def __init__(self, queue):
@@ -80,7 +95,6 @@ class SynchronousCall(object):
 if __name__ == '__main__':
     from katoo import KatooApp
     from katoo.api import API
-    from katoo.utils.applog import getLoggerAdapter, getLogger
     from twisted.internet import reactor
     from katoo.rqtwisted.worker import Worker
     from katoo.data import GoogleUser
