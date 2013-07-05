@@ -142,6 +142,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     def move_to_failed_queue(self, job, *exc_info,**kwargs ):
         """Default exception handler: move the job to the failed queue."""
         failure = kwargs.get('failure')
+        #TODO: print backtrace in exc_info and store Failure in meta
         if failure is None:
             exc_string = dumps(Failure(exc_info[0], exc_info[1], exc_info[2]))
         else:
