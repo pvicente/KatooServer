@@ -41,10 +41,9 @@ class SynchronousCall(object):
     @defer.inlineCallbacks
     def get_result(self, job):
         #TODO: Improve pulling using reactor.callLater (https://twistedmatrix.com/documents/12.0.0/core/howto/time.html) if possible now we are using reactor.callLater in sleep
-        #sleep 50ms being optimistic
-        yield sleep(0.05)
+        yield sleep(conf.DIST_FIRST_PULL_TIME)
         status = yield job.status
-        total_time = 0.05
+        total_time = conf.DIST_FIRST_PULL_TIME
         while status == Status.QUEUED:
             yield sleep(conf.DIST_PULL_TIME)
             
