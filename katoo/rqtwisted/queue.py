@@ -4,8 +4,8 @@ Created on Jun 2, 2013
 @author: pvicente
 '''
 from functools import total_ordering
-from katoo.rqtwisted.job import Job
-from katoo.utils.connections import RedisMixin
+from job import Job
+from katoo.utils.connections import RedisMixin #TODO: Pending to remove RedisMixin object from katoo
 from rq.exceptions import NoSuchJobError, UnpickleError
 from rq.job import Status
 from twisted.internet import defer

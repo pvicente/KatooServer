@@ -3,9 +3,8 @@ Created on Jun 2, 2013
 
 @author: pvicente
 '''
-from katoo import conf
-from katoo.rqtwisted.queue import Queue, FailedQueue
-from katoo.utils.connections import RedisMixin
+from queue import Queue, FailedQueue
+from katoo.utils.connections import RedisMixin #TODO: Pending to remove RedisMixin object from katoo
 from pickle import dumps
 from rq.exceptions import NoQueueError
 from rq.job import Status
@@ -25,6 +24,7 @@ import traceback
 
 DEFAULT_RESULT_TTL = 5
 DEFAULT_WORKER_TTL = 420
+TWISTED_WARMUP = 5
 
 green = make_colorizer('darkgreen')
 yellow = make_colorizer('darkyellow')
@@ -33,7 +33,7 @@ blue = make_colorizer('darkblue')
 class Worker(service.Service, RedisMixin, rq.worker.Worker):
     def __init__(self, queues, name=None, loops = 1, blocking_time = 1,
         default_result_ttl=DEFAULT_RESULT_TTL, connection=None, 
-        exc_handler=None, default_worker_ttl=DEFAULT_WORKER_TTL):
+        exc_handler=None, default_worker_ttl=DEFAULT_WORKER_TTL, default_warmup=TWISTED_WARMUP):
         if connection is None:
             connection = RedisMixin.redis_conn
         self.connection = connection
@@ -53,6 +53,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         self.failed_queue = FailedQueue(connection=self.connection)
         self.blocking_time = blocking_time
         self.loops = loops
+        self.default_warmup = default_warmup
     
     @classmethod
     def default_name(cls):
@@ -201,9 +202,9 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
                 yield self.connection.expire(job.key, result_ttl)
     
     def startService(self):
-        reactor.callLater(conf.TWISTED_WARMUP, self.register_birth)
+        reactor.callLater(self.default_warmup, self.register_birth)
         for _ in xrange(self.loops):
-            reactor.callLater(conf.TWISTED_WARMUP+1, self.work)
+            reactor.callLater(self.default_warmup+1, self.work)
         service.Service.startService(self)
 
     def stopService(self):
