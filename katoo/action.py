@@ -23,11 +23,8 @@ class SynchronousCall(object):
         self.queue_name=None if conf.DIST_DISABLED else queue
     
     @defer.inlineCallbacks
-    def get_result(self, job_id):
+    def get_result(self, job):
         #TODO: Improve pulling using reactor.callLater (https://twistedmatrix.com/documents/12.0.0/core/howto/time.html) if possible now we are using reactor.callLater in sleep
-        #TODO: get previous job to optimize fetch
-        job = yield Job.fetch(job_id)
-        
         #sleep 50ms beeing optimistic
         yield sleep(0.05)
         status = yield job.status
@@ -48,7 +45,8 @@ class SynchronousCall(object):
         if status == Status.FINISHED:
             ret = yield job.result
         elif status == Status.FAILED:
-            job = yield job.fetch(job_id, job.connection)
+            #TODO: Pending to improve refresh (inlineCallbacks) instead fetch
+            job = yield job.fetch(job.id, job.connection)
             failure = job.exc_info
             if not failure is None:
                 failure.raiseException()
@@ -73,8 +71,8 @@ class SynchronousCall(object):
                 queue = Queue(queue_name)
                 calling_self.enqueued = True
                 #TODO: Return Job instead of job_id to optimize fetch
-                job_id = yield queue.enqueue_call(func=function, args=args, kwargs=kwargs)
-                ret = yield self.get_result(job_id)
+                job = yield queue.enqueue_call(func=function, args=args, kwargs=kwargs)
+                ret = yield self.get_result(job)
             defer.returnValue(ret)
         return wrapped_f
 

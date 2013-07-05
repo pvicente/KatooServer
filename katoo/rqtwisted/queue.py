@@ -100,11 +100,9 @@ class Queue(rq.queue.Queue):
         raise NotImplemented()
     
     @defer.inlineCallbacks
-    def push_job_id(self, job_or_id):  # noqa
+    def push_job(self, job):  # noqa
         """Pushes a job ID on the corresponding Redis queue."""
-        job_id = job_or_id.id if isinstance(job_or_id, Job) else job_or_id
-        yield self.connection.rpush(self.key, job_id)
-        defer.returnValue(job_id)
+        yield self.connection.rpush(self.key, job.id)
     
     @defer.inlineCallbacks
     def pop_job_id(self):
@@ -125,8 +123,8 @@ class Queue(rq.queue.Queue):
         timeout = timeout or self._default_timeout
         job = Job.create(func, args, kwargs, connection=self.connection,
                          result_ttl=result_ttl, status=Status.QUEUED)
-        ret = yield self.enqueue_job(job, timeout=timeout)
-        defer.returnValue(ret)
+        yield self.enqueue_job(job, timeout=timeout)
+        defer.returnValue(job)
 
     @defer.inlineCallbacks
     def enqueue(self, f, *args, **kwargs):
@@ -159,9 +157,9 @@ class Queue(rq.queue.Queue):
             result_ttl = kwargs.pop('result_ttl', None)
             kwargs = kwargs.pop('kwargs', None)
 
-        ret = yield self.enqueue_call(func=f, args=args, kwargs=kwargs,
+        job = yield self.enqueue_call(func=f, args=args, kwargs=kwargs,
                                  timeout=timeout, result_ttl=result_ttl)
-        defer.returnValue(ret)
+        defer.returnValue(job)
 
     @defer.inlineCallbacks
     def enqueue_job(self, job, timeout=None, set_meta_data=True):
@@ -184,9 +182,8 @@ class Queue(rq.queue.Queue):
             job.timeout = timeout  # _timeout_in_seconds(timeout)
         else:
             job.timeout = 180  # default
-        job = yield job.save()
-        ret = yield self.push_job_id(job)
-        defer.returnValue(ret)
+        yield job.save()
+        yield self.push_job(job)
 
     @classmethod
     def lpop(cls, queue_keys, timeout, connection=None):

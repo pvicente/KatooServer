@@ -163,7 +163,6 @@ class Job(rq.job.Job):
             obj['meta'] = dumps(self.meta)
         
         yield self.connection.hmset(key, obj)
-        defer.returnValue(self.id)
         
     def delete(self):
         """Deletes the job hash from Redis."""
