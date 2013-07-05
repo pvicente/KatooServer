@@ -58,20 +58,6 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     def default_name(cls):
         return '%s.%s' % (platform.node(), os.getpid())
     
-    @classmethod
-    @defer.inlineCallbacks
-    def all(cls, connection=None):
-        if connection is None:
-            connection = RedisMixin.redis_conn
-        yield super(Worker, cls).all(connection=connection)
-    
-    @classmethod
-    @defer.inlineCallbacks
-    def find_by_key(cls, worker_key, connection=None):
-        if connection is None:
-            connection = RedisMixin.redis_conn
-        yield super(Worker, cls).find_by_key(worker_key, connection=connection)
-    
     @defer.inlineCallbacks
     def register_birth(self):  # noqa
         """Registers its own birth."""
