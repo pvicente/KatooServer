@@ -14,8 +14,8 @@ from twisted.internet import defer
 
 class DistributedAPI(object):
     """API with distributed behaviour must subclass it to be performed"""
-    def __init__(self, queue_name=None):
-        self.queue_name = None if conf.DIST_DISABLED else queue_name
+    def __init__(self, queue=None):
+        self.queue_name = None if conf.DIST_DISABLED else queue
         self.enqueued = False
 
 class SynchronousCall(object):

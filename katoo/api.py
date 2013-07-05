@@ -12,8 +12,8 @@ from katoo.xmpp.xmppgoogle import XMPPGoogle
 log = getLogger(__name__)
 
 class API(DistributedAPI):
-    def __init__(self, userid=None, queue_name=None):
-        DistributedAPI.__init__(self, queue_name)
+    def __init__(self, userid=None, queue=None):
+        DistributedAPI.__init__(self, queue)
         self.userid = userid
         self._log = getLoggerAdapter(log, id=self.userid)
     
