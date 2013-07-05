@@ -99,10 +99,9 @@ class Queue(rq.queue.Queue):
     def compact(self):
         raise NotImplemented()
     
-    @defer.inlineCallbacks
     def push_job(self, job):  # noqa
         """Pushes a job ID on the corresponding Redis queue."""
-        yield self.connection.rpush(self.key, job.id)
+        return self.connection.rpush(self.key, job.id)
     
     @defer.inlineCallbacks
     def pop_job_id(self):
