@@ -42,24 +42,28 @@ class Job(rq.job.Job):
         return connection.exists(cls.key_for(job_id))
 
     @classmethod
+    @defer.inlineCallbacks
     def fetch(cls, job_id, connection=None):
         """Fetches a persisted job from its corresponding Redis key and
         instantiates it.
         """
         if job_id is None:
-            return defer.succeed(None)
+            yield defer.returnValue(None)
         job = cls(job_id, connection=connection)
-        return job.refresh()
+        yield job.refresh()
+        defer.returnValue(job)
 
     @classmethod
+    @defer.inlineCallbacks
     def safe_fetch(cls, job_id, connection=None):
         """Fetches a persisted job from its corresponding Redis key, but does
         not instantiate it, making it impossible to get UnpickleErrors.
         """
         if job_id is None:
-            return defer.succeed(None)
+            yield defer.returnValue(None)
         job = cls(job_id, connection=connection)
-        return job.refresh()
+        yield job.refresh()
+        defer.returnValue(job)
     
     @defer.inlineCallbacks
     def _get_status(self):
@@ -84,7 +88,14 @@ class Job(rq.job.Job):
     """Backwards-compatibility accessor property `return_value`."""
     return_value = result
     
-    def refresh_impl(self, obj):
+    @defer.inlineCallbacks
+    def refresh(self):
+        """Overwrite the current instance's properties with the values in the
+        corresponding Redis key.
+
+        Will raise a NoSuchJobError if no corresponding Redis key exists.
+        """
+        obj = yield self.connection.hgetall(self.key)
         if len(obj) == 0:
             e = NoSuchJobError('No such job: %s' % (self.key,))
             e.job_id = self.id
@@ -108,6 +119,7 @@ class Job(rq.job.Job):
         except UnpickleError as e:
             e.job_id = self.id
             raise e
+        
         self.created_at = to_date(obj.get('created_at'))
         self.origin = obj.get('origin')
         self.description = obj.get('description')
@@ -119,17 +131,6 @@ class Job(rq.job.Job):
         self.result_ttl = int(obj.get('result_ttl')) if obj.get('result_ttl') else None # noqa
         self._status = obj.get('status') if obj.get('status') else None
         self.meta = unpickle(obj.get('meta')) if obj.get('meta') else {}
-        return defer.succeed(self)
-    
-    def refresh(self):
-        """Overwrite the current instance's properties with the values in the
-        corresponding Redis key.
-
-        Will raise a NoSuchJobError if no corresponding Redis key exists.
-        """
-        d = self.connection.hgetall(self.key)
-        d.addCallback(self.refresh_impl)
-        return d
     
     @defer.inlineCallbacks
     def save(self):
