@@ -159,7 +159,6 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
             res = job = None
             try:
                 yield self.set_state('idle')
-                #TODO: Improve dequeue_any with inlineCallbacks
                 res = yield Queue.dequeue_any(queue_keys=self.queue_keys(), timeout=self.blocking_time, connection=self.connection)
                 connection_errors = 0
                 if res is None:

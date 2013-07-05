@@ -186,40 +186,40 @@ class Queue(rq.queue.Queue):
         yield self.push_job(job)
 
     @classmethod
+    @defer.inlineCallbacks
     def lpop(cls, queue_keys, timeout, connection=None):
         if connection is None:
             connection = RedisMixin.redis_conn
         if not timeout:  # blocking variant
                 raise ValueError('RQ does not support indefinite timeouts. Please pick a timeout value > 0.')
-        d = connection.blpop(queue_keys, timeout)
-        #return queue_key, job_id or None
-        d.addCallback(lambda x: x if x is None else (x[0], x[1]))
-        return d
-
+        ret = yield connection.blpop(queue_keys, timeout)
+        defer.returnValue(ret)
+    
+    @defer.inlineCallbacks
     def dequeue(self, timeout):
         '''
         Return first job in queue or None if no job
         '''
-        d = self.lpop([self.key], timeout, self.connection)
-        d.addCallback(lambda x: x if x is None else x[1])
-        d.addCallback(Job.fetch)
-        return d
+        ret = yield self.lpop([self.key], timeout, self.connection)
+        if not ret is None:
+            _, job_id = ret
+            ret = yield Job.fetch(job_id)
+        defer.returnValue(ret)
     
     @classmethod
+    @defer.inlineCallbacks
     def dequeue_any(cls, queue_keys, timeout, connection=None):
-        def get_job(res):
-            if res is None:
-                return None
-            queue_key, job_id = res
-            d = Job.fetch(job_id)
-            d.addCallback(lambda x: None if x is None else (queue_key, x))
-            return d
-        
         if connection is None:
             connection = RedisMixin.redis_conn
-        d = cls.lpop(queue_keys, timeout, connection)
-        d.addCallback(get_job)
-        return d
+        
+        ret = yield cls.lpop(queue_keys, timeout, connection)
+        
+        if not ret is None:
+            queue_key, job_id = ret
+            job = yield Job.fetch(job_id)
+            ret = None if job is None else (queue_key, job)
+        
+        defer.returnValue(ret)
 
 class FailedQueue(Queue):
     def __init__(self, connection=None):
