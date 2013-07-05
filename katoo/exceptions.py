@@ -9,3 +9,9 @@ class XMPPUserAlreadyLogged(Exception):
 
 class XMPPUserNotLogged(Exception):
     pass
+
+class DistributedJobTimeout(Exception):
+    pass
+
+class DistributedJobFailure(Exception):
+    pass

@@ -79,7 +79,7 @@ class GoogleHandler(MyRequestHandler):
             if not user_to_logout is None:
                 try:
                     self.log.msg('WEB_HANDLER_LOGOUT %s with the same pushtoken'%(user_to_logout.userid))
-                    yield API(key).logout(user_to_logout.userid)
+                    yield API(key, queue=user_to_logout.worker).logout(user_to_logout.userid)
                 except XMPPUserNotLogged:
                     yield GoogleUser.remove(user_to_logout.userid)
         elif user.connected:
@@ -88,7 +88,7 @@ class GoogleHandler(MyRequestHandler):
             if user_to_logout is None:
                 try:
                     self.log.msg('WEB_HANDLER_LOGOUT %s with other jid: %s->%s'%(key, user.jid, self.args['_jid']))
-                    yield API(key).logout(key)
+                    yield API(key, queue=user.worker).logout(key)
                 except XMPPUserNotLogged:
                     yield GoogleUser.remove(key)
                 user = None
@@ -114,7 +114,7 @@ class GoogleHandler(MyRequestHandler):
         if user is None or not user.connected:
             raise cyclone.web.HTTPError(404)
         try:
-            yield API(key).update(key, **self.args)
+            yield API(key, queue=user.worker).update(key, **self.args)
             self._response_json({'success': True, 'reason': 'ok', 'background_time': conf.XMPP_BACKGROUND_TIME, 'resource_prefix': conf.XMPP_RESOURCE})
         except XMPPUserNotLogged as e:
             raise cyclone.web.HTTPError(500, str(e))
@@ -127,7 +127,7 @@ class GoogleHandler(MyRequestHandler):
             if user is None:
                 raise cyclone.web.HTTPError(404)
             if user.connected:
-                yield API(key).logout(key)
+                yield API(key, queue=user.worker).logout(key)
             else:
                 yield user.remove(user.userid)
             self._response_json({'success': True, 'reason': 'ok'})
@@ -167,7 +167,7 @@ class GoogleMessagesHandler(MyRequestHandler):
         try:
             yield GoogleMessage.flushMessages(key)
             if user.connected:
-                yield API(key).update(key, **{'badgenumber': 0})
+                yield API(key, queue=user.worker).update(key, **{'badgenumber': 0})
             self._response_json({'success': True, 'reason': 'ok'})
         except XMPPUserNotLogged as e:
             raise cyclone.web.HTTPError(500, str(e))

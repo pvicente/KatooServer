@@ -4,8 +4,8 @@ Created on Jun 2, 2013
 @author: pvicente
 '''
 from functools import total_ordering
-from katoo.rqtwisted.job import Job
-from katoo.utils.connections import RedisMixin
+from job import Job
+from katoo.utils.connections import RedisMixin #TODO: Pending to remove RedisMixin object from katoo
 from rq.exceptions import NoSuchJobError, UnpickleError
 from rq.job import Status
 from twisted.internet import defer
@@ -99,19 +99,18 @@ class Queue(rq.queue.Queue):
     def compact(self):
         raise NotImplemented()
     
-    def push_job_id(self, job_or_id):  # noqa
+    def push_job(self, job):  # noqa
         """Pushes a job ID on the corresponding Redis queue."""
-        job_id = job_or_id.id if isinstance(job_or_id, Job) else job_or_id
-        d = self.connection.rpush(self.key, job_id)
-        d.addCallback(lambda x: job_id)
-        return d
-
+        return self.connection.rpush(self.key, job.id)
     
+    @defer.inlineCallbacks
     def pop_job_id(self):
         """Pops a given job ID from this Redis queue."""
-        return self.connection.lpop(self.key)
+        ret = yield self.connection.lpop(self.key)
+        defer.returnValue(ret)
     
 
+    @defer.inlineCallbacks
     def enqueue_call(self, func, args=None, kwargs=None, timeout=None, result_ttl=None): #noqa
         """Creates a job to represent the delayed function call and enqueues
         it.
@@ -123,8 +122,10 @@ class Queue(rq.queue.Queue):
         timeout = timeout or self._default_timeout
         job = Job.create(func, args, kwargs, connection=self.connection,
                          result_ttl=result_ttl, status=Status.QUEUED)
-        return self.enqueue_job(job, timeout=timeout)
+        yield self.enqueue_job(job, timeout=timeout)
+        defer.returnValue(job)
 
+    @defer.inlineCallbacks
     def enqueue(self, f, *args, **kwargs):
         """Creates a job to represent the delayed function call and enqueues
         it.
@@ -155,9 +156,11 @@ class Queue(rq.queue.Queue):
             result_ttl = kwargs.pop('result_ttl', None)
             kwargs = kwargs.pop('kwargs', None)
 
-        return self.enqueue_call(func=f, args=args, kwargs=kwargs,
+        job = yield self.enqueue_call(func=f, args=args, kwargs=kwargs,
                                  timeout=timeout, result_ttl=result_ttl)
+        defer.returnValue(job)
 
+    @defer.inlineCallbacks
     def enqueue_job(self, job, timeout=None, set_meta_data=True):
         """Enqueues a job for delayed execution.
 
@@ -178,50 +181,50 @@ class Queue(rq.queue.Queue):
             job.timeout = timeout  # _timeout_in_seconds(timeout)
         else:
             job.timeout = 180  # default
-        d = job.save()
-        d.addCallback(self.push_job_id)
-        return d
+        yield job.save()
+        yield self.push_job(job)
 
     @classmethod
+    @defer.inlineCallbacks
     def lpop(cls, queue_keys, timeout, connection=None):
         if connection is None:
             connection = RedisMixin.redis_conn
         if not timeout:  # blocking variant
                 raise ValueError('RQ does not support indefinite timeouts. Please pick a timeout value > 0.')
-        d = connection.blpop(queue_keys, timeout)
-        #return queue_key, job_id or None
-        d.addCallback(lambda x: x if x is None else (x[0], x[1]))
-        return d
-
+        ret = yield connection.blpop(queue_keys, timeout)
+        defer.returnValue(ret)
+    
+    @defer.inlineCallbacks
     def dequeue(self, timeout):
         '''
         Return first job in queue or None if no job
         '''
-        d = self.lpop([self.key], timeout, self.connection)
-        d.addCallback(lambda x: x if x is None else x[1])
-        d.addCallback(Job.fetch)
-        return d
+        ret = yield self.lpop([self.key], timeout, self.connection)
+        if not ret is None:
+            _, job_id = ret
+            ret = yield Job.fetch(job_id)
+        defer.returnValue(ret)
     
     @classmethod
+    @defer.inlineCallbacks
     def dequeue_any(cls, queue_keys, timeout, connection=None):
-        def get_job(res):
-            if res is None:
-                return None
-            queue_key, job_id = res
-            d = Job.fetch(job_id)
-            d.addCallback(lambda x: None if x is None else (queue_key, x))
-            return d
-        
         if connection is None:
             connection = RedisMixin.redis_conn
-        d = cls.lpop(queue_keys, timeout, connection)
-        d.addCallback(get_job)
-        return d
+        
+        ret = yield cls.lpop(queue_keys, timeout, connection)
+        
+        if not ret is None:
+            queue_key, job_id = ret
+            job = yield Job.fetch(job_id)
+            ret = None if job is None else (queue_key, job)
+        
+        defer.returnValue(ret)
 
 class FailedQueue(Queue):
     def __init__(self, connection=None):
         super(FailedQueue, self).__init__('failed', connection=connection)
 
+    @defer.inlineCallbacks
     def quarantine(self, job, exc_info):
         """Puts the given Job in quarantine (i.e. put it on the failed
         queue).
@@ -232,7 +235,9 @@ class FailedQueue(Queue):
         """
         job.ended_at = times.now()
         job.exc_info = exc_info
-        return self.enqueue_job(job, timeout=job.timeout, set_meta_data=False)
+        job.status = Status.FAILED
+        ret = yield self.enqueue_job(job, timeout=job.timeout, set_meta_data=False)
+        defer.returnValue(ret)
 
     def requeue(self, job_id):
         """Requeues the job with the given job ID."""

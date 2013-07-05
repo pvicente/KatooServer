@@ -3,7 +3,7 @@ Created on Jun 2, 2013
 
 @author: pvicente
 '''
-from katoo.utils.connections import RedisMixin
+from katoo.utils.connections import RedisMixin #TODO: Pending to remove RedisMixin object from katoo
 from pickle import loads, dumps
 from rq.exceptions import NoSuchJobError, UnpickleError
 from rq.job import unpickle
@@ -42,73 +42,60 @@ class Job(rq.job.Job):
         return connection.exists(cls.key_for(job_id))
 
     @classmethod
+    @defer.inlineCallbacks
     def fetch(cls, job_id, connection=None):
         """Fetches a persisted job from its corresponding Redis key and
         instantiates it.
         """
         if job_id is None:
-            return defer.succeed(None)
+            yield defer.returnValue(None)
         job = cls(job_id, connection=connection)
-        return job.refresh()
+        yield job.refresh()
+        defer.returnValue(job)
 
     @classmethod
+    @defer.inlineCallbacks
     def safe_fetch(cls, job_id, connection=None):
         """Fetches a persisted job from its corresponding Redis key, but does
         not instantiate it, making it impossible to get UnpickleErrors.
         """
         if job_id is None:
-            return defer.succeed(None)
+            yield defer.returnValue(None)
         job = cls(job_id, connection=connection)
-        return job.refresh()
-
-    def _get_status_impl(self, value):
-        self._status = value
-        return defer.succeed(self._status)
+        yield job.refresh()
+        defer.returnValue(job)
     
+    @defer.inlineCallbacks
     def _get_status(self):
-        d = self.connection.hget(self.key, 'status')
-        d.addCallback(self._get_status_impl)
-        return d
-        
+        self._status = yield self.connection.hget(self.key, 'status')
+        defer.returnValue(self._status)
+    
     def _set_status(self, status):
         self._status = status
-        return self.connection.hset(self.key, 'status', self._status)
 
     status = property(_get_status, _set_status)
 
-    def _result_impl(self, value):
-        if value is not None:
-                # cache the result
-                self._result = loads(value)
-        return defer.succeed(self._result)  
-
-    @property
-    def result(self):
-        """Returns the return value of the job.
-
-        Initially, right after enqueueing a job, the return value will be
-        None.  But when the job has been executed, and had a return value or
-        exception, this will return that value or exception.
-
-        Note that, when the job has no return value (i.e. returns None), the
-        ReadOnlyJob object is useless, as the result won't be written back to
-        Redis.
-
-        Also note that you cannot draw the conclusion that a job has _not_
-        been executed when its return value is None, since return values
-        written back to Redis will expire after a given amount of time (500
-        seconds by default).
-        """
+    @defer.inlineCallbacks
+    def _get_result(self):
         if self._result is None:
-            d = self.connection.hget(self.key, 'result')
-            d.addCallback(self._result_impl)
-            return d
-        return defer.succeed(self._result)
-
+            rv = yield self.connection.hget(self.key, 'result')
+            if rv is not None:
+                self._result = loads(str(rv))
+        defer.returnValue(self._result)
+    
+    result = property(_get_result)
+    
     """Backwards-compatibility accessor property `return_value`."""
     return_value = result
     
-    def refresh_impl(self, obj):
+    @defer.inlineCallbacks
+    def refresh(self):
+        """Overwrite the current instance's properties with the values in the
+        corresponding Redis key.
+
+        Will raise a NoSuchJobError if no corresponding Redis key exists.
+        """
+        obj = yield self.connection.hgetall(self.key)
         if len(obj) == 0:
             e = NoSuchJobError('No such job: %s' % (self.key,))
             e.job_id = self.id
@@ -132,29 +119,20 @@ class Job(rq.job.Job):
         except UnpickleError as e:
             e.job_id = self.id
             raise e
+        
         self.created_at = to_date(obj.get('created_at'))
         self.origin = obj.get('origin')
         self.description = obj.get('description')
         self.enqueued_at = to_date(obj.get('enqueued_at'))
         self.ended_at = to_date(obj.get('ended_at'))
-        self._result = unpickle(obj.get('result')) if obj.get('result') else None  # noqa
-        self.exc_info = obj.get('exc_info')
+        self._result = unpickle(str(obj.get('result'))) if obj.get('result') else None  # noqa
+        self.exc_info = obj.get('exc_info') if obj.get('exc_info') else None  # noqa
         self.timeout = int(obj.get('timeout')) if obj.get('timeout') else None
         self.result_ttl = int(obj.get('result_ttl')) if obj.get('result_ttl') else None # noqa
         self._status = obj.get('status') if obj.get('status') else None
-        self.meta = unpickle(obj.get('meta')) if obj.get('meta') else {}
-        return defer.succeed(self)
+        self.meta = unpickle(str(obj.get('meta'))) if obj.get('meta') else {}
     
-    def refresh(self):
-        """Overwrite the current instance's properties with the values in the
-        corresponding Redis key.
-
-        Will raise a NoSuchJobError if no corresponding Redis key exists.
-        """
-        d = self.connection.hgetall(self.key)
-        d.addCallback(self.refresh_impl)
-        return d
-    
+    @defer.inlineCallbacks
     def save(self):
         """Persists the current job instance to its corresponding Redis key."""
         key = self.key
@@ -185,10 +163,8 @@ class Job(rq.job.Job):
         if self.meta:
             obj['meta'] = dumps(self.meta)
         
-        d = self.connection.hmset(key, obj)
-        d.addCallback(lambda x: self.id)
-        return d
-
+        yield self.connection.hmset(key, obj)
+        
     def delete(self):
         """Deletes the job hash from Redis."""
         return self.connection.delete(self.key)

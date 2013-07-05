@@ -3,8 +3,8 @@ Created on Jun 2, 2013
 
 @author: pvicente
 '''
-from katoo.rqtwisted.queue import Queue, FailedQueue
-from katoo.utils.connections import RedisMixin
+from queue import Queue, FailedQueue
+from katoo.utils.connections import RedisMixin #TODO: Pending to remove RedisMixin object from katoo
 from pickle import dumps
 from rq.exceptions import NoQueueError
 from rq.job import Status
@@ -12,6 +12,7 @@ from rq.utils import make_colorizer
 from twisted.application import service
 from twisted.internet import defer, threads, reactor
 from twisted.python import log
+from twisted.python.failure import Failure
 import cyclone.redis
 import os
 import platform
@@ -20,10 +21,10 @@ import sys
 import time
 import times
 import traceback
-from katoo import conf
 
 DEFAULT_RESULT_TTL = 5
 DEFAULT_WORKER_TTL = 420
+TWISTED_WARMUP = 5
 
 green = make_colorizer('darkgreen')
 yellow = make_colorizer('darkyellow')
@@ -32,7 +33,7 @@ blue = make_colorizer('darkblue')
 class Worker(service.Service, RedisMixin, rq.worker.Worker):
     def __init__(self, queues, name=None, loops = 1, blocking_time = 1,
         default_result_ttl=DEFAULT_RESULT_TTL, connection=None, 
-        exc_handler=None, default_worker_ttl=DEFAULT_WORKER_TTL):
+        exc_handler=None, default_worker_ttl=DEFAULT_WORKER_TTL, default_warmup=TWISTED_WARMUP):
         if connection is None:
             connection = RedisMixin.redis_conn
         self.connection = connection
@@ -52,24 +53,11 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         self.failed_queue = FailedQueue(connection=self.connection)
         self.blocking_time = blocking_time
         self.loops = loops
+        self.default_warmup = default_warmup
     
     @classmethod
     def default_name(cls):
         return '%s.%s' % (platform.node(), os.getpid())
-    
-    @classmethod
-    @defer.inlineCallbacks
-    def all(cls, connection=None):
-        if connection is None:
-            connection = RedisMixin.redis_conn
-        yield super(Worker, cls).all(connection=connection)
-    
-    @classmethod
-    @defer.inlineCallbacks
-    def find_by_key(cls, worker_key, connection=None):
-        if connection is None:
-            connection = RedisMixin.redis_conn
-        yield super(Worker, cls).find_by_key(worker_key, connection=connection)
     
     @defer.inlineCallbacks
     def register_birth(self):  # noqa
@@ -137,15 +125,18 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
                 raise NoQueueError('Give each worker at least one Queue.')
             final_queue.append(queue)
         self.queues = final_queue
-
+    
+    @defer.inlineCallbacks
     def move_to_failed_queue(self, job, *exc_info,**kwargs ):
         """Default exception handler: move the job to the failed queue."""
         failure = kwargs.get('failure')
         if failure is None:
+            failure = Failure(exc_info[0], exc_info[1], exc_info[2])
             exc_string = ''.join(traceback.format_exception(*exc_info))
         else:
             exc_string = failure.getTraceback()
-        return self.failed_queue.quarantine(job, exc_info=exc_string)
+        job.meta['failure'] = failure
+        yield self.failed_queue.quarantine(job, exc_info=exc_string)
     
     @defer.inlineCallbacks
     def work(self):
@@ -176,23 +167,29 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
                 self.log.err(e, 'UNKNOWN_EXCEPTION')
                 if not job is None:
                     job.status = Status.FAILED
-                    self.move_to_failed_queue(job, *sys.exc_info())
+                    yield self.move_to_failed_queue(job, *sys.exc_info())
     
+    @defer.inlineCallbacks
     def errback_perform_job(self, failure, job):
-        self.log.msg('errback perform job: %s. Failure: %s'%(job, failure))
-        job.status = Status.FAILED
-        return self.move_to_failed_queue(job, failure=failure)
+        #TODO: Remove log
+        self.log.err(failure, 'PERFORM_JOB %s'%(job))
+        yield self.move_to_failed_queue(job, failure=failure)
     
     @defer.inlineCallbacks
     def callback_perform_job(self, result):
         rv, job = result
+        if isinstance(rv, defer.Deferred):
+            rv = yield rv
         pickled_rv = dumps(rv)
         job._status = Status.FINISHED
         job.ended_at = times.now()
-#             if rv is None:
-#                 self.log.msg('Job OK')
-#             else:
-#                 self.log.msg('Job OK, result = %s' % (yellow(unicode(rv)),))
+        
+        #TODO: Remove log
+        if rv is None:
+            self.log.msg('[%s] Job OK'%(job))
+        else:
+            self.log.msg('[%s] Job OK, result = %r' % (job, rv))
+        
         result_ttl =  self.default_result_ttl if job.result_ttl is None else job.result_ttl
         if result_ttl == 0:
             yield job.delete()
@@ -205,9 +202,9 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
                 yield self.connection.expire(job.key, result_ttl)
     
     def startService(self):
-        reactor.callLater(conf.TWISTED_WARMUP, self.register_birth)
+        reactor.callLater(self.default_warmup, self.register_birth)
         for _ in xrange(self.loops):
-            reactor.callLater(conf.TWISTED_WARMUP+1, self.work)
+            reactor.callLater(self.default_warmup+1, self.work)
         service.Service.startService(self)
 
     def stopService(self):
