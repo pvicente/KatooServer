@@ -36,6 +36,7 @@ class SynchronousCall(object):
             total_time += conf.DIST_PULL_TIME
             if total_time >= conf.DIST_TIMEOUT_TIME:
                 job_description = str(job)
+                #TODO: pending to remove from queue (if not a controlled exception will be launched in worker)
                 yield job.delete()
                 raise DistributedJobTimeout('Timeout %s performing distributed job %s'%(total_time, job_description))
             
