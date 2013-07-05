@@ -4,7 +4,7 @@ Created on Jun 5, 2013
 @author: pvicente
 '''
 from katoo import KatooApp, conf
-from katoo.system import DistributedAPI, SynchronousCall
+from katoo.system import DistributedAPI, SynchronousCall, AsynchronousCall
 from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
 from katoo.xmpp.xmppgoogle import XMPPGoogle
 
@@ -21,7 +21,7 @@ class API(DistributedAPI):
         xmppuser.worker=conf.MACHINEID
         return xmppuser.save()
     
-    @SynchronousCall(queue=None) #Queue is assigned at run time
+    @AsynchronousCall(queue=None) #Queue is assigned at run time
     def update(self, userid, **kwargs):
         self.log.info('UPDATE. Data: %s', kwargs)
         running_client = KatooApp().getService(userid)
@@ -31,7 +31,7 @@ class API(DistributedAPI):
         xmppuser.update(**kwargs)
         return xmppuser.save()
     
-    @SynchronousCall(queue=None) #Queue is assigned at run time
+    @AsynchronousCall(queue=None) #Queue is assigned at run time
     def logout(self, userid):
         self.log.info('LOGOUT')
         running_client = KatooApp().getService(userid)
@@ -42,7 +42,7 @@ class API(DistributedAPI):
         d.addCallback(lambda x: user.remove(userid))
         return d
     
-    @SynchronousCall(queue=None) #Queue is assigned at run time
+    @AsynchronousCall(queue=None) #Queue is assigned at run time
     def disconnect(self, userid, change_state=True):
         self.log.info('DISCONNECTING')
         running_client = KatooApp().getService(userid)

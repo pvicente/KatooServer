@@ -37,6 +37,7 @@ class SynchronousCall(object):
     """Make a synchronous call enqueing job in queue and returning result"""
     def __init__(self, queue):
         self.queue_name=None if conf.DIST_DISABLED else queue
+        self.sync = True
     
     @defer.inlineCallbacks
     def get_result(self, job):
@@ -80,6 +81,7 @@ class SynchronousCall(object):
             #More precedence queue_name of DistributedAPI than decorated method
             queue_name = calling_self.queue_name if calling_self.queue_name else self.queue_name
             
+            ret = None
             if calling_self.enqueued or not queue_name:
                 ret = yield f(calling_self, *args, **kwargs)
             else:
@@ -87,9 +89,15 @@ class SynchronousCall(object):
                 queue = Queue(queue_name)
                 calling_self.enqueued = True
                 job = yield queue.enqueue_call(func=function, args=args, kwargs=kwargs)
-                ret = yield self.get_result(job)
+                if self.sync:
+                    ret = yield self.get_result(job)
             defer.returnValue(ret)
         return wrapped_f
+
+class AsynchronousCall(SynchronousCall):
+    def __init__(self, queue):
+        SynchronousCall.__init__(self, queue)
+        self.sync = conf.DIST_ASYNC_AS_SYNC
 
 if __name__ == '__main__':
     from katoo import KatooApp
