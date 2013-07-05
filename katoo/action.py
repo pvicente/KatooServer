@@ -5,7 +5,8 @@ Created on Jul 2, 2013
 '''
 from functools import wraps
 from katoo import conf
-from katoo.exceptions import XMPPUserNotLogged, DistributedJobTimeout
+from katoo.exceptions import XMPPUserNotLogged, DistributedJobTimeout,\
+    DistributedJobFailure
 from katoo.rqtwisted.job import Job
 from katoo.rqtwisted.queue import Queue, Status
 from katoo.utils.time import sleep
@@ -46,9 +47,10 @@ class SynchronousCall(object):
             ret = yield job.result
         elif status == Status.FAILED:
             yield job.refresh()
-            failure = job.exc_info
-            if not failure is None:
-                failure.raiseException()
+            failure = job.meta.get('failure')
+            if failure is None:
+                raise DistributedJobFailure('Job %s failed without traceback', job)
+            failure.raiseException()
         defer.returnValue(ret)
     
     def __call__(self, f):

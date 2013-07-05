@@ -12,3 +12,6 @@ class XMPPUserNotLogged(Exception):
 
 class DistributedJobTimeout(Exception):
     pass
+
+class DistributedJobFailure(Exception):
+    pass
