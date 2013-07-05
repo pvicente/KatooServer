@@ -21,7 +21,6 @@ import rq.worker
 import sys
 import time
 import times
-import traceback
 
 DEFAULT_RESULT_TTL = 5
 DEFAULT_WORKER_TTL = 420
@@ -182,7 +181,8 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     
     @defer.inlineCallbacks
     def errback_perform_job(self, failure, job):
-        self.log.msg('errback perform job: %s. Failure: %s'%(job, failure))
+        #TODO: Remove log
+        self.log.err(failure, 'PERFORM_JOB %s'%(job))
         yield self.move_to_failed_queue(job, failure=failure)
     
     @defer.inlineCallbacks
@@ -194,6 +194,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         job._status = Status.FINISHED
         job.ended_at = times.now()
         
+        #TODO: Remove log
         if rv is None:
             self.log.msg('Job OK')
         else:

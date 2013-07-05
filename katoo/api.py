@@ -4,7 +4,7 @@ Created on Jun 5, 2013
 @author: pvicente
 '''
 from katoo import KatooApp, conf
-from katoo.action import synchronous_action, DistributedAPI
+from katoo.action import DistributedAPI, SynchronousCall
 from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
 from katoo.utils.applog import getLogger, getLoggerAdapter
 from katoo.xmpp.xmppgoogle import XMPPGoogle
@@ -27,7 +27,7 @@ class API(DistributedAPI):
             self._log = getLoggerAdapter(log, id=self.userid)
         return self._log
     
-    @synchronous_action
+    @SynchronousCall(queue=None)
     def login(self, xmppuser):
         self.log.info('LOGIN %s. Data: %s', xmppuser.jid, xmppuser)
         userid = xmppuser.userid
@@ -38,7 +38,7 @@ class API(DistributedAPI):
         xmppuser.worker=conf.MACHINEID
         return xmppuser.save()
     
-    @synchronous_action
+    @SynchronousCall(queue=None)
     def update(self, userid, **kwargs):
         self.log.info('UPDATE. Data: %s', kwargs)
         running_client = KatooApp().getService(userid)
@@ -48,7 +48,7 @@ class API(DistributedAPI):
         xmppuser.update(**kwargs)
         return xmppuser.save()
     
-    @synchronous_action
+    @SynchronousCall(queue=None)
     def logout(self, userid):
         self.log.info('LOGOUT')
         running_client = KatooApp().getService(userid)
@@ -59,10 +59,12 @@ class API(DistributedAPI):
         d.addCallback(lambda x: user.remove(userid))
         return d
     
-    @synchronous_action
+    @SynchronousCall(queue=None)
     def disconnect(self, userid, change_state=True):
         self.log.info('DISCONNECTING')
         running_client = KatooApp().getService(userid)
         if running_client is None:
             raise XMPPUserNotLogged('User %s is not running in current worker'%(userid))
         return running_client.disconnect(change_state)
+    
+    
