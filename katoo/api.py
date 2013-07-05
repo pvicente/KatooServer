@@ -4,7 +4,7 @@ Created on Jun 5, 2013
 @author: pvicente
 '''
 from katoo import KatooApp, conf
-from katoo.action import DistributedAPI, SynchronousCall
+from katoo.system import DistributedAPI, SynchronousCall
 from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
 from katoo.utils.applog import getLogger, getLoggerAdapter
 from katoo.xmpp.xmppgoogle import XMPPGoogle
