@@ -5,14 +5,14 @@ Created on Jul 2, 2013
 '''
 from functools import wraps
 from katoo import conf
-from katoo.exceptions import XMPPUserNotLogged
+from katoo.exceptions import XMPPUserNotLogged, DistributedJobTimeout
 from katoo.rqtwisted.job import Job
 from katoo.rqtwisted.queue import Queue, Status
 from katoo.utils.time import sleep
 from twisted.internet import defer
 
 class DistributedAPI(object):
-    """API wiht distributed behaviour must subclass it to be performed"""
+    """API with distributed behaviour must subclass it to be performed"""
     def __init__(self, queue_name=None):
         self.queue_name = None if conf.DIST_DISABLED else queue_name
         self.enqueued = False
@@ -24,12 +24,24 @@ class SynchronousCall(object):
     
     @defer.inlineCallbacks
     def get_result(self, job_id):
-        #TODO: launch timeout exception if it is reached
+        #TODO: Improve pulling using reactor.callLater (https://twistedmatrix.com/documents/12.0.0/core/howto/time.html) if possible now we are using reactor.callLater in sleep
         #TODO: get previous job to optimize fetch
         job = yield Job.fetch(job_id)
+        
+        #sleep 50ms beeing optimistic
+        yield sleep(0.05)
         status = yield job.status
+        total_time = 0.05
         while status == Status.QUEUED:
             yield sleep(conf.DIST_PULL_TIME)
+            
+            total_time += conf.DIST_PULL_TIME
+            if total_time >= conf.DIST_TIMEOUT_TIME:
+                job_description = str(job)
+                yield job.delete()
+                raise DistributedJobTimeout('Timeout %s performing distributed job %s'%(total_time, job_description))
+            
+            #print 'Pulling time:', total_time
             status = yield job.status
         
         ret = None
@@ -91,7 +103,7 @@ if __name__ == '__main__':
         my_log.info('User %s: saved. Res %s'%(user, res))
         ret = yield API(user.userid).login(user)
         my_log.info('Login result %s. Sleeping 10 seconds', ret)
-        yield sleep(10)
+        yield sleep(5)
         my_log.info('Result login %s', ret)
         try:
             ret = yield API(user.userid, conf.MACHINEID).logout(user.userid)
@@ -101,6 +113,9 @@ if __name__ == '__main__':
             ret = yield API(user.userid).logout(user.userid)
         except XMPPUserNotLogged as e:
             my_log.error('Exception launch %s', e)
+        
+        #Perform a timeout
+        ret = yield API(user.userid, 'default').login(user)
         
 #        reactor.callLater(5, API(user.userid).login, user)
 #        reactor.callLater(7, API(user.userid).update, user.userid, token="ya29.AHES6ZRDTu4pDWdA_LBrNWF1vnI5NEtdB8V0v6JN46QTaw")
