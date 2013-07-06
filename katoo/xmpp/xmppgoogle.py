@@ -17,8 +17,9 @@ import urllib
 
 class RosterManager(object):
     ROSTER_IN_MEMORY=conf.XMPP_ROSTER_IN_MEMORY
-    def __init__(self, userid):
-        self._userid = userid
+    def __init__(self, user):
+        self._userid = user.userid
+        self._shortname = user.shortname
         self._roster = {}
     
     @defer.inlineCallbacks
@@ -45,8 +46,9 @@ class RosterManager(object):
     def set(self, key, value):
         defaultName = key.user if isinstance(key, jid.JID) else key
         barejid = self._getBareJid(key)
-        name = getattr(value, 'name', None)
-        item = GoogleRosterItem(_userid=self._userid, _jid=barejid, _name=name if name else defaultName)
+        name = getattr(value, 'name', defaultName)
+        name = ' '.join(name.split()[:2]) if self._shortname else name
+        item = GoogleRosterItem(_userid=self._userid, _jid=barejid, _name=name)
         if self.ROSTER_IN_MEMORY:
             self._roster[barejid] = item
         else:
@@ -85,7 +87,7 @@ class GoogleHandler(GenericXMPPHandler):
     def __init__(self, client):
         GenericXMPPHandler.__init__(self, client)
         self.user = client.user
-        self.roster = RosterManager(self.user.userid)
+        self.roster = RosterManager(self.user)
         self.connectionTime = None
     
     def isOwnBareJid(self, jid):

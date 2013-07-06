@@ -34,11 +34,12 @@ class arguments(object):
 class login_arguments(arguments):
     PREFIX='_'
     ARGUMENTS = dict([('token', RequiredArgument), ('refreshtoken', RequiredArgument), ('resource', RequiredArgument), ('jid', RequiredArgument),
-                      ('pushtoken', ''), ('badgenumber', 0), ('pushsound',''), ('favoritesound', ''), ('lang','en-US')])
+                      ('pushtoken', ''), ('badgenumber', 0), ('pushsound',''), ('favoritesound', ''), ('lang','en-US'), ('shortname', False)])
 
 class update_arguments(arguments):
     ARGUMENTS = dict([('token', DefaultArgument), ('refreshtoken', DefaultArgument), ('resource', DefaultArgument),
-                      ('pushtoken', DefaultArgument), ('badgenumber', DefaultArgument), ('pushsound',DefaultArgument), ('favoritesound', DefaultArgument), ('lang', DefaultArgument)])
+                      ('pushtoken', DefaultArgument), ('badgenumber', DefaultArgument), ('pushsound',DefaultArgument), ('favoritesound', DefaultArgument), ('lang', DefaultArgument),
+                      ('shortname', DefaultArgument)])
 
 class contact_arguments(arguments):
     ARGUMENTS = dict([('jid', RequiredArgument), ('name', DefaultArgument), ('favorite', DefaultArgument)])
