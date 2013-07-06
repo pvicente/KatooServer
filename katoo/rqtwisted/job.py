@@ -128,7 +128,7 @@ class Job(rq.job.Job):
         self._result = unpickle(str(obj.get('result'))) if obj.get('result') else None  # noqa
         self.exc_info = obj.get('exc_info') if obj.get('exc_info') else None  # noqa
         self.timeout = int(obj.get('timeout')) if obj.get('timeout') else None
-        self.result_ttl = int(obj.get('result_ttl')) if obj.get('result_ttl') else None # noqa
+        self.result_ttl = None if obj.get('result_ttl') is None else int(obj.get('result_ttl'))
         self._status = obj.get('status') if obj.get('status') else None
         self.meta = unpickle(str(obj.get('meta'))) if obj.get('meta') else {}
     
@@ -173,6 +173,9 @@ class Job(rq.job.Job):
         """Invokes the job function with the job arguments."""
         self._result = self.func(*self.args, **self.kwargs)
         return self._result, self
+    
+    def __str__(self):
+        return '<Job %s result_ttl %s: %s>' % (self.id, self.result_ttl, self.description)
     
     @property
     def func(self):

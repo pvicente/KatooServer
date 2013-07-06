@@ -38,6 +38,7 @@ class SynchronousCall(object):
     def __init__(self, queue):
         self.queue_name=None if conf.DIST_DISABLED else queue
         self.sync = True
+        self.result_ttl = conf.DIST_DEFAULT_TTL
     
     @defer.inlineCallbacks
     def get_result(self, job):
@@ -88,7 +89,9 @@ class SynchronousCall(object):
                 function = getattr(calling_self, getattr(f, 'func_name'))
                 queue = Queue(queue_name)
                 calling_self.enqueued = True
-                job = yield queue.enqueue_call(func=function, args=args, kwargs=kwargs)
+                job = Job.create(func=function, args=args, kwargs=kwargs, connection=queue.connection,
+                         result_ttl=self.result_ttl, status=Status.QUEUED)
+                yield queue.enqueue_job(job)
                 if self.sync:
                     ret = yield self.get_result(job)
             defer.returnValue(ret)
@@ -98,6 +101,7 @@ class AsynchronousCall(SynchronousCall):
     def __init__(self, queue):
         SynchronousCall.__init__(self, queue)
         self.sync = conf.DIST_ASYNC_AS_SYNC
+        self.result_ttl = conf.DIST_DEFAULT_TTL if conf.DIST_ASYNC_AS_SYNC else 0
 
 if __name__ == '__main__':
     from katoo import KatooApp
