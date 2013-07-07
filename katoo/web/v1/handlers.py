@@ -38,8 +38,7 @@ class login_arguments(arguments):
 
 class update_arguments(arguments):
     ARGUMENTS = dict([('token', DefaultArgument), ('refreshtoken', DefaultArgument), ('resource', DefaultArgument),
-                      ('pushtoken', DefaultArgument), ('badgenumber', DefaultArgument), ('pushsound',DefaultArgument), ('favoritesound', DefaultArgument), ('lang', DefaultArgument),
-                      ('shortname', DefaultArgument)])
+                      ('pushtoken', DefaultArgument), ('badgenumber', DefaultArgument), ('pushsound',DefaultArgument), ('favoritesound', DefaultArgument), ('lang', DefaultArgument)])
 
 class contact_arguments(arguments):
     ARGUMENTS = dict([('jid', RequiredArgument), ('name', DefaultArgument), ('favorite', DefaultArgument)])

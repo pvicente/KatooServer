@@ -370,10 +370,6 @@ class GoogleUser(object):
     def shortname(self):
         return self._shortname
     
-    @shortname.setter
-    def shortname(self, value):
-        self._shortname = eval(str(value))
-    
 if __name__ == '__main__':
     from twisted.internet import reactor
     
