@@ -45,8 +45,9 @@ class RosterManager(object):
     def set(self, key, value):
         defaultName = key.user if isinstance(key, jid.JID) else key
         barejid = self._getBareJid(key)
-        name = getattr(value, 'name', None)
-        item = GoogleRosterItem(_userid=self._userid, _jid=barejid, _name=name if name else defaultName)
+        name = getattr(value, 'name', '')
+        name = ' '.join(name.split()[:2]) if name else defaultName
+        item = GoogleRosterItem(_userid=self._userid, _jid=barejid, _name=name)
         if self.ROSTER_IN_MEMORY:
             self._roster[barejid] = item
         else:
@@ -227,7 +228,7 @@ class XMPPGoogle(ReauthXMPPClient):
         return '<%s object at %s. name: %s>(user: %s)'%(self.__class__.__name__, hex(id(self)), self.name, vars(self.user))
 
 if __name__ == '__main__':
-    import sys, os
+    import os
     from twisted.internet import reactor
     from katoo.data import GoogleUser
     from katoo import KatooApp
@@ -238,7 +239,8 @@ if __name__ == '__main__':
     apns.setName(conf.APNSERVICE_NAME)
 
     app = KatooApp().app
+    KatooApp().service.startService()
     import twisted.python.log
-    twisted.python.log.startLogging(sys.stdout)
+    twisted.python.log.startLoggingWithObserver(KatooApp().log.emit)
     XMPPGoogle(GoogleUser("1", _token=os.getenv('TOKEN'), _refreshtoken=os.getenv('REFRESHTOKEN'), _resource="asdfasdf", _pushtoken=os.getenv('PUSHTOKEN', None), _jid=os.getenv('JID'), _pushsound='cell1.aif', _favoritesound='cell7.aif', _away=True), app)
     reactor.run()
