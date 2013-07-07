@@ -17,9 +17,8 @@ import urllib
 
 class RosterManager(object):
     ROSTER_IN_MEMORY=conf.XMPP_ROSTER_IN_MEMORY
-    def __init__(self, user):
-        self._userid = user.userid
-        self._shortname = user.shortname
+    def __init__(self, userid):
+        self._userid = userid
         self._roster = {}
     
     @defer.inlineCallbacks
@@ -33,13 +32,6 @@ class RosterManager(object):
         else:
             return key
     
-    def _getName(self, rosteritem, defaultName):
-        name = getattr(rosteritem, 'name', '')
-        name = name if name else defaultName
-        if self._shortname:
-            name = ' '.join(name.split()[:2])
-        return name
-        
     @defer.inlineCallbacks
     def get(self, key, default=None):
         if self.ROSTER_IN_MEMORY:
@@ -53,7 +45,9 @@ class RosterManager(object):
     def set(self, key, value):
         defaultName = key.user if isinstance(key, jid.JID) else key
         barejid = self._getBareJid(key)
-        item = GoogleRosterItem(_userid=self._userid, _jid=barejid, _name=self._getName(value, defaultName))
+        name = getattr(value, 'name', '')
+        name = ' '.join(name.split()[:2]) if name else defaultName
+        item = GoogleRosterItem(_userid=self._userid, _jid=barejid, _name=name)
         if self.ROSTER_IN_MEMORY:
             self._roster[barejid] = item
         else:
@@ -92,7 +86,7 @@ class GoogleHandler(GenericXMPPHandler):
     def __init__(self, client):
         GenericXMPPHandler.__init__(self, client)
         self.user = client.user
-        self.roster = RosterManager(self.user)
+        self.roster = RosterManager(self.user.userid)
         self.connectionTime = None
     
     def isOwnBareJid(self, jid):
@@ -245,9 +239,8 @@ if __name__ == '__main__':
     apns.setName(conf.APNSERVICE_NAME)
 
     app = KatooApp().app
+    KatooApp().service.startService()
     import twisted.python.log
     twisted.python.log.startLoggingWithObserver(KatooApp().log.emit)
-    KatooApp().service.startService()
-    user = GoogleUser("1", _token=os.getenv('TOKEN'), _refreshtoken=os.getenv('REFRESHTOKEN'), _resource="asdfasdf", _pushtoken=os.getenv('PUSHTOKEN', None), _jid=os.getenv('JID'), _pushsound='cell1.aif', _favoritesound='cell7.aif', _away=True, _shortname=True)
-    XMPPGoogle(user, app)
+    XMPPGoogle(GoogleUser("1", _token=os.getenv('TOKEN'), _refreshtoken=os.getenv('REFRESHTOKEN'), _resource="asdfasdf", _pushtoken=os.getenv('PUSHTOKEN', None), _jid=os.getenv('JID'), _pushsound='cell1.aif', _favoritesound='cell7.aif', _away=True), app)
     reactor.run()
