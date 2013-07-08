@@ -15,28 +15,17 @@ from katoo.utils.applog import getLogger, getLoggerAdapter
 
 log = getLogger(__name__, level='INFO')
 
-class Supervisor(service.Service):
-    log = getLoggerAdapter(log, id='SUPERVISOR-%s'%(conf.MACHINEID))
+class LocalSupervisor(service.Service):
+    log = getLoggerAdapter(log, id='LOCAL-SUPERVISOR-%s'%(conf.MACHINEID))
     
     @property
     def name(self):
-        return 'SUPERVISOR'
+        return 'LOCAL-SUPERVISOR'
     
     @defer.inlineCallbacks
     def avoidHerokuUnidling(self, url):
         self.log.info('AVOIDING HEROKU IDLING: %s', url)
         yield cyclone.httpclient.fetch(url)
-    
-    @defer.inlineCallbacks
-    def reconnectUsers(self):
-        connected_users = yield GoogleUser.get_connected()
-        self.log.info('RECONNECTING_USERS: %s', len(connected_users))
-        for data in connected_users:
-            try:
-                user = GoogleUser(**data)
-                yield API(user.userid).login(user)
-            except Exception as e:
-                self.log.error('Exception %s reconnecting user %s', e, data['_userid'])
     
     @defer.inlineCallbacks
     def disconnectAwayUsers(self):
@@ -57,6 +46,26 @@ class Supervisor(service.Service):
             t.start(1800, now = True)
         t = LoopingCall(self.disconnectAwayUsers)
         t.start(conf.TASK_DISCONNECT_SECONDS, now = False)
+        return service.Service.startService(self)
+
+class ProcessesSupervisor(service.Service):
+    log = getLoggerAdapter(log, id='PROCESSES-SUPERVISOR-%s'%(conf.MACHINEID))
+    
+    @property
+    def name(self):
+        return 'PROCESSES-SUPERVISOR'
+    
+    @defer.inlineCallbacks
+    def reconnectUsers(self):
+        connected_users = yield GoogleUser.get_connected()
+        self.log.info('RECONNECTING_USERS: %s', len(connected_users))
+        for data in connected_users:
+            try:
+                user = GoogleUser(**data)
+                yield API(user.userid).login(user)
+            except Exception as e:
+                self.log.error('Exception %s reconnecting user %s', e, data['_userid'])
+
+    def startService(self):
         reactor.callLater(conf.TWISTED_WARMUP, self.reconnectUsers)
         return service.Service.startService(self)
-    
