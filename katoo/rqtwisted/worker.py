@@ -31,6 +31,7 @@ yellow = make_colorizer('darkyellow')
 blue = make_colorizer('darkblue')
 
 class Worker(service.Service, RedisMixin, rq.worker.Worker):
+    redis_death_workers_keys = "rq:workers:death"
     def __init__(self, queues, name=None, loops = 1, blocking_time = 1,
         default_result_ttl=DEFAULT_RESULT_TTL, connection=None, 
         exc_handler=None, default_worker_ttl=DEFAULT_WORKER_TTL, default_warmup=TWISTED_WARMUP):
@@ -76,16 +77,14 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         yield self.connection.hset(key, 'birth', now)
         yield self.connection.hset(key, 'queues', queues)
         yield self.connection.sadd(self.redis_workers_keys, key)
-#        yield t.expire(key, self.default_worker_ttl)
     
     def register_death(self):
         """Registers its own death."""
         self.log.msg('Registering death of worker %s'%(self.name))
         d1 = self.connection.srem(self.redis_workers_keys, self.key)
         d2 = self.connection.hset(self.key, 'death', time.time())
+        d3 = self.connection.sadd(self.redis_death_workers_keys, self.key)
         
-        #TODO: It will be removed when workers will registered in death set. Issue #6
-        d3 = self.connection.expire(self.key, 5)
         ret = defer.DeferredList([d1,d2,d3], consumeErrors=True)
         return ret
     
