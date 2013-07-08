@@ -1,0 +1,4 @@
+web: twistd -ny runweb.py --pidfile=web.pid
+xmpp: twistd -ny runxmpp.py --pidfile=xmpp.pid
+push: twistd -ny runpush.py --pidfile=push.pid
+supervisor: twistd -ny runsupervisor.py --pidfile=supervisor.pid

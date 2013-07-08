@@ -4,15 +4,17 @@ Created on Jun 12, 2013
 @author: pvicente
 '''
 from katoo import conf
-from katoo.apns.api import API as APNSAPI
 from katoo.api import API
+from katoo.apns.api import API as APNSAPI
 from katoo.data import GoogleUser
+from katoo.rqtwisted.job import Job
+from katoo.rqtwisted.queue import Queue
+from katoo.rqtwisted.worker import Worker
+from katoo.utils.applog import getLogger, getLoggerAdapter
 from twisted.application import service
 from twisted.internet import defer, reactor
 from twisted.internet.task import LoopingCall
 import cyclone.httpclient
-from katoo.utils.applog import getLogger, getLoggerAdapter
-from katoo.rqtwisted.worker import Worker
 
 log = getLogger(__name__, level='INFO')
 
@@ -60,6 +62,7 @@ class WorkersSupervisor(service.Service):
     def name(self):
         return 'WORKERS-SUPERVISOR'
     
+    
     @defer.inlineCallbacks
     def checkDeathWorkers(self):
         if not self.checkingWorkers:
@@ -68,28 +71,51 @@ class WorkersSupervisor(service.Service):
             self.checkingWorkers = False
     
     @defer.inlineCallbacks
+    def getPendingJobs(self, userid, queue_name):
+        queue = Queue(queue_name)
+        job_ids = yield queue.job_ids
+        jobs = []
+        for job_id in job_ids:
+            job = yield Job.fetch(job_id, connection=queue.connection)
+            if job.meta.get('userid') == userid:
+                jobs.append(job_id)
+        defer.returnValue(jobs)
+    
+    @defer.inlineCallbacks
     def processDeathWorkers(self):
         death_workers = yield Worker.deathWorkers()
         if death_workers:
             self.log.info('DEATH_WORKERS %s', [worker.get('name') for worker in death_workers])
         for worker in death_workers:
-            if not conf.DIST_QUEUE_LOGIN in worker.get('queues'):
-                continue
             name = worker.get('name')
             key = worker.get('key')
-            connected_users = yield GoogleUser.get_connected(name)
-            total_users = len(connected_users)
-            self.log.info('Reconnecting %s connected user(s) of death worker %s', total_users, name)
-            for i in xrange(total_users):
-                try:
-                    data = connected_users[i]
-                    user = GoogleUser(**data)
-                    yield API(user.userid).login(user)
-                except Exception as e:
-                    self.log.error('[%s] Exception %s reconnecting user', data['_userid'], e)
-                if i % 10:
-                    self.log.info('Reconnected %s/%s of worker %s', i, total_users, name)
+            if conf.DIST_QUEUE_LOGIN in worker.get('queues'):
+                connected_users = yield GoogleUser.get_connected(name)
+                total_users = len(connected_users)
+                self.log.info('Reconnecting %s connected user(s) of death worker %s', total_users, name)
+                for i in xrange(total_users):
+                    try:
+                        data = connected_users[i]
+                        user = GoogleUser(**data)
+                        
+                        #Update worker as userid to enqueue new jobs in user own queue
+                        user.worker=user.userid
+                        yield user.save()
+                        
+                        #Get pending jobs
+                        pending_jobs = yield self.getPendingJobs(user.userid, name)
+                        yield API(user.userid).relogin(user, pending_jobs)
+                    except Exception as e:
+                        self.log.error('[%s] Exception %s reconnecting user', data['_userid'], e)
+                    if i % 10:
+                        self.log.info('Reconnected %s/%s of worker %s', i, total_users, name)
+            
+            #Remove worker from death workers
             Worker.remove(key)
+            
+            #Remove own queue of worker
+            queue = Queue(name)
+            yield queue.empty()
 
     @defer.inlineCallbacks
     def reconnectUsers(self):
