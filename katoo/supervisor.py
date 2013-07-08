@@ -19,11 +19,8 @@ import cyclone.httpclient
 log = getLogger(__name__, level='INFO')
 
 class LocalSupervisor(service.Service):
-    log = getLoggerAdapter(log, id='LOCAL-SUPERVISOR-%s'%(conf.MACHINEID))
-    
-    @property
-    def name(self):
-        return 'LOCAL-SUPERVISOR'
+    name='LOCAL-SUPERVISOR'
+    log = getLoggerAdapter(log, id='%s-%s'%(name, conf.MACHINEID))
     
     @defer.inlineCallbacks
     def avoidHerokuUnidling(self, url):
@@ -34,8 +31,7 @@ class LocalSupervisor(service.Service):
     def disconnectAwayUsers(self):
         away_users = yield GoogleUser.get_away()
         away_users  = [] if not away_users else away_users
-        if away_users:
-            self.log.info('CHECKING_AWAY_USERS: %s', len(away_users))
+        self.log.info('CHECKING_AWAY_USERS: %s', len(away_users))
         for data in away_users:
             try:
                 user = GoogleUser(**data)
@@ -52,16 +48,12 @@ class LocalSupervisor(service.Service):
         t.start(conf.TASK_DISCONNECT_SECONDS, now = False)
         return service.Service.startService(self)
 
-class WorkersSupervisor(service.Service):
-    log = getLoggerAdapter(log, id='WORKERS-SUPERVISOR-%s'%(conf.MACHINEID))
+class GlobalSupervisor(service.Service):
+    name = 'GLOBAL_SUPERVISOR'
+    log = getLoggerAdapter(log, id='%s-%s'%(name, conf.MACHINEID))
     
     def __init__(self):
         self.checkingWorkers = False
-    
-    @property
-    def name(self):
-        return 'WORKERS-SUPERVISOR'
-    
     
     @defer.inlineCallbacks
     def checkDeathWorkers(self):
