@@ -162,7 +162,8 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
                 if connection_errors >= 3:
                     self._stopped = True
                     self.log.msg('Exiting due too many connection errors (%s) with redis'%(connection_errors))
-                    reactor.stop()
+                    if reactor.running:
+                        reactor.stop()
             except Exception as e:
                 self.log.err(e, 'UNKNOWN_EXCEPTION')
                 if not job is None:
