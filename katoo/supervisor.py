@@ -19,49 +19,26 @@ import cyclone.httpclient
 log = getLogger(__name__, level='INFO')
 
 class LocalSupervisor(service.Service):
-    log = getLoggerAdapter(log, id='LOCAL-SUPERVISOR-%s'%(conf.MACHINEID))
-    
-    @property
-    def name(self):
-        return 'LOCAL-SUPERVISOR'
+    name='LOCAL-SUPERVISOR'
+    log = getLoggerAdapter(log, id='%s-%s'%(name, conf.MACHINEID))
     
     @defer.inlineCallbacks
     def avoidHerokuUnidling(self, url):
         self.log.info('AVOIDING HEROKU IDLING: %s', url)
         yield cyclone.httpclient.fetch(url)
     
-    @defer.inlineCallbacks
-    def disconnectAwayUsers(self):
-        away_users = yield GoogleUser.get_away()
-        away_users  = [] if not away_users else away_users
-        if away_users:
-            self.log.info('CHECKING_AWAY_USERS: %s', len(away_users))
-        for data in away_users:
-            try:
-                user = GoogleUser(**data)
-                yield API(user.userid, queue=user.worker).disconnect(user.userid)
-                yield APNSAPI(user.userid).sendcustom(lang=user.lang, token=user.pushtoken, badgenumber=user.badgenumber, type_msg='disconnect', sound='')
-            except Exception as e:
-                self.log.error('Exception %s disconnecting user %s', e, data['_userid'])
-    
     def startService(self):
         if not conf.HEROKU_UNIDLING_URL is None:
             t = LoopingCall(self.avoidHerokuUnidling, conf.HEROKU_UNIDLING_URL)
             t.start(1800, now = True)
-        t = LoopingCall(self.disconnectAwayUsers)
-        t.start(conf.TASK_DISCONNECT_SECONDS, now = False)
         return service.Service.startService(self)
 
-class WorkersSupervisor(service.Service):
-    log = getLoggerAdapter(log, id='WORKERS-SUPERVISOR-%s'%(conf.MACHINEID))
+class GlobalSupervisor(service.Service):
+    name = 'GLOBAL_SUPERVISOR'
+    log = getLoggerAdapter(log, id='%s-%s'%(name, conf.MACHINEID))
     
     def __init__(self):
         self.checkingWorkers = False
-    
-    @property
-    def name(self):
-        return 'WORKERS-SUPERVISOR'
-    
     
     @defer.inlineCallbacks
     def checkDeathWorkers(self):
@@ -127,10 +104,26 @@ class WorkersSupervisor(service.Service):
                 yield API(user.userid).login(user)
             except Exception as e:
                 self.log.error('Exception %s reconnecting user %s', e, data['_userid'])
-
+    
+    @defer.inlineCallbacks
+    def disconnectAwayUsers(self):
+        away_users = yield GoogleUser.get_away()
+        away_users  = [] if not away_users else away_users
+        self.log.info('CHECKING_AWAY_USERS: %s', len(away_users))
+        for data in away_users:
+            try:
+                user = GoogleUser(**data)
+                yield API(user.userid, queue=user.worker).disconnect(user.userid)
+                yield APNSAPI(user.userid).sendcustom(lang=user.lang, token=user.pushtoken, badgenumber=user.badgenumber, type_msg='disconnect', sound='')
+            except Exception as e:
+                self.log.error('Exception %s disconnecting user %s', e, data['_userid'])
+    
+    
     def startService(self):
         if conf.TASK_RECONNECT_ALL_USERS:
             reactor.callLater(conf.TWISTED_WARMUP, self.reconnectUsers)
         t = LoopingCall(self.checkDeathWorkers)
         t.start(conf.TASK_DEATH_WORKERS, now = False)
+        t = LoopingCall(self.disconnectAwayUsers)
+        t.start(conf.TASK_DISCONNECT_SECONDS, now = False)
         return service.Service.startService(self)
