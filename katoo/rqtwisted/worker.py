@@ -64,6 +64,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         death_workers = []
         for worker_name in death_workers_names:
             worker = yield connection.hgetall(worker_name)
+            worker['key'] = worker_name
             worker['name'] = worker_name.split(':')[-1]
             death_workers.append(worker)
         defer.returnValue(death_workers)
@@ -72,8 +73,8 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     @defer.inlineCallbacks
     def remove(cls, key):
         connection = RedisMixin.redis_conn
-        yield connection.srem(cls.redis_workers_keys)
-        yield connection.srem(cls.redis_death_workers_keys)
+        yield connection.srem(cls.redis_workers_keys, key)
+        yield connection.srem(cls.redis_death_workers_keys, key)
         yield connection.expire(key, 1)
     
     @classmethod
