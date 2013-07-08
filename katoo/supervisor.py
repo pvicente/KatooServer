@@ -50,15 +50,15 @@ class LocalSupervisor(service.Service):
         t.start(conf.TASK_DISCONNECT_SECONDS, now = False)
         return service.Service.startService(self)
 
-class ProcessesSupervisor(service.Service):
-    log = getLoggerAdapter(log, id='PROCESSES-SUPERVISOR-%s'%(conf.MACHINEID))
+class WorkersSupervisor(service.Service):
+    log = getLoggerAdapter(log, id='WORKERS-SUPERVISOR-%s'%(conf.MACHINEID))
     
     def __init__(self):
         self.checkingWorkers = False
     
     @property
     def name(self):
-        return 'PROCESSES-SUPERVISOR'
+        return 'WORKERS-SUPERVISOR'
     
     @defer.inlineCallbacks
     def checkDeathWorkers(self):

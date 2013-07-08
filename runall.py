@@ -7,7 +7,7 @@ from katoo import conf, KatooApp
 from katoo.rqtwisted.worker import Worker
 from katoo.web import app
 from twisted.application import internet
-from katoo.supervisor import LocalSupervisor, ProcessesSupervisor
+from katoo.supervisor import LocalSupervisor, WorkersSupervisor
 from katoo.utils.applog import getLoggerAdapter, getLogger
 
 application = KatooApp().app
@@ -17,8 +17,8 @@ webservice.setServiceParent(application)
 supervisor = LocalSupervisor()
 supervisor.setServiceParent(application)
 
-processes_supervisor = ProcessesSupervisor()
-processes_supervisor.setServiceParent(application)
+workers_supervisor = WorkersSupervisor()
+workers_supervisor.setServiceParent(application)
 
 if conf.REDIS_WORKERS > 0:
     w=Worker([conf.MACHINEID, conf.DIST_QUEUE_LOGIN, conf.DIST_QUEUE_PUSH], name=conf.MACHINEID, loops=conf.REDIS_WORKERS, default_result_ttl=conf.DIST_DEFAULT_TTL, default_warmup=conf.TWISTED_WARMUP)
