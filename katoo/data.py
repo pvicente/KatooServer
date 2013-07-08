@@ -179,7 +179,8 @@ class GoogleContact(object):
         self._favorite = eval(str(value))
     
 class GoogleUser(object):
-    model = DataModel(collectionName='googleusers', indexes=Indexes([dict(fields='_userid', unique=True), dict(fields='_pushtoken', unique=True), ('_userid, _jid'), ('_connected','_away'), dict(fields='_lastTimeConnected', expireAfterSeconds=conf.XMPP_REMOVE_TIME) ]))
+    model = DataModel(collectionName='googleusers', indexes=Indexes([dict(fields='_userid', unique=True), dict(fields='_pushtoken', unique=True), ('_userid, _jid'), ('_connected','_away', '_lastTimeConnected'),
+                                                                     ('_connected', '_worker'), dict(fields='_lastTimeConnected', expireAfterSeconds=conf.XMPP_REMOVE_TIME) ]))
     
     @classmethod
     def load(cls, userid=None, jid=None, pushtoken=None):
@@ -195,8 +196,11 @@ class GoogleUser(object):
         return defer.DeferredList([cls.model.remove({'_userid': userid}), GoogleMessage.flushMessages(userid), GoogleContact.remove(userid)], GoogleRosterItem.remove(userid))
     
     @classmethod
-    def get_connected(cls):
-        return cls.model.find(spec={'_connected': True})
+    def get_connected(cls, worker_name=None):
+        if worker_name is None:
+            return cls.model.find(spec={'_connected': True})
+        else:
+            return cls.model.find(spec={'_connected': True, '_worker': worker_name})
     
     @classmethod
     def get_away(cls):

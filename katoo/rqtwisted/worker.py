@@ -57,6 +57,27 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         self.default_warmup = default_warmup
     
     @classmethod
+    @defer.inlineCallbacks
+    def deathWorkers(cls):
+        connection = RedisMixin.redis_conn
+        death_workers_names = yield connection.smembers(cls.redis_death_workers_keys)
+        death_workers = []
+        for worker_name in death_workers_names:
+            worker = yield connection.hgetall(worker_name)
+            worker['key'] = worker_name
+            worker['name'] = worker_name.split(':')[-1]
+            death_workers.append(worker)
+        defer.returnValue(death_workers)
+    
+    @classmethod
+    @defer.inlineCallbacks
+    def remove(cls, key):
+        connection = RedisMixin.redis_conn
+        yield connection.srem(cls.redis_workers_keys, key)
+        yield connection.srem(cls.redis_death_workers_keys, key)
+        yield connection.expire(key, 1)
+    
+    @classmethod
     def default_name(cls):
         return '%s.%s' % (platform.node(), os.getpid())
     
