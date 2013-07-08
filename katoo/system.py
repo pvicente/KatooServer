@@ -91,6 +91,7 @@ class SynchronousCall(object):
                 calling_self.enqueued = True
                 job = Job.create(func=function, args=args, kwargs=kwargs, connection=queue.connection,
                          result_ttl=self.result_ttl, status=Status.QUEUED)
+                job.meta['userid']=calling_self.key
                 yield queue.enqueue_job(job)
                 if self.sync:
                     ret = yield self.get_result(job)
