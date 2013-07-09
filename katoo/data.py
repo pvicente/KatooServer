@@ -25,7 +25,7 @@ class DataModel(ModelMixin):
         ModelMixin.__init__(self, collectionName, mongourl=mongourl, indexes=indexes)
 
 class GoogleMessage(object):
-    model = DataModel(collectionName='googlemessages', indexes=Indexes(['userid', dict(fields='removeTime', expireAfterSeconds=conf.XMPP_REMOVE_TIME)]))
+    model = DataModel(collectionName='googlemessages', indexes=Indexes(['userid', '-time',  dict(fields='removeTime', expireAfterSeconds=conf.XMPP_REMOVE_TIME)]))
     
     @classmethod
     def getMessages(cls, userid):
