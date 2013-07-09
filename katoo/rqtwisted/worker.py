@@ -3,9 +3,11 @@ Created on Jun 2, 2013
 
 @author: pvicente
 '''
-from queue import Queue, FailedQueue
-from katoo.utils.connections import RedisMixin #TODO: Pending to remove RedisMixin object from katoo
+from datetime import datetime
+from katoo.utils.connections import \
+    RedisMixin #TODO: Pending to remove RedisMixin object from katoo
 from pickle import dumps
+from queue import Queue, FailedQueue
 from rq.exceptions import NoQueueError
 from rq.job import Status
 from rq.utils import make_colorizer
@@ -55,6 +57,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         self.blocking_time = blocking_time
         self.loops = loops
         self.default_warmup = default_warmup
+        self._lastTime = datetime.utcnow()
     
     @classmethod
     @defer.inlineCallbacks
@@ -92,22 +95,34 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
                     'There exists an active worker named \'%s\' '
                     'already.' % (self.name,))
         key = self.key
-        now = time.time()
         queues = ','.join(self.queue_names())
+        now =  datetime.utcnow()
         yield self.connection.delete(key)
         yield self.connection.hset(key, 'birth', now)
         yield self.connection.hset(key, 'queues', queues)
+        yield self.connection.hset(key, 'lastTime', now)
         yield self.connection.sadd(self.redis_workers_keys, key)
     
     def register_death(self):
         """Registers its own death."""
         self.log.msg('Registering death of worker %s'%(self.name))
         d1 = self.connection.srem(self.redis_workers_keys, self.key)
-        d2 = self.connection.hset(self.key, 'death', time.time())
+        d2 = self.connection.hset(self.key, 'death', datetime.utcnow())
         d3 = self.connection.sadd(self.redis_death_workers_keys, self.key)
         
         ret = defer.DeferredList([d1,d2,d3], consumeErrors=True)
         return ret
+    
+    def is_death(self):
+        return self.connection.hget(self.key, 'death')
+        
+    @property
+    def lastTime(self):
+        return self._lastTime
+    
+    def set_lastTime(self, value):
+        self._lastTime = value
+        return self.connection.hset(self.key, 'lastTime', self.lastTime)
     
     @property
     def state(self):
@@ -162,20 +177,40 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     def work(self):
         yield self.set_state('starting')
         connection_errors = 0
-        while not self.stopped:
+        death = None
+        cycles = 0
+        while not self.stopped and death is None:
             res = job = None
             try:
+                if cycles % 500 == 0:
+                    #every 10 seconds when idle lastTime is updated
+                    cycles = 0
+                    yield self.set_lastTime(datetime.utcnow())
+
                 yield self.set_state('idle')
+                
+                death = yield self.is_death()
+                if not death is None and reactor.running:
+                    self.log.err('Worker tagged as DEATH. Stopping reactor ...')
+                    reactor.stop()
+                    continue
+                
                 res = yield Queue.dequeue_any(queue_keys=self.queue_keys(), timeout=self.blocking_time, connection=self.connection)
                 connection_errors = 0
                 if res is None:
+                    cycles+=100
                     continue
+                
+                cycles+=1
+                
                 yield self.set_state('busy')
+                
                 #Parameter _ is queue_key must be a processed when thresholds will be implemented
                 _, job = res
                 d = threads.deferToThread(job.perform)
                 d.addCallback(self.callback_perform_job)
                 d.addErrback(self.errback_perform_job, job=job)
+                
             except cyclone.redis.ConnectionError as e:
                 self.log.err(e, 'REDIS_CONNECTION_ERROR')
                 connection_errors += 1
