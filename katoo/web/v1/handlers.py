@@ -200,6 +200,11 @@ class GoogleContactsHandler(MyRequestHandler):
         if contact is None:
             contact = GoogleContact(_userid=key, _jid=jid)
         
+        name = self.args.get('name')
+        if not name is None:
+            #Setting two words as contact name
+            self.args['name'] = ' '.join(name.split()[:2])
+        
         contact.update(**self.args)
         yield contact.save()
         self._response_json({'success': True, 'reason': 'ok'})
