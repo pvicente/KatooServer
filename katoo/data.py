@@ -5,7 +5,7 @@ Created on Jun 4, 2013
 '''
 
 from datetime import datetime, timedelta
-from katoo.txMongoModel.mongomodel.model import Model, Indexes
+from katoo.txMongoModel.mongomodel.model import Model, Indexes, Sort
 from katoo.utils.connections import MongoMixin
 from twisted.internet import defer
 from txmongo._pymongo.objectid import ObjectId
@@ -25,11 +25,11 @@ class DataModel(ModelMixin):
         ModelMixin.__init__(self, collectionName, mongourl=mongourl, indexes=indexes)
 
 class GoogleMessage(object):
-    model = DataModel(collectionName='googlemessages', indexes=Indexes(['userid', '-time',  dict(fields='removeTime', expireAfterSeconds=conf.XMPP_REMOVE_TIME)]))
+    model = DataModel(collectionName='googlemessages', indexes=Indexes(['userid', 'time',  dict(fields='removeTime', expireAfterSeconds=conf.XMPP_REMOVE_TIME)]))
     
     @classmethod
     def getMessages(cls, userid):
-        return cls.model.find(spec={'userid':userid}, fields={'_id':0, 'time':1, 'fromid':1, 'msgid':1, 'data':1})
+        return cls.model.find(spec={'userid':userid}, fields={'_id':0, 'time':1, 'fromid':1, 'msgid':1, 'data':1}, mongofilter=Sort.getFilter(['time']))
     
     @classmethod
     def flushMessages(cls, userid):
