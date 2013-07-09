@@ -85,7 +85,7 @@ class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientP
         PresenceClientProtocol.connectionInitialized(self)
         
         #Send Available and getting roster
-        self.available(show=conf.XMPP_STATE, priority=conf.XMPP_PRIORITY)
+        self.available(show=conf.XMPP_STATE, priority=conf.XMPP_PRIORITY, statuses={'en-US': conf.XMPP_MOOD})
         d = self.getRoster()
         d.addCallback(self.onRosterReceived)
         

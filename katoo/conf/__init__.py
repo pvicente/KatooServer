@@ -40,6 +40,7 @@ XMPP_LOG_TRAFFIC=eval(str(os.getenv('XMPP_LOG_TRAFFIC', True)))
 XMPP_MAX_RETRIES=int(os.getenv('XMPP_MAX_RETRIES', 3))
 XMPP_MIN_CONNECTED_TIME=int(os.getenv('XMPP_MIN_CONNECTED_TIME', 60))
 XMPP_PRIORITY=int(os.getenv('XMPP_PRIORITY', 0))
+XMPP_MOOD=os.getenv('XMPP_MOOD', "I'm using Katoo iOS!")
 XMPP_STATE=os.getenv('XMPP_STATE', 'away')
 XMPP_DISCONNECTION_TIME=int(os.getenv('XMPP_DISCONNECTION_TIME', 43200)) #12 hours by default
 XMPP_REMOVE_TIME=int(os.getenv('XMPP_REMOVE_TIME', 604800)) #7 days
