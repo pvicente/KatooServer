@@ -108,7 +108,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         """Registers its own death."""
         self.log.msg('Registering death of worker %s'%(self.name))
         d1 = self.connection.srem(self.redis_workers_keys, self.key)
-        d2 = self.connection.hset(self.key, 'death', datetime.utcnow())
+        d2 = self.setDeath(self.key, datetime.utcnow(), connection=self.connection)
         d3 = self.connection.sadd(self.redis_death_workers_keys, self.key)
         
         ret = defer.DeferredList([d1,d2,d3], consumeErrors=True)
@@ -116,7 +116,13 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     
     def is_death(self):
         return self.connection.hget(self.key, 'death')
-        
+    
+    @classmethod
+    def setDeath(cls, key, value, connection=None):
+        if connection is None:
+            connection = RedisMixin.redis_conn
+        return connection.hset(key, 'death', value)
+    
     @property
     def lastTime(self):
         return self._lastTime
