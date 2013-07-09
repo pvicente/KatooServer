@@ -61,16 +61,17 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     
     @classmethod
     @defer.inlineCallbacks
-    def deathWorkers(cls):
-        connection = RedisMixin.redis_conn
-        death_workers_names = yield connection.smembers(cls.redis_death_workers_keys)
-        death_workers = []
-        for worker_name in death_workers_names:
-            worker = yield connection.hgetall(worker_name)
-            worker['key'] = worker_name
-            worker['name'] = worker_name.split(':')[-1]
-            death_workers.append(worker)
-        defer.returnValue(death_workers)
+    def getWorkers(cls, key, connection = None):
+        if connection is None:
+            connection = RedisMixin.redis_conn
+        names = yield connection.smembers(key)
+        workers = []
+        for name in names:
+            worker = yield connection.hgetall(name)
+            worker['key'] = name
+            worker['name'] = name.split(':')[-1]
+            workers.append(worker)
+        defer.returnValue(workers)
     
     @classmethod
     @defer.inlineCallbacks

@@ -43,9 +43,11 @@ class GlobalSupervisor(service.Service):
     @defer.inlineCallbacks
     def checkDeathWorkers(self):
         if not self.checkingWorkers:
-            self.checkingWorkers = True
-            yield self.processDeathWorkers()
-            self.checkingWorkers = False
+            try:
+                self.checkingWorkers = True
+                yield self.processDeathWorkers()
+            finally:
+                self.checkingWorkers = False
     
     @defer.inlineCallbacks
     def getPendingJobs(self, userid, queue_name):
@@ -60,7 +62,7 @@ class GlobalSupervisor(service.Service):
     
     @defer.inlineCallbacks
     def processDeathWorkers(self):
-        death_workers = yield Worker.deathWorkers()
+        death_workers = yield Worker.getWorkers(Worker.redis_death_workers_keys)
         if death_workers:
             self.log.info('DEATH_WORKERS %s', [worker.get('name') for worker in death_workers])
         for worker in death_workers:
