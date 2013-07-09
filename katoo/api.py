@@ -19,7 +19,16 @@ class API(DistributedAPI):
         if not running_client is None:
             raise XMPPUserAlreadyLogged('Service %s already running'%(running_client))
         XMPPGoogle(xmppuser, KatooApp().app)
-
+    
+    @defer.inlineCallbacks
+    def _shared_logout(self, userid):
+        self.log.info('LOGOUT')
+        running_client = KatooApp().getService(userid)
+        if running_client is None:
+            raise XMPPUserNotLogged('User %s is not running in current worker'%(userid))
+        user = running_client.user
+        yield running_client.disconnect()
+        yield user.remove(userid)
     
     @SynchronousCall(queue=conf.DIST_QUEUE_LOGIN)
     @defer.inlineCallbacks
@@ -72,15 +81,14 @@ class API(DistributedAPI):
         return xmppuser.save()
     
     @AsynchronousCall(queue=None) #Queue is assigned at run time
+    @defer.inlineCallbacks
     def logout(self, userid):
-        self.log.info('LOGOUT')
-        running_client = KatooApp().getService(userid)
-        if running_client is None:
-            raise XMPPUserNotLogged('User %s is not running in current worker'%(userid))
-        user = running_client.user
-        d = running_client.disconnect()
-        d.addCallback(lambda x: user.remove(userid))
-        return d
+        yield self._shared_logout(userid)
+    
+    @AsynchronousCall(queue=None)
+    @defer.inlineCallbacks
+    def logout_sync(self, userid):
+        yield self._shared_logout(userid)
     
     @AsynchronousCall(queue=None) #Queue is assigned at run time
     def disconnect(self, userid, change_state=True):
