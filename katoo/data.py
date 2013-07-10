@@ -181,7 +181,7 @@ class GoogleContact(object):
     
 class GoogleUser(object):
     model = DataModel(collectionName='googleusers', indexes=Indexes([dict(fields='_userid', unique=True), dict(fields='_pushtoken', unique=True), ('_userid, _jid'), ('_connected','_away', '_lastTimeConnected'),
-                                                                     ('_connected', '_worker'), '_onMigrationTime', dict(fields='_lastTimeConnected', expireAfterSeconds=conf.XMPP_REMOVE_TIME) ]))
+                                                                     ('_connected', '_worker'), ('_connected', '_onMigrationTime'), dict(fields='_lastTimeConnected', expireAfterSeconds=conf.XMPP_REMOVE_TIME) ]))
     
     @classmethod
     def load(cls, userid=None, jid=None, pushtoken=None):
@@ -210,7 +210,7 @@ class GoogleUser(object):
     
     @classmethod
     def get_onMigration(cls):
-        return cls.model.find(spec={'_onMigrationTime': {'$ne': ''}})
+        return cls.model.find(spec={'_connected': True, '_onMigrationTime': {'$ne': ''}})
     
     def __init__(self,
                  _userid, 

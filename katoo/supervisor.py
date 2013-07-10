@@ -71,8 +71,8 @@ class GlobalSupervisor(Supervisor):
     def processOnMigrationUsers(self):
         onMigration_users = yield GoogleUser.get_onMigration()
         total_users = len(onMigration_users)
-        #if total_users > 0:
-        self.log.info("ON_MIGRATION_USERS %s", total_users)
+        if total_users > 0:
+            self.log.info("ON_MIGRATION_USERS %s", total_users)
         now = datetime.utcnow()
         for data in onMigration_users:
             user = GoogleUser(**data)
