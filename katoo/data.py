@@ -222,7 +222,8 @@ class GoogleUser(object):
                  _away=False,
                  _id = None,
                  _lastTimeConnected=None,
-                 _worker=conf.MACHINEID):
+                 _worker=conf.MACHINEID,
+                 _onMigration=False):
         self._userid = unicode(_userid)
         self._jid = unicode(_jid)
         self._token = unicode(_token)
@@ -237,6 +238,7 @@ class GoogleUser(object):
         self._away = eval(str(_away))
         self._lastTimeConnected=_lastTimeConnected
         self._worker=_worker
+        self._onMigration=eval(str(_onMigration))
         if isinstance(_id, ObjectId):
             self._id = _id
     
@@ -366,6 +368,14 @@ class GoogleUser(object):
     @worker.setter
     def worker(self, value):
         self._worker=value
+    
+    @property
+    def onMigration(self):
+        return self._onMigration
+    
+    @onMigration.setter
+    def onMigration(self, value):
+        self._onMigration=bool(value)
     
 if __name__ == '__main__':
     from twisted.internet import reactor

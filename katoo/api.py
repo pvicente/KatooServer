@@ -43,6 +43,10 @@ class API(DistributedAPI):
     def relogin(self, xmppuser, pending_jobs):
         self.log.info('RELOGIN %s. Pending_Jobs: %s. Data: %s', xmppuser.jid, len(pending_jobs), xmppuser)
         yield self._shared_login(xmppuser)
+        
+        xmppuser.onMigration=True
+        yield xmppuser.save()
+        
         queue = Queue(conf.MACHINEID)
         
         #Enqueue pending jobs before migration was launched
@@ -67,6 +71,7 @@ class API(DistributedAPI):
                 migration_job_ids = yield migration_queue.job_ids
         
         xmppuser.worker=conf.MACHINEID
+        xmppuser.onMigration=False
         yield xmppuser.save()
         
     
