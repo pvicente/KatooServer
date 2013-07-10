@@ -20,7 +20,20 @@ import cyclone.httpclient
 
 log = getLogger(__name__, level='INFO')
 
-class LocalSupervisor(service.Service):
+class Supervisor(service.Service):
+    def __init__(self):
+        self.tasks = []
+    
+    def registerTask(self, t):
+        self.tasks.append(t)
+    
+    def stopService(self, *args, **kwargs):
+        for task in self.tasks:
+            self.log.info('STOPPING_TASK %s', task)
+            task.stop()
+        return service.Service.stopService(self, *args, **kwargs)
+
+class LocalSupervisor(Supervisor):
     name='LOCAL-SUPERVISOR'
     log = getLoggerAdapter(log, id='%s-%s'%(name, conf.MACHINEID))
     
@@ -32,14 +45,16 @@ class LocalSupervisor(service.Service):
     def startService(self):
         if not conf.HEROKU_UNIDLING_URL is None:
             t = LoopingCall(self.avoidHerokuUnidling, conf.HEROKU_UNIDLING_URL)
+            self.registerTask(t)
             t.start(1800, now = True)
         return service.Service.startService(self)
 
-class GlobalSupervisor(service.Service):
+class GlobalSupervisor(Supervisor):
     name = 'GLOBAL_SUPERVISOR'
     log = getLoggerAdapter(log, id='%s-%s'%(name, conf.MACHINEID))
     
     def __init__(self):
+        Supervisor.__init__(self)
         self.checkingWorkers = False
     
     @defer.inlineCallbacks
@@ -148,11 +163,18 @@ class GlobalSupervisor(service.Service):
     def startService(self):
         if conf.TASK_RECONNECT_ALL_USERS:
             reactor.callLater(conf.TWISTED_WARMUP, self.reconnectUsers)
-            t = LoopingCall(self.disconnectAwayUsers)
-            t.start(conf.TASK_DISCONNECT_SECONDS, now = False)
+        
+        t = LoopingCall(self.disconnectAwayUsers)
+        self.registerTask(t)
+        t.start(conf.TASK_DISCONNECT_SECONDS, now = False)
+        
         if conf.REDIS_WORKERS>0:
             t = LoopingCall(self.checkDeathWorkers)
+            self.registerTask(t)
             t.start(conf.TASK_DEATH_WORKERS, now = False)
+            
             t = LoopingCall(self.runningWorkers)
+            self.registerTask(t)
             t.start(conf.TASK_RUNNING_WORKERS, now = False)
+        
         return service.Service.startService(self)
