@@ -3,6 +3,8 @@ Created on Jun 12, 2013
 
 @author: pvicente
 '''
+from datetime import datetime
+from dateutil import parser
 from katoo import conf
 from katoo.api import API
 from katoo.apns.api import API as APNSAPI
@@ -43,9 +45,11 @@ class GlobalSupervisor(service.Service):
     @defer.inlineCallbacks
     def checkDeathWorkers(self):
         if not self.checkingWorkers:
-            self.checkingWorkers = True
-            yield self.processDeathWorkers()
-            self.checkingWorkers = False
+            try:
+                self.checkingWorkers = True
+                yield self.processDeathWorkers()
+            finally:
+                self.checkingWorkers = False
     
     @defer.inlineCallbacks
     def getPendingJobs(self, userid, queue_name):
@@ -60,13 +64,13 @@ class GlobalSupervisor(service.Service):
     
     @defer.inlineCallbacks
     def processDeathWorkers(self):
-        death_workers = yield Worker.deathWorkers()
+        death_workers = yield Worker.getWorkers(Worker.redis_death_workers_keys)
         if death_workers:
             self.log.info('DEATH_WORKERS %s', [worker.get('name') for worker in death_workers])
         for worker in death_workers:
             name = worker.get('name')
             key = worker.get('key')
-            if conf.DIST_QUEUE_LOGIN in worker.get('queues'):
+            if conf.DIST_QUEUE_LOGIN in worker.get('queues', []):
                 connected_users = yield GoogleUser.get_connected(name)
                 total_users = len(connected_users)
                 self.log.info('Reconnecting %s connected user(s) of death worker %s', total_users, name)
@@ -118,12 +122,37 @@ class GlobalSupervisor(service.Service):
             except Exception as e:
                 self.log.error('Exception %s disconnecting user %s', e, data['_userid'])
     
+    @defer.inlineCallbacks
+    def runningWorkers(self):
+        workers = yield Worker.getWorkers(Worker.redis_workers_keys)
+        if workers:
+            self.log.info('CHECKING_RUNNING_WORKERS %s', len(workers))
+        for worker in workers:
+            name = worker.get('name')
+            key = worker.get('key')
+            lastTime = worker.get('lastTime')
+            if key is None or name is None or lastTime is None:
+                self.log.warning('WORKER_DATA_WRONG %s', worker)
+                continue
+            death = worker.get('death')
+            if death is None:
+                lastTime = parser.parse(lastTime)
+                delta = datetime.utcnow() - lastTime
+                if delta.seconds > conf.SUPERVISOR_WORKER_REFRESH_TIME:
+                    self.log.warning('REGISTERING_WORKER_DEATH %s has not been updated since %s second(s)', name, delta.seconds)
+                    w = Worker([], name=name)
+                    w.log = self.log
+                    yield w.register_death()
+            
     
     def startService(self):
         if conf.TASK_RECONNECT_ALL_USERS:
             reactor.callLater(conf.TWISTED_WARMUP, self.reconnectUsers)
-        t = LoopingCall(self.checkDeathWorkers)
-        t.start(conf.TASK_DEATH_WORKERS, now = False)
-        t = LoopingCall(self.disconnectAwayUsers)
-        t.start(conf.TASK_DISCONNECT_SECONDS, now = False)
+            t = LoopingCall(self.disconnectAwayUsers)
+            t.start(conf.TASK_DISCONNECT_SECONDS, now = False)
+        if conf.REDIS_WORKERS>0:
+            t = LoopingCall(self.checkDeathWorkers)
+            t.start(conf.TASK_DEATH_WORKERS, now = False)
+            t = LoopingCall(self.runningWorkers)
+            t.start(conf.TASK_RUNNING_WORKERS, now = False)
         return service.Service.startService(self)

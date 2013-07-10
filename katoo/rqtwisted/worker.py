@@ -3,9 +3,11 @@ Created on Jun 2, 2013
 
 @author: pvicente
 '''
-from queue import Queue, FailedQueue
-from katoo.utils.connections import RedisMixin #TODO: Pending to remove RedisMixin object from katoo
+from datetime import datetime
+from katoo.utils.connections import \
+    RedisMixin #TODO: Pending to remove RedisMixin object from katoo
 from pickle import dumps
+from queue import Queue, FailedQueue
 from rq.exceptions import NoQueueError
 from rq.job import Status
 from rq.utils import make_colorizer
@@ -18,7 +20,6 @@ import os
 import platform
 import rq.worker
 import sys
-import time
 import times
 import traceback
 
@@ -55,19 +56,21 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         self.blocking_time = blocking_time
         self.loops = loops
         self.default_warmup = default_warmup
+        self._lastTime = datetime.utcnow()
     
     @classmethod
     @defer.inlineCallbacks
-    def deathWorkers(cls):
-        connection = RedisMixin.redis_conn
-        death_workers_names = yield connection.smembers(cls.redis_death_workers_keys)
-        death_workers = []
-        for worker_name in death_workers_names:
-            worker = yield connection.hgetall(worker_name)
-            worker['key'] = worker_name
-            worker['name'] = worker_name.split(':')[-1]
-            death_workers.append(worker)
-        defer.returnValue(death_workers)
+    def getWorkers(cls, key, connection = None):
+        if connection is None:
+            connection = RedisMixin.redis_conn
+        names = yield connection.smembers(key)
+        workers = []
+        for name in names:
+            worker = yield connection.hgetall(name)
+            worker['key'] = name
+            worker['name'] = name.split(':')[-1]
+            workers.append(worker)
+        defer.returnValue(workers)
     
     @classmethod
     @defer.inlineCallbacks
@@ -84,7 +87,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     @defer.inlineCallbacks
     def register_birth(self):  # noqa
         """Registers its own birth."""
-        self.log.msg('Registering birth of worker %s' % (self.name,))
+        self.log.msg('REGISTER_BIRTH of worker %s' % (self.name,))
         exist_key = yield self.connection.exists(self.key)
         death =  yield self.connection.hexists(self.key, 'death')
         if exist_key and not death:
@@ -92,22 +95,49 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
                     'There exists an active worker named \'%s\' '
                     'already.' % (self.name,))
         key = self.key
-        now = time.time()
         queues = ','.join(self.queue_names())
+        now =  datetime.utcnow()
         yield self.connection.delete(key)
         yield self.connection.hset(key, 'birth', now)
         yield self.connection.hset(key, 'queues', queues)
+        yield self.connection.hset(key, 'lastTime', now)
         yield self.connection.sadd(self.redis_workers_keys, key)
     
     def register_death(self):
         """Registers its own death."""
-        self.log.msg('Registering death of worker %s'%(self.name))
+        self.log.msg('REGISTER_DEATH of worker %s'%(self.name))
         d1 = self.connection.srem(self.redis_workers_keys, self.key)
-        d2 = self.connection.hset(self.key, 'death', time.time())
+        d2 = self.setDeath(self.key, datetime.utcnow(), connection=self.connection)
         d3 = self.connection.sadd(self.redis_death_workers_keys, self.key)
         
         ret = defer.DeferredList([d1,d2,d3], consumeErrors=True)
         return ret
+    
+    @defer.inlineCallbacks
+    def is_alive(self):
+        exists = True
+        death = yield self.connection.hget(self.key, 'death')
+        if death is None:
+            exists  = yield self.connection.exists(self.key)
+        ret = bool(exists and death is None)
+        defer.returnValue(ret)
+
+    
+    @classmethod
+    def setDeath(cls, key, value, connection=None):
+        if connection is None:
+            connection = RedisMixin.redis_conn
+        return connection.hset(key, 'death', value)
+    
+    @property
+    def lastTime(self):
+        return self._lastTime
+    
+    def set_lastTime(self, value):
+        delta = value - self._lastTime
+        self.log.msg('REFRESH_LAST_TIME %s second(s) ago'%(delta.seconds))
+        self._lastTime = value
+        return self.connection.hset(self.key, 'lastTime', self._lastTime)
     
     @property
     def state(self):
@@ -162,20 +192,40 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     def work(self):
         yield self.set_state('starting')
         connection_errors = 0
-        while not self.stopped:
+        alive = True
+        cycles = 0
+        while not self.stopped and alive:
             res = job = None
             try:
+                if cycles >= 1000:
+                    #every 1000 cycles (aprox 10 seconds) when idle lastTime is updated
+                    cycles = 0
+                    yield self.set_lastTime(datetime.utcnow())
+
                 yield self.set_state('idle')
+                
+                alive = yield self.is_alive()
+                if not alive and reactor.running:
+                    self.log.err('Worker is not ALIVE. Stopping reactor ...')
+                    reactor.stop()
+                    continue
+                
                 res = yield Queue.dequeue_any(queue_keys=self.queue_keys(), timeout=self.blocking_time, connection=self.connection)
                 connection_errors = 0
                 if res is None:
+                    cycles+=200
                     continue
+                
+                cycles+=1
+                
                 yield self.set_state('busy')
+                
                 #Parameter _ is queue_key must be a processed when thresholds will be implemented
                 _, job = res
                 d = threads.deferToThread(job.perform)
                 d.addCallback(self.callback_perform_job)
                 d.addErrback(self.errback_perform_job, job=job)
+                
             except cyclone.redis.ConnectionError as e:
                 self.log.err(e, 'REDIS_CONNECTION_ERROR')
                 connection_errors += 1
