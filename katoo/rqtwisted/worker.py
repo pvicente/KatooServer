@@ -88,7 +88,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     @defer.inlineCallbacks
     def register_birth(self):  # noqa
         """Registers its own birth."""
-        self.log.msg('Registering birth of worker %s' % (self.name,))
+        self.log.msg('REGISTER_BIRTH of worker %s' % (self.name,))
         exist_key = yield self.connection.exists(self.key)
         death =  yield self.connection.hexists(self.key, 'death')
         if exist_key and not death:
@@ -106,7 +106,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     
     def register_death(self):
         """Registers its own death."""
-        self.log.msg('Registering death of worker %s'%(self.name))
+        self.log.msg('REGISTER_DEATH of worker %s'%(self.name))
         d1 = self.connection.srem(self.redis_workers_keys, self.key)
         d2 = self.setDeath(self.key, datetime.utcnow(), connection=self.connection)
         d3 = self.connection.sadd(self.redis_death_workers_keys, self.key)
@@ -114,8 +114,15 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         ret = defer.DeferredList([d1,d2,d3], consumeErrors=True)
         return ret
     
-    def is_death(self):
-        return self.connection.hget(self.key, 'death')
+    @defer.inlineCallbacks
+    def is_alive(self):
+        exists = True
+        death = yield self.connection.hget(self.key, 'death')
+        if death is None:
+            exists  = yield self.connection.exists(self.key)
+        ret = bool(exists and death is None)
+        defer.returnValue(ret)
+
     
     @classmethod
     def setDeath(cls, key, value, connection=None):
@@ -128,8 +135,9 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         return self._lastTime
     
     def set_lastTime(self, value):
+        self.log.msg('Refresh lastTime %s now %s'%(self._lastTime, value))
         self._lastTime = value
-        return self.connection.hset(self.key, 'lastTime', self.lastTime)
+        return self.connection.hset(self.key, 'lastTime', self._lastTime)
     
     @property
     def state(self):
@@ -184,28 +192,28 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     def work(self):
         yield self.set_state('starting')
         connection_errors = 0
-        death = None
+        alive = True
         cycles = 0
-        while not self.stopped and death is None:
+        while not self.stopped and alive:
             res = job = None
             try:
-                if cycles % 500 == 0:
-                    #every 10 seconds when idle lastTime is updated
+                if cycles >= 1000:
+                    #every 1000 cycles (aprox 10 seconds) when idle lastTime is updated
                     cycles = 0
                     yield self.set_lastTime(datetime.utcnow())
 
                 yield self.set_state('idle')
                 
-                death = yield self.is_death()
-                if not death is None and reactor.running:
-                    self.log.err('Worker tagged as DEATH. Stopping reactor ...')
+                alive = yield self.is_alive()
+                if not alive and reactor.running:
+                    self.log.err('Worker is not ALIVE. Stopping reactor ...')
                     reactor.stop()
                     continue
                 
                 res = yield Queue.dequeue_any(queue_keys=self.queue_keys(), timeout=self.blocking_time, connection=self.connection)
                 connection_errors = 0
                 if res is None:
-                    cycles+=100
+                    cycles+=200
                     continue
                 
                 cycles+=1
