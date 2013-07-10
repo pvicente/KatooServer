@@ -5,6 +5,7 @@ Created on Jun 4, 2013
 '''
 
 from datetime import datetime, timedelta
+from dateutil import parser
 from katoo.txMongoModel.mongomodel.model import Model, Indexes, Sort
 from katoo.utils.connections import MongoMixin
 from twisted.internet import defer
@@ -180,7 +181,7 @@ class GoogleContact(object):
     
 class GoogleUser(object):
     model = DataModel(collectionName='googleusers', indexes=Indexes([dict(fields='_userid', unique=True), dict(fields='_pushtoken', unique=True), ('_userid, _jid'), ('_connected','_away', '_lastTimeConnected'),
-                                                                     ('_connected', '_worker'), dict(fields='_lastTimeConnected', expireAfterSeconds=conf.XMPP_REMOVE_TIME) ]))
+                                                                     ('_connected', '_worker'), '_onMigrationTime', dict(fields='_lastTimeConnected', expireAfterSeconds=conf.XMPP_REMOVE_TIME) ]))
     
     @classmethod
     def load(cls, userid=None, jid=None, pushtoken=None):
@@ -207,6 +208,10 @@ class GoogleUser(object):
         disconnected_time = datetime.utcnow() - timedelta(seconds=conf.XMPP_DISCONNECTION_TIME)
         return cls.model.find(spec={'_connected': True, '_away': True, '_lastTimeConnected': {"$lt": disconnected_time}})
     
+    @classmethod
+    def get_onMigration(cls):
+        return cls.model.find(spec={'_onMigrationTime': {'$ne': ''}})
+    
     def __init__(self,
                  _userid, 
                  _jid,
@@ -223,7 +228,7 @@ class GoogleUser(object):
                  _id = None,
                  _lastTimeConnected=None,
                  _worker=conf.MACHINEID,
-                 _onMigration=False):
+                 _onMigrationTime=''):
         self._userid = unicode(_userid)
         self._jid = unicode(_jid)
         self._token = unicode(_token)
@@ -238,7 +243,7 @@ class GoogleUser(object):
         self._away = eval(str(_away))
         self._lastTimeConnected=_lastTimeConnected
         self._worker=_worker
-        self._onMigration=eval(str(_onMigration))
+        self._onMigrationTime=_onMigrationTime
         if isinstance(_id, ObjectId):
             self._id = _id
     
@@ -370,12 +375,12 @@ class GoogleUser(object):
         self._worker=value
     
     @property
-    def onMigration(self):
-        return self._onMigration
+    def onMigrationTime(self):
+        return self._onMigrationTime
     
-    @onMigration.setter
-    def onMigration(self, value):
-        self._onMigration=bool(value)
+    @onMigrationTime.setter
+    def onMigrationTime(self, value):
+        self._onMigrationTime=value
     
 if __name__ == '__main__':
     from twisted.internet import reactor
