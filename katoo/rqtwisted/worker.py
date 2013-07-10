@@ -186,6 +186,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         else:
             exc_string = failure.getTraceback()
         job.meta['failure'] = failure
+        self.log.msg('JOB_FAILED %s: %r'%(job, exc_string))
         yield self.failed_queue.quarantine(job, exc_info=exc_string)
     
     @defer.inlineCallbacks
