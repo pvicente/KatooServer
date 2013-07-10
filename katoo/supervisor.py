@@ -55,16 +55,17 @@ class GlobalSupervisor(Supervisor):
     
     def __init__(self):
         Supervisor.__init__(self)
-        self.checkingWorkers = False
+        self.checkingMigrateUsers = False
     
     @defer.inlineCallbacks
-    def checkDeathWorkers(self):
-        if not self.checkingWorkers:
+    def checkMigrateUsers(self):
+        if not self.checkingMigrateUsers:
             try:
-                self.checkingWorkers = True
+                self.checkingMigrateUsers = True
                 yield self.processDeathWorkers()
             finally:
-                self.checkingWorkers = False
+                self.checkingMigrateUsers = False
+    
     
     @defer.inlineCallbacks
     def getPendingJobs(self, userid, queue_name):
@@ -169,7 +170,7 @@ class GlobalSupervisor(Supervisor):
         t.start(conf.TASK_DISCONNECT_SECONDS, now = False)
         
         if conf.REDIS_WORKERS>0:
-            t = LoopingCall(self.checkDeathWorkers)
+            t = LoopingCall(self.checkMigrateUsers)
             self.registerTask(t)
             t.start(conf.TASK_DEATH_WORKERS, now = False)
             
