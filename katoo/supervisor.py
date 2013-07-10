@@ -55,16 +55,36 @@ class GlobalSupervisor(Supervisor):
     
     def __init__(self):
         Supervisor.__init__(self)
-        self.checkingWorkers = False
+        self.checkingMigrateUsers = False
     
     @defer.inlineCallbacks
-    def checkDeathWorkers(self):
-        if not self.checkingWorkers:
+    def checkMigrateUsers(self):
+        if not self.checkingMigrateUsers:
             try:
-                self.checkingWorkers = True
+                self.checkingMigrateUsers = True
+                yield self.processOnMigrationUsers()
                 yield self.processDeathWorkers()
             finally:
-                self.checkingWorkers = False
+                self.checkingMigrateUsers = False
+    
+    @defer.inlineCallbacks
+    def processOnMigrationUsers(self):
+        onMigration_users = yield GoogleUser.get_onMigration()
+        total_users = len(onMigration_users)
+        #if total_users > 0:
+        self.log.info("ON_MIGRATION_USERS %s", total_users)
+        now = datetime.utcnow()
+        for data in onMigration_users:
+            user = GoogleUser(**data)
+            delta_time = now - user.onMigrationTime
+            if delta_time.seconds < 60:
+                continue
+            self.log.info('[%s] USER_MIGRATION_STOPPED %s second(s) ago. Performing new relogin ...', user.userid, delta_time.seconds)
+            user.worker = user.userid
+            user.onMigrationTime=''
+            yield user.save()
+            yield API(user.userid).relogin(user, pending_jobs=[])
+        
     
     @defer.inlineCallbacks
     def getPendingJobs(self, userid, queue_name):
@@ -169,7 +189,7 @@ class GlobalSupervisor(Supervisor):
         t.start(conf.TASK_DISCONNECT_SECONDS, now = False)
         
         if conf.REDIS_WORKERS>0:
-            t = LoopingCall(self.checkDeathWorkers)
+            t = LoopingCall(self.checkMigrateUsers)
             self.registerTask(t)
             t.start(conf.TASK_DEATH_WORKERS, now = False)
             

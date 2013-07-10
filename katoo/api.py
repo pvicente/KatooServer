@@ -5,11 +5,12 @@ Created on Jun 5, 2013
 '''
 from katoo import KatooApp, conf
 from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
-from katoo.rqtwisted.job import Job
+from katoo.rqtwisted.job import Job, NoSuchJobError
 from katoo.rqtwisted.queue import Queue
 from katoo.system import DistributedAPI, SynchronousCall, AsynchronousCall
 from katoo.xmpp.xmppgoogle import XMPPGoogle
 from twisted.internet import defer
+from datetime import datetime
 
 class API(DistributedAPI):
     
@@ -43,31 +44,45 @@ class API(DistributedAPI):
     def relogin(self, xmppuser, pending_jobs):
         self.log.info('RELOGIN %s. Pending_Jobs: %s. Data: %s', xmppuser.jid, len(pending_jobs), xmppuser)
         yield self._shared_login(xmppuser)
+        
+        xmppuser.onMigrationTime = datetime.utcnow()
+        yield xmppuser.save()
+        
         queue = Queue(conf.MACHINEID)
         
         #Enqueue pending jobs before migration was launched
         for job_id in pending_jobs:
-            job = yield Job.fetch(job_id, queue.connection)
-            yield queue.enqueue_job(job)
+            try:
+                job = yield Job.fetch(job_id, queue.connection)
+                yield queue.enqueue_job(job)
+            except NoSuchJobError:
+                pass
         
         #Enqueue pending jobs after migration was launched
         migration_queue = Queue(xmppuser.userid)
         migration_job_ids = yield migration_queue.job_ids
+        yield migration_queue.empty()
         
         while migration_job_ids:
             job_id = migration_job_ids.pop(0)
-            job = yield Job.fetch(job_id, migration_queue.connection)
-            
-            #Enqueue job in current worker queue
-            yield queue.enqueue_job(job)
+            try:
+                job = yield Job.fetch(job_id, migration_queue.connection)
+                #Enqueue job in current worker queue
+                yield queue.enqueue_job(job)
+            except NoSuchJobError:
+                pass
             
             if not migration_job_ids:
                 xmppuser.worker=conf.MACHINEID
+                xmppuser.onMigrationTime=''
                 yield xmppuser.save()
                 migration_job_ids = yield migration_queue.job_ids
+                yield migration_queue.empty()
         
-        xmppuser.worker=conf.MACHINEID
-        yield xmppuser.save()
+        if xmppuser.worker != conf.MACHINEID:
+            xmppuser.worker=conf.MACHINEID
+            xmppuser.onMigrationTime=''
+            yield xmppuser.save()
         
     
     @AsynchronousCall(queue=None) #Queue is assigned at run time

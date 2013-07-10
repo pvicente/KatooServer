@@ -78,7 +78,7 @@ class GoogleHandler(MyRequestHandler):
             user_to_logout = yield GoogleUser.load(pushtoken=self.args['_pushtoken'])
             if not user_to_logout is None:
                 try:
-                    self.log.msg('WEB_HANDLER_LOGOUT %s with the same pushtoken'%(user_to_logout.userid))
+                    self.log.info('WEB_HANDLER_LOGOUT %s with the same pushtoken',user_to_logout.userid)
                     yield API(key, queue=user_to_logout.worker).logout_sync(user_to_logout.userid)
                 except XMPPUserNotLogged:
                     yield GoogleUser.remove(user_to_logout.userid)
@@ -87,13 +87,14 @@ class GoogleHandler(MyRequestHandler):
             user_to_logout = yield GoogleUser.load(userid=key, jid=self.args['_jid'])
             if user_to_logout is None:
                 try:
-                    self.log.msg('WEB_HANDLER_LOGOUT %s with other jid: %s->%s'%(key, user.jid, self.args['_jid']))
+                    self.log.info('WEB_HANDLER_LOGOUT %s with other jid: %s->%s', key, user.jid, self.args['_jid'])
                     yield API(key, queue=user.worker).logout_sync(key)
                 except XMPPUserNotLogged:
                     yield GoogleUser.remove(key)
                 user = None
         else:
             #user not connected removing from database
+            self.log.info('WEB_HANDLER_REMOVE %s due to it is disconnected and new login is comming', user.userid)
             yield GoogleUser.remove(user.userid)
         
         try:
