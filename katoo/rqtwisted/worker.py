@@ -20,7 +20,6 @@ import os
 import platform
 import rq.worker
 import sys
-import time
 import times
 import traceback
 
@@ -135,7 +134,8 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         return self._lastTime
     
     def set_lastTime(self, value):
-        self.log.msg('Refresh lastTime %s now %s'%(self._lastTime, value))
+        delta = value - self._lastTime
+        self.log.msg('REFRESH_LAST_TIME %s second(s) ago'%(delta.seconds))
         self._lastTime = value
         return self.connection.hset(self.key, 'lastTime', self._lastTime)
     
