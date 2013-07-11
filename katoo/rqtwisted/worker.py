@@ -57,6 +57,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         self.loops = loops
         self.default_warmup = default_warmup
         self._lastTime = datetime.utcnow()
+        self._processedJobs = 0
     
     @classmethod
     @defer.inlineCallbacks
@@ -135,7 +136,10 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     
     def set_lastTime(self, value):
         delta = value - self._lastTime
-        self.log.msg('REFRESH_LAST_TIME %s second(s) ago'%(delta.seconds))
+        seconds = delta.seconds
+        jobs = self._processedJobs/seconds if seconds > 0 else self._processedJobs
+        self._processedJobs = 0
+        self.log.msg('REFRESH_LAST_TIME %s second(s) ago. %s jobs/second'%(seconds, jobs))
         self._lastTime = value
         return self.connection.hset(self.key, 'lastTime', self._lastTime)
     
@@ -198,8 +202,8 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         while not self.stopped and alive:
             res = job = None
             try:
-                if cycles >= 1000:
-                    #every 1000 cycles (aprox 10 seconds) when idle lastTime is updated
+                if cycles >= 250:
+                    #every 250 cycles (aprox 5 seconds) when idle lastTime is updated
                     cycles = 0
                     yield self.set_lastTime(datetime.utcnow())
 
@@ -214,7 +218,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
                 res = yield Queue.dequeue_any(queue_keys=self.queue_keys(), timeout=self.blocking_time, connection=self.connection)
                 connection_errors = 0
                 if res is None:
-                    cycles+=200
+                    cycles+=100
                     continue
                 
                 cycles+=1
@@ -226,7 +230,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
                 d = threads.deferToThread(job.perform)
                 d.addCallback(self.callback_perform_job)
                 d.addErrback(self.errback_perform_job, job=job)
-                
+                self._processedJob+=1
             except cyclone.redis.ConnectionError as e:
                 self.log.err(e, 'REDIS_CONNECTION_ERROR')
                 connection_errors += 1
