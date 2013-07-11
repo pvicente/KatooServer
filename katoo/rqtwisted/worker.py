@@ -137,9 +137,9 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     def set_lastTime(self, value):
         delta = value - self._lastTime
         seconds = delta.seconds
-        jobs = self._processedJobs/seconds if seconds > 0 else self._processedJobs
+        jobs = (self._processedJobs*1.0)/seconds if seconds > 0 else self._processedJobs*1.0
         self._processedJobs = 0
-        self.log.msg('REFRESH_LAST_TIME %s second(s) ago. %s jobs/second'%(seconds, jobs))
+        self.log.msg('REFRESH_LAST_TIME %s second(s) ago. %.2f jobs/second'%(seconds, jobs))
         self._lastTime = value
         return self.connection.hset(self.key, 'lastTime', self._lastTime)
     
