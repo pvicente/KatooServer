@@ -3,14 +3,15 @@ Created on Jun 5, 2013
 
 @author: pvicente
 '''
+from datetime import datetime
 from katoo import KatooApp, conf
+from katoo.data import GoogleUser
 from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
 from katoo.rqtwisted.job import Job, NoSuchJobError
 from katoo.rqtwisted.queue import Queue
 from katoo.system import DistributedAPI, SynchronousCall, AsynchronousCall
 from katoo.xmpp.xmppgoogle import XMPPGoogle
 from twisted.internet import defer
-from datetime import datetime
 
 class API(DistributedAPI):
     
@@ -98,7 +99,10 @@ class API(DistributedAPI):
     @AsynchronousCall(queue=None) #Queue is assigned at run time
     @defer.inlineCallbacks
     def logout(self, userid):
-        yield self._shared_logout(userid)
+        try:
+            yield self._shared_logout(userid)
+        except XMPPUserNotLogged:
+            yield GoogleUser.remove(userid)
     
     @AsynchronousCall(queue=None)
     @defer.inlineCallbacks
