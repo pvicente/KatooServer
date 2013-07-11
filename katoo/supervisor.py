@@ -5,7 +5,7 @@ Created on Jun 12, 2013
 '''
 from datetime import datetime
 from dateutil import parser
-from katoo import conf
+from katoo import conf, KatooApp
 from katoo.api import API
 from katoo.apns.api import API as APNSAPI
 from katoo.data import GoogleUser
@@ -17,6 +17,7 @@ from twisted.application import service
 from twisted.internet import defer, reactor
 from twisted.internet.task import LoopingCall
 import cyclone.httpclient
+from katoo.xmpp.tasks import KeepAliveTask
 
 log = getLogger(__name__, level='INFO')
 
@@ -47,6 +48,11 @@ class LocalSupervisor(Supervisor):
             t = LoopingCall(self.avoidHerokuUnidling, conf.HEROKU_UNIDLING_URL)
             self.registerTask(t)
             t.start(1800, now = True)
+        if not KatooApp().getService(conf.MACHINEID) is None and conf.XMPP_KEEP_ALIVE_TIME > 0:
+            self.log.info('Launching XMPP_KEEP_ALIVE_TASK')
+            t = LoopingCall(KeepAliveTask)
+            self.registerTask(t)
+            t.start(conf.XMPP_KEEP_ALIVE_TIME, now=False)
         return service.Service.startService(self)
 
 class GlobalSupervisor(Supervisor):
