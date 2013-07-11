@@ -230,7 +230,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
                 d = threads.deferToThread(job.perform)
                 d.addCallback(self.callback_perform_job)
                 d.addErrback(self.errback_perform_job, job=job)
-                self._processedJob+=1
+                self._processedJobs+=1
             except cyclone.redis.ConnectionError as e:
                 self.log.err(e, 'REDIS_CONNECTION_ERROR')
                 connection_errors += 1
