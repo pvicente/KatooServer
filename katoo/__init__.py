@@ -26,5 +26,8 @@ class KatooApp(Singleton):
     
     def stop(self):
         self.service.stopService()
+    
+    def __iter__(self):
+        return iter(self.service)
 
 KatooApp()
