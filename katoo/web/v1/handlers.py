@@ -105,7 +105,7 @@ class GoogleHandler(MyRequestHandler):
                 response_data = {'success': True, 'reason': 'ok'}
         except XMPPUserAlreadyLogged:
             pass
-        response_data.update(dict(background_time=conf.XMPP_BACKGROUND_TIME, resource_prefix=conf.XMPP_RESOURCE))
+        response_data.update(dict(background_time=conf.XMPP_BACKGROUND_TIME, resource_prefix=conf.XMPP_RESOURCE, gtalk_priority=conf.XMPP_GTALK_PRIORITY))
         self._response_json(response_data)
     
     @defer.inlineCallbacks
@@ -116,7 +116,7 @@ class GoogleHandler(MyRequestHandler):
             raise cyclone.web.HTTPError(404)
         try:
             yield API(key, queue=user.worker).update(key, **self.args)
-            self._response_json({'success': True, 'reason': 'ok', 'background_time': conf.XMPP_BACKGROUND_TIME, 'resource_prefix': conf.XMPP_RESOURCE})
+            self._response_json({'success': True, 'reason': 'ok', 'background_time': conf.XMPP_BACKGROUND_TIME, 'resource_prefix': conf.XMPP_RESOURCE, 'gtalk_priority': conf.XMPP_GTALK_PRIORITY})
         except XMPPUserNotLogged as e:
             raise cyclone.web.HTTPError(500, str(e))
     
