@@ -5,7 +5,6 @@ Created on Jun 4, 2013
 '''
 
 from datetime import datetime, timedelta
-from dateutil import parser
 from katoo.txMongoModel.mongomodel.model import Model, Indexes, Sort
 from katoo.utils.connections import MongoMixin
 from twisted.internet import defer
