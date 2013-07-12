@@ -75,7 +75,7 @@ class ContactInformation(object):
             self.name = contact.name if contact.name else self.name
             if contact.favorite:
                 self.favorite=True
-                self.emoji = u'\ue335'
+                self.emoji = u'\ue32f'
                 if self.sound:
                     self.sound = user.favoritesound
     
