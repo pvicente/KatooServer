@@ -129,8 +129,7 @@ class GlobalSupervisor(Supervisor):
                         yield API(user.userid).relogin(user, pending_jobs)
                     except Exception as e:
                         self.log.error('[%s] Exception %s reconnecting user', data['_userid'], e)
-                    if i % 10:
-                        self.log.info('Reconnected %s/%s of worker %s', i, total_users, name)
+                    self.log.info('[%s] Reconnected %s/%s of worker %s', user.userid, i+1, total_users, name)
             
             #Remove worker from death workers
             Worker.remove(key)
