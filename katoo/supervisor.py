@@ -140,14 +140,20 @@ class GlobalSupervisor(Supervisor):
 
     @defer.inlineCallbacks
     def reconnectUsers(self):
-        connected_users = yield GoogleUser.get_connected()
-        self.log.info('RECONNECTING_USERS: %s', len(connected_users))
-        for data in connected_users:
-            try:
-                user = GoogleUser(**data)
-                yield API(user.userid).login(user)
-            except Exception as e:
-                self.log.error('Exception %s reconnecting user %s', e, data['_userid'])
+        if not self.checkingMigrateUsers:
+            self.checkingMigrateUsers=True
+            connected_users = yield GoogleUser.get_connected()
+            self.log.info('RECONNECTING_USERS: %s', len(connected_users))
+            for data in connected_users:
+                try:
+                    user = GoogleUser(**data)
+                    user.worker = user.userid
+                    yield user.save()
+                    
+                    yield API(user.userid).relogin(user, [])
+                except Exception as e:
+                    self.log.error('Exception %s reconnecting user %s', e, data['_userid'])
+            self.checkingMigrateUsers=False
     
     @defer.inlineCallbacks
     def disconnectAwayUsers(self):
@@ -186,12 +192,12 @@ class GlobalSupervisor(Supervisor):
             
     
     def startService(self):
-        if conf.TASK_RECONNECT_ALL_USERS:
-            reactor.callLater(conf.TWISTED_WARMUP, self.reconnectUsers)
-        
         t = LoopingCall(self.disconnectAwayUsers)
         self.registerTask(t)
         t.start(conf.TASK_DISCONNECT_SECONDS, now = False)
+        
+        if conf.TASK_RECONNECT_ALL_USERS:
+            reactor.callLater(conf.TWISTED_WARMUP, self.reconnectUsers)
         
         if conf.REDIS_WORKERS>0:
             t = LoopingCall(self.checkMigrateUsers)
