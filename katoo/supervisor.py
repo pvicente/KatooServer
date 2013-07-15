@@ -64,16 +64,6 @@ class GlobalSupervisor(Supervisor):
         self.checkingMigrateUsers = False
     
     @defer.inlineCallbacks
-    def checkMigrateUsers(self):
-        if not self.checkingMigrateUsers:
-            try:
-                self.checkingMigrateUsers = True
-                yield self.processOnMigrationUsers()
-                yield self.processDeathWorkers()
-            finally:
-                self.checkingMigrateUsers = False
-    
-    @defer.inlineCallbacks
     def processOnMigrationUsers(self):
         onMigration_users = yield GoogleUser.get_onMigration()
         total_users = len(onMigration_users)
@@ -90,7 +80,6 @@ class GlobalSupervisor(Supervisor):
             user.onMigrationTime=''
             yield user.save()
             yield API(user.userid).relogin(user, pending_jobs=[])
-        
     
     @defer.inlineCallbacks
     def getPendingJobs(self, userid, queue_name):
@@ -127,17 +116,73 @@ class GlobalSupervisor(Supervisor):
                         #Get pending jobs
                         pending_jobs = yield self.getPendingJobs(user.userid, name)
                         yield API(user.userid).relogin(user, pending_jobs)
+                        self.log.info('[%s] Reconnected %s/%s user(s) of worker %s', user.userid, i+1, total_users, name)
                     except Exception as e:
-                        self.log.error('[%s] Exception %s reconnecting user', data['_userid'], e)
-                    self.log.info('[%s] Reconnected %s/%s of worker %s', user.userid, i+1, total_users, name)
+                        self.log.err(e, '[%s] Exception while reconnecting'%(data['_userid']))
             
             #Remove worker from death workers
-            Worker.remove(key)
+            yield Worker.remove(key)
             
             #Remove own queue of worker
             queue = Queue(name)
             yield queue.empty()
+    
+    @defer.inlineCallbacks
+    def processBadAssignedWorkers(self):
+        assigned_workers = yield GoogleUser.get_assigned_workers()
+        
+        running_workers = yield Worker.getWorkers(Worker.redis_workers_keys)
+        running_workers = [worker.get('name') for worker in running_workers if not worker.get('name') is None]
+        
+        death_workers = yield Worker.getWorkers(Worker.redis_death_workers_keys)
+        death_workers = [worker.get('name') for worker in death_workers if not worker.get('name') is None]
 
+        registered_workers = set(running_workers + death_workers)
+        assigned_workers = set(assigned_workers)
+        bad_workers = assigned_workers.difference(registered_workers)
+        
+        if bad_workers:
+            self.log.warning('BAD_WORKERS %s are assigned to users. Running %s Death %s', bad_workers, len(running_workers), len(death_workers))
+            for worker in bad_workers:
+                bad_users = yield GoogleUser.get_connected(worker_name=worker)
+                total_bad_users = len(bad_users)
+                if total_bad_users > 0:
+                    self.log.info('Reconnecting %s users assigned to bad worker %s', total_bad_users, worker)
+                for i in xrange(total_bad_users):
+                    try:
+                        data = bad_users[i]
+                        user = GoogleUser(**data)
+                        user.worker = user.userid
+                        yield user.save()
+                        
+                        pending_jobs = yield self.getPendingJobs(user.userid, worker)
+                        yield API(user.userid).relogin(user, pending_jobs)
+                        self.log.info('[%s] Reconnected %s/%s user(s) of worker %s', user.userid, i+1, total_bad_users, worker)
+                    except Exception as e:
+                        self.log.err(e, '[%s] Exception while reconnecting'%(data['_userid']))
+                    
+            
+                #Remove worker from death workers
+                worker = Worker(queues=[], name=worker)
+                yield worker.remove(worker.key)
+                
+                #Remove own queue of worker
+                queue = Queue(worker)
+                yield queue.empty()
+    
+    @defer.inlineCallbacks
+    def disconnectAwayUsers(self):
+        away_users = yield GoogleUser.get_away()
+        away_users  = [] if not away_users else away_users
+        self.log.info('CHECKING_AWAY_USERS: %s', len(away_users))
+        for data in away_users:
+            try:
+                user = GoogleUser(**data)
+                yield API(user.userid, queue=user.worker).disconnect(user.userid)
+                yield APNSAPI(user.userid).sendcustom(lang=user.lang, token=user.pushtoken, badgenumber=user.badgenumber, type_msg='disconnect', sound='')
+            except Exception as e:
+                self.log.error('Exception %s disconnecting user %s', e, data['_userid'])
+    
     @defer.inlineCallbacks
     def reconnectUsers(self):
         if not self.checkingMigrateUsers:
@@ -152,21 +197,19 @@ class GlobalSupervisor(Supervisor):
                     
                     yield API(user.userid).relogin(user, [])
                 except Exception as e:
-                    self.log.error('Exception %s reconnecting user %s', e, data['_userid'])
+                    self.log.err(e, '[%s] Exception while reconnecting'%(data['_userid']))
             self.checkingMigrateUsers=False
     
     @defer.inlineCallbacks
-    def disconnectAwayUsers(self):
-        away_users = yield GoogleUser.get_away()
-        away_users  = [] if not away_users else away_users
-        self.log.info('CHECKING_AWAY_USERS: %s', len(away_users))
-        for data in away_users:
+    def checkMigrateUsers(self):
+        if not self.checkingMigrateUsers:
             try:
-                user = GoogleUser(**data)
-                yield API(user.userid, queue=user.worker).disconnect(user.userid)
-                yield APNSAPI(user.userid).sendcustom(lang=user.lang, token=user.pushtoken, badgenumber=user.badgenumber, type_msg='disconnect', sound='')
-            except Exception as e:
-                self.log.error('Exception %s disconnecting user %s', e, data['_userid'])
+                self.checkingMigrateUsers = True
+                yield self.processOnMigrationUsers()
+                yield self.processDeathWorkers()
+                yield self.processBadAssignedWorkers()
+            finally:
+                self.checkingMigrateUsers = False
     
     @defer.inlineCallbacks
     def runningWorkers(self):

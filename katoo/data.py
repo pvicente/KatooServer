@@ -180,7 +180,7 @@ class GoogleContact(object):
     
 class GoogleUser(object):
     model = DataModel(collectionName='googleusers', indexes=Indexes([dict(fields='_userid', unique=True), dict(fields='_pushtoken', unique=True), ('_userid, _jid'), ('_connected','_away', '_lastTimeConnected'),
-                                                                     ('_connected', '_worker'), ('_connected', '_onMigrationTime'), dict(fields='_lastTimeConnected', expireAfterSeconds=conf.XMPP_REMOVE_TIME) ]))
+                                                                     ('_connected', '_worker'), ('_connected', '_onMigrationTime', '_onReloging'), dict(fields='_lastTimeConnected', expireAfterSeconds=conf.XMPP_REMOVE_TIME) ]))
     
     @classmethod
     def load(cls, userid=None, jid=None, pushtoken=None):
@@ -203,6 +203,10 @@ class GoogleUser(object):
             return cls.model.find(spec={'_connected': True, '_worker': worker_name})
     
     @classmethod
+    def get_assigned_workers(cls):
+        return cls.model.distinct(key='_worker', spec={'_connected': True, '_onReloging': False})
+    
+    @classmethod
     def get_away(cls):
         disconnected_time = datetime.utcnow() - timedelta(seconds=conf.XMPP_DISCONNECTION_TIME)
         return cls.model.find(spec={'_connected': True, '_away': True, '_lastTimeConnected': {"$lt": disconnected_time}})
@@ -210,6 +214,7 @@ class GoogleUser(object):
     @classmethod
     def get_onMigration(cls):
         return cls.model.find(spec={'_connected': True, '_onMigrationTime': {'$ne': ''}})
+    
     
     def __init__(self,
                  _userid, 
@@ -227,7 +232,8 @@ class GoogleUser(object):
                  _id = None,
                  _lastTimeConnected=None,
                  _worker=conf.MACHINEID,
-                 _onMigrationTime=''):
+                 _onMigrationTime='',
+                 _onReloging=False):
         self._userid = unicode(_userid)
         self._jid = unicode(_jid)
         self._token = unicode(_token)
@@ -243,6 +249,7 @@ class GoogleUser(object):
         self._lastTimeConnected=_lastTimeConnected
         self._worker=_worker
         self._onMigrationTime=_onMigrationTime
+        self._onReloging = eval(str(_onReloging))
         if isinstance(_id, ObjectId):
             self._id = _id
     
@@ -372,6 +379,7 @@ class GoogleUser(object):
     @worker.setter
     def worker(self, value):
         self._worker=value
+        self._onReloging = (value == self.userid)
     
     @property
     def onMigrationTime(self):
@@ -380,6 +388,10 @@ class GoogleUser(object):
     @onMigrationTime.setter
     def onMigrationTime(self, value):
         self._onMigrationTime=value
+    
+    @property
+    def onRelogin(self):
+        return self._onReloging
     
 if __name__ == '__main__':
     from twisted.internet import reactor
