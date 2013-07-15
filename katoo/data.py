@@ -73,10 +73,12 @@ class GoogleRosterItem(object):
         d.addCallback(lambda result: None if not result else cls(**result))
         return d
     
-    def __init__(self, _userid, _jid, _name=None, _id=None):
+    def __init__(self, _userid, _jid, _name=None, _contactName=None, _favorite=False, _id=None):
         self._userid = _userid
         self._jid = _jid
         self._name = _name
+        self._contactName = _contactName
+        self._favorite = _favorite
         if isinstance(_id, ObjectId):
             self._id = _id
     
@@ -109,66 +111,20 @@ class GoogleRosterItem(object):
     
     @name.setter
     def name(self, value):
-        self._name = value
-    
-
-class GoogleContact(object):
-    model = DataModel(collectionName='googlecontacts', indexes=Indexes(['_userid', ('_userid','_jid')]))
-    
-    @classmethod
-    def exists(cls, userid):
-        d = cls.model.find_one(spec={'_userid': userid})
-        d.addCallback(lambda result: None if not result else cls(**result))
-        return d
-    
-    @classmethod
-    def remove(cls, userid):
-        return cls.model.remove({'_userid': userid})
-    
-    @classmethod
-    def load(cls, userid, jid):
-        d = cls.model.find_one(spec={'_userid': userid, '_jid': jid})
-        d.addCallback(lambda result: None if not result else cls(**result))
-        return d
-    
-    def __init__(self, _userid, _jid, _name=None, _favorite=False, _id=None):
-        self._userid = _userid
-        self._jid = _jid
-        self._name = _name
-        self._favorite = eval(str(_favorite))
-        if isinstance(_id, ObjectId):
-            self._id = _id
-    
-    def save(self):
-        data=vars(self)
-        d = self.model.update({'_userid': self.userid, '_jid': self.jid}, upsert=True, multi=False, **data)
-        return d
-    
-    def update(self, **kwargs):
-        for k,v in kwargs.iteritems():
-            setattr(self,k,v);
-    
-    def __str__(self):
-        return '<%s object at %s>(%s)'%(self.__class__.__name__, hex(id(self)), vars(self))
-    
-    def __repr__(self):
-        return '<%s object at %s (_id:%s, appid:%s)>'%(self.__class__.__name__, hex(id(self)), getattr(self, '_id', None), self.userid)
+        self._name = ' '.join(value.split()[:2])
+        if self.contactName is None:
+            self.contactName = self._name
     
     @property
-    def userid(self):
-        return self._userid
+    def contactName(self):
+        return self._contactName
     
-    @property
-    def jid(self):
-        return self._jid
-    
-    @property
-    def name(self):
-        return self._name
-    
-    @name.setter
-    def name(self, value):
-        self._name = value
+    @contactName.setter
+    def contactName(self, value):
+        if value:
+            self._contactName = ' '.join(value.split()[:2])
+        else:
+            self._contactName = self.name
     
     @property
     def favorite(self):
@@ -193,7 +149,7 @@ class GoogleUser(object):
     
     @classmethod
     def remove(cls, userid):
-        return defer.DeferredList([cls.model.remove({'_userid': userid}), GoogleMessage.flushMessages(userid), GoogleContact.remove(userid)], GoogleRosterItem.remove(userid))
+        return defer.DeferredList([cls.model.remove({'_userid': userid}), GoogleMessage.flushMessages(userid), GoogleRosterItem.remove(userid)])
     
     @classmethod
     def get_connected(cls, worker_name=None):
@@ -431,31 +387,7 @@ if __name__ == '__main__':
         res = yield user.remove(user.userid)
         print res
     
-    @defer.inlineCallbacks
-    def example_contacts():
-        contact=GoogleContact(_userid="2", _jid='kk@gmail.com')
-        yield contact.save()
-        
-        ret = yield GoogleContact.exists("2")
-        print ret
-        
-        contact2=GoogleContact(_userid="2", _jid='pp@gmail.com', _favorite=True)
-        yield contact2.save()
-        
-        tmp = yield GoogleContact.load("2", "pp@gmail.com")
-        print tmp
-        
-        tmp.favorite = False
-        yield tmp.save()
-        
-        tmp = yield GoogleContact.load("2", "pp@gmail.com")
-        print tmp
-        
-        ret = yield GoogleContact.remove("2")
-        print ret
-    
     reactor.callLater(1, example_users)
-    reactor.callLater(5, example_contacts)
     reactor.callLater(10, reactor.stop)
     reactor.run()
     

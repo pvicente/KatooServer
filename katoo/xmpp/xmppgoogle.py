@@ -5,7 +5,7 @@ Created on Jun 5, 2013
 '''
 from katoo import conf
 from katoo.apns.api import API
-from katoo.data import GoogleMessage, GoogleContact, GoogleRosterItem
+from katoo.data import GoogleMessage, GoogleRosterItem
 from twisted.internet import defer
 from twisted.words.protocols.jabber import jid
 from wokkel_extensions import ReauthXMPPClient
@@ -17,14 +17,18 @@ import urllib
 
 class RosterManager(object):
     ROSTER_IN_MEMORY=conf.XMPP_ROSTER_IN_MEMORY
-    def __init__(self, userid):
+    def __init__(self, userid, log):
         self._userid = userid
         self._roster = {}
+        self.log = log
     
     @defer.inlineCallbacks
     def processRoster(self, roster):
         for k,v in roster.iteritems():
-            yield self.set(k,v)
+            defaultName = k.user if isinstance(k, jid.JID) else k
+            name = getattr(v, 'name', '')
+            name = name if name else defaultName
+            yield self.set(k,name=name)
     
     def _getBareJid(self, key):
         if isinstance(key, jid.JID):
@@ -34,59 +38,31 @@ class RosterManager(object):
     
     @defer.inlineCallbacks
     def get(self, key, default=None):
-        if self.ROSTER_IN_MEMORY:
-            defer.returnValue(self._roster.get(key, default))
-        
         barejid = self._getBareJid(key)
+        if self.ROSTER_IN_MEMORY:
+            defer.returnValue(self._roster.get(barejid, default))
+        
         ret = yield GoogleRosterItem.load(self._userid, barejid)
         defer.returnValue(default if ret is None else ret)
     
     @defer.inlineCallbacks
-    def set(self, key, value):
-        defaultName = key.user if isinstance(key, jid.JID) else key
+    def set(self, key, **kwargs):
         barejid = self._getBareJid(key)
-        name = getattr(value, 'name', '')
-        name = ' '.join(name.split()[:2]) if name else defaultName
-        item = GoogleRosterItem(_userid=self._userid, _jid=barejid, _name=name)
+        item = yield self.get(barejid)
+        if item is None:
+            item = GoogleRosterItem(self._userid, barejid)
+        item.update(**kwargs)
         if self.ROSTER_IN_MEMORY:
             self._roster[barejid] = item
         else:
             yield item.save()
         defer.returnValue(None)
     
-class ContactInformation(object):
-    @classmethod
-    def _load_callback(cls, user, roster_item, contact):
-        return cls(user, roster_item, contact)
-    
-    @classmethod
-    def load(cls, user, roster_item):
-        d = GoogleContact.load(user.userid, roster_item.jid)
-        d.addCallback(lambda x: cls._load_callback(user, roster_item, x))
-        return d
-    
-    def __init__(self, user, roster_item, contact):
-        self.name = roster_item.name
-        self.barejid = roster_item.jid
-        self.favorite = False
-        self.emoji = ''
-        self.sound = user.pushsound
-        if not contact is None:
-            self.name = contact.name if contact.name else self.name
-            if contact.favorite:
-                self.favorite=True
-                self.emoji = u'\ue32f'
-                if self.sound:
-                    self.sound = user.favoritesound
-    
-    def __str__(self):
-        return '<%s object at %s>(%s)'%(self.__class__.__name__, hex(id(self)), vars(self))
-    
 class GoogleHandler(GenericXMPPHandler):
     def __init__(self, client):
         GenericXMPPHandler.__init__(self, client)
         self.user = client.user
-        self.roster = RosterManager(self.user.userid)
+        self.roster = RosterManager(self.user.userid, self.log)
         self.connectionTime = None
     
     def isOwnBareJid(self, jid):
@@ -146,11 +122,12 @@ class GoogleHandler(GenericXMPPHandler):
             if self.user.pushtoken and self.user.away:
                 roster_item = yield self.roster.get(barefromjid)
                 if roster_item is None:
-                    roster_item = GoogleRosterItem(_userid=self.user.userid, _jid=barefromjid, _name=fromjid.user)
-                contact_info = yield ContactInformation.load(self.user, roster_item)
+                    roster_item = GoogleRosterItem(_userid=self.user.userid, _jid=barefromjid)
+                    roster_item.name = fromjid.user
                 self.user.badgenumber += 1
-                self.log.debug('SENDING_PUSH %s. RosterItem: %s Contact Info: %s, User data: %s', self.user.jid, roster_item, contact_info, self.user)
-                yield API(self.user.userid).sendchatmessage(msg=body, token=self.user.pushtoken, badgenumber=self.user.badgenumber, jid=contact_info.barejid, fullname=contact_info.name, sound=contact_info.sound, emoji=contact_info.emoji)
+                self.log.debug('SENDING_PUSH %s. RosterItem: %s, User data: %s', self.user.jid, roster_item, self.user)
+                yield API(self.user.userid).sendchatmessage(msg=body, token=self.user.pushtoken, badgenumber=self.user.badgenumber, jid=roster_item.jid, fullname=roster_item.contactName, 
+                                                            sound=self.user.favoritesound if roster_item.favorite else self.user.pushsound, emoji= u'\ue32f' if roster_item.favorite else '')
                 self.log.debug('PUSH SENT %s', self.user.jid)
                 yield self.user.save()
         except Exception as e:
@@ -173,6 +150,10 @@ class XMPPGoogle(ReauthXMPPClient):
     @property
     def name(self):
         return self.user.userid
+    
+    @property
+    def roster(self):
+        return self.handler.roster
     
     def _onStreamError(self, reason):
         self.log.err(reason, 'STREAM_EROR_EVENT %s'%(self.user.jid))
@@ -220,7 +201,6 @@ class XMPPGoogle(ReauthXMPPClient):
             self.user.connected = False
             deferred_list.append(self.user.save())
             deferred_list.append(GoogleMessage.updateRemoveTime(self.user.userid, self.user.lastTimeConnected))
-            deferred_list.append(GoogleContact.remove(self.user.userid))
             deferred_list.append(GoogleRosterItem.remove(self.user.userid))
         return defer.DeferredList(deferred_list, consumeErrors=True)
     

@@ -98,6 +98,16 @@ class API(DistributedAPI):
     
     @AsynchronousCall(queue=None) #Queue is assigned at run time
     @defer.inlineCallbacks
+    def update_contact(self, userid, jid, **kwargs):
+        self.log.info('UPDATE CONTACT %s. Data: %s', jid, kwargs)
+        running_client = KatooApp().getService(userid)
+        if running_client is None:
+            raise XMPPUserNotLogged('User %s is not running in current worker'%(userid))
+        roster = running_client.roster
+        yield roster.set(jid, **kwargs)
+    
+    @AsynchronousCall(queue=None) #Queue is assigned at run time
+    @defer.inlineCallbacks
     def logout(self, userid):
         try:
             yield self._shared_logout(userid)
