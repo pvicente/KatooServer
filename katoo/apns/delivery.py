@@ -3,15 +3,11 @@ Created on Jun 11, 2013
 
 @author: pvicente
 '''
-from katoo import KatooApp, conf
-from katoo.txapns.txapns.apns import APNSService
 from katoo.txapns.txapns.encoding import encode_notifications
 from katoo.txapns.txapns.payload import Payload, PayloadTooLargeError, \
     MAX_PAYLOAD_LENGTH
 
-APNS = APNSService(cert_path=conf.APNS_CERT, environment=conf.APNS_SANDBOX, timeout=conf.APNS_TIMEOUT)
-APNS.setName(conf.APNSERVICE_NAME)
-APNS.setServiceParent(KatooApp().app)
+APNS = None
 
 PADDING = "..."
 LEN_PADDING = len(PADDING)
