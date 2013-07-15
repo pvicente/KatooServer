@@ -7,10 +7,10 @@ Created on Jun 11, 2013
 import re
 
 emojis={
-            'disconnect' : u'\ue219',
-            'maxretries' : u'\ue219',
-            'authfailed' : u'\ue219'
-            }
+            'disconnect' : u'',
+            'maxretries' : u'',
+            'authfailed' : u''
+        }
 
 custom_messages={
         'disconnect': {'en-US': u'Disconnected due to inactivity'},
@@ -40,7 +40,7 @@ class PushParser():
     _MAPS_URL = u'http://maps.google.com/?q='
     _GPLUS_IMAGE_URL = u'https://plus.google.com/photos/albums/p'
     _atachment_string = u'{0}p\S+|{0}v\S+|{0}a\S+|{1}\S+|{2}\S+'.format(re.escape(_KATOO_URL), re.escape(_MAPS_URL), re.escape(_GPLUS_IMAGE_URL))
-    _atachment_dict = {_KATOO_URL+'p': u'\ue008 Image received', _KATOO_URL+'v': u'\ue12a Video received', _MAPS_URL: u'\ue132 Location received', _GPLUS_IMAGE_URL: u'\ue008 Image received'}
+    _atachment_dict = {_KATOO_URL+'p': u'\ue008 Image received', _KATOO_URL+'v': u'\ue12a Video received', _MAPS_URL: u'\U0001f6a9 Location received', _GPLUS_IMAGE_URL: u'\ue008 Image received'}
     _regex_string = u'(' + _atachment_string + u'|' + _emoji_string + u')'
     #final regexp
     _regex_dict = dict(_emoji_dict.items()+_atachment_dict.items())
