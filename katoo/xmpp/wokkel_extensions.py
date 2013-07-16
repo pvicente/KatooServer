@@ -83,7 +83,7 @@ class ReauthXMPPClient(XMPPClient):
     
     def _getConnection(self):
         #By default pick domains from SRV with XMPPClientConnector
-        c = XMPPClientConnector(reactor, self.domain, self.factory)
+        c = XMPPClientConnector(reactor, self.host, self.factory)
         c.connect()
         return c
     
