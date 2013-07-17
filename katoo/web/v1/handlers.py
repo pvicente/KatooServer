@@ -14,6 +14,7 @@ from katoo.utils.applog import getLoggerAdapter, getLogger
 from katoo.utils.connections import RedisMixin
 from twisted.internet import defer
 import cyclone.web
+import re
 
 log = getLogger(__name__)
 
@@ -43,7 +44,28 @@ class update_arguments(arguments):
 class contact_arguments(arguments):
     ARGUMENTS = dict([('jid', RequiredArgument), ('contactName', DefaultArgument), ('favorite', DefaultArgument)])
 
+
+class CheckUserAgent(object):
+    RE = re.compile('^{0}\/(\d.\d.\d)'.format(conf.USER_AGENT))
+    
+    def __init__(self, user_agent):
+        self._pass = True
+        self._match = ""
+        self._user_agent = user_agent
+        if conf.USER_AGENT_CHECK:
+            self._match = self.RE.findall(self._user_agent)
+            print self._match
+            if not self._match or not self._match[0][1] in conf.USER_AGENT_WL or self._match[0][1] in conf.USER_AGENT_BL:
+                self._pass = False
+    
+    def __nonzero__(self):
+        return self._pass
+    
+    def __str__(self):
+        return self._user_agent
+
 class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
+    
     def __init__(self, application, request, **kwargs):
         cyclone.web.RequestHandler.__init__(self, application, request, **kwargs)
         self.log = getLoggerAdapter(log)
@@ -60,6 +82,9 @@ class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
         self.log = getLoggerAdapter(log, id=key)
         self.key = key
         self.args = '' if args_class is None else args_class(self).args
+        agent = CheckUserAgent(self.request.headers.get('User-Agent', ''))
+        if not bool(agent):
+            raise cyclone.web.HTTPError(403)
 
 class GoogleHandler(MyRequestHandler):
     @defer.inlineCallbacks
@@ -94,7 +119,7 @@ class GoogleHandler(MyRequestHandler):
                 user = None
         else:
             #user not connected removing from database
-            self.log.info('WEB_HANDLER_REMOVE %s due to it is disconnected and new login is comming', user.userid)
+            self.log.info('WEB_HANDLER_REMOVE %s due to it is disconnected and new login is coming', user.userid)
             yield GoogleUser.remove(user.userid)
         
         try:

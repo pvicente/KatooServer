@@ -22,7 +22,8 @@ class BaseHandler(cyclone.web.Application, RedisMixin):
     
     def log_request(self, handler):
         request_time = 1000.0 * handler.request.request_time()
-        getattr(handler, "log", self.log).info("%s %s %.2f(ms) %s %s", handler.get_status(), handler._request_summary(), request_time, getattr(handler, 'args', ''), getattr(handler, 'response', ''))
+        getattr(handler, "log", self.log).info("%s %s %.2f(ms) User-Agent: %s Request: %s Response: %s", handler.get_status(), handler._request_summary(), request_time, 
+                                               handler.request.headers.get('User-Agent',''), getattr(handler, 'args', ''), getattr(handler, 'response', ''))
 
 class BaseHandlerNoLog(BaseHandler):
     def log_request(self, handler):
