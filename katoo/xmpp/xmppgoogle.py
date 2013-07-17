@@ -88,6 +88,16 @@ class GoogleHandler(GenericXMPPHandler):
     def onAuthenticated(self):
         self.connectionTime = time.time()
         self.log.info('CONNECTION_AUTHENTICATED %s', self.user.jid)
+        
+        #Set away state to be restored with right value when presences will be received
+        self.user.away = True
+        self.user.save()
+        
+        #Send Available and getting roster
+        self.protocol.available(show=conf.XMPP_STATE, priority=conf.XMPP_PRIORITY, statuses={'en-US': conf.XMPP_MOOD})
+        d = self.protocol.getRoster()
+        d.addCallback(self.protocol.onRosterReceived)
+        
     
     def onAvailableReceived(self, jid):
         if self.isOwnBareJid(jid) and jid.resource == self.user.resource:
