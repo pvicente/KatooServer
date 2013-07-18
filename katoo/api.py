@@ -114,10 +114,13 @@ class API(DistributedAPI):
         except XMPPUserNotLogged:
             yield GoogleUser.remove(userid)
     
-    @AsynchronousCall(queue=None)
+    @SynchronousCall(queue=None)
     @defer.inlineCallbacks
     def logout_sync(self, userid):
-        yield self._shared_logout(userid)
+        try:
+            yield self._shared_logout(userid)
+        except XMPPUserNotLogged:
+            yield GoogleUser.remove(userid)
     
     @AsynchronousCall(queue=None) #Queue is assigned at run time
     def disconnect(self, userid, change_state=True):

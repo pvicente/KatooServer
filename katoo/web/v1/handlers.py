@@ -97,30 +97,26 @@ class GoogleHandler(MyRequestHandler):
         self.constructor(key, login_arguments)
         
         user = yield GoogleUser.load(key)
+        user_to_logout = None
         
         if user is None:
-            #Logout of users with the same pushtoken
             user_to_logout = yield GoogleUser.load(pushtoken=self.args['_pushtoken'])
-            if not user_to_logout is None:
-                try:
-                    self.log.info('WEB_HANDLER_LOGOUT %s with the same pushtoken',user_to_logout.userid)
-                    yield API(key, queue=user_to_logout.worker).logout_sync(user_to_logout.userid)
-                except XMPPUserNotLogged:
-                    yield GoogleUser.remove(user_to_logout.userid)
         elif user.connected:
-            #Logout user with the same appid but other jid
             user_to_logout = yield GoogleUser.load(userid=key, jid=self.args['_jid'])
-            if user_to_logout is None:
-                try:
-                    self.log.info('WEB_HANDLER_LOGOUT %s with other jid: %s->%s', key, user.jid, self.args['_jid'])
-                    yield API(key, queue=user.worker).logout_sync(key)
-                except XMPPUserNotLogged:
-                    yield GoogleUser.remove(key)
-                user = None
         else:
-            #user not connected removing from database
             self.log.info('WEB_HANDLER_REMOVE %s due to it is disconnected and new login is coming', user.userid)
             yield GoogleUser.remove(user.userid)
+        
+        if not user_to_logout is None:
+            if user is None:
+                self.log.info('WEB_HANDLER_LOGOUT %s with the same pushtoken',user_to_logout.userid)
+            else:
+                self.log.info('WEB_HANDLER_LOGOUT %s with other jid: %s->%s', key, user.jid, self.args['_jid'])
+            
+            if user_to_logout.connected:
+                yield API(key, queue=user_to_logout.worker).logout_sync(user_to_logout.userid)
+            else:
+                yield GoogleUser.remove(user_to_logout.userid)
         
         try:
             response_data = {'success': False, 'reason': 'Already logged'}
@@ -148,19 +144,14 @@ class GoogleHandler(MyRequestHandler):
     @defer.inlineCallbacks
     def delete(self, key):
         self.constructor(key)
-        try:
-            user = yield GoogleUser.load(key)
-            if user is None:
-                raise cyclone.web.HTTPError(404)
-            if user.connected:
-                yield API(key, queue=user.worker).logout(key)
-            else:
-                yield user.remove(user.userid)
-            self._response_json({'success': True, 'reason': 'ok'})
-        except XMPPUserNotLogged as e:
-            #Remove user from database
+        user = yield GoogleUser.load(key)
+        if user is None:
+            raise cyclone.web.HTTPError(404)
+        if user.connected:
+            yield API(key, queue=user.worker).logout(key)
+        else:
             yield user.remove(user.userid)
-            raise cyclone.web.HTTPError(500, str(e))
+        self._response_json({'success': True, 'reason': 'ok'})
 
 class GoogleMessagesHandler(MyRequestHandler):
     @defer.inlineCallbacks
