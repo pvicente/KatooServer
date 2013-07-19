@@ -12,6 +12,7 @@ conf_dir = os.path.dirname(conf_file)
 TWISTED_WARMUP=os.getenv('TWISTED_WARMUP', 2)
 LOG_LEVEL=os.getenv('LOG_LEVEL', 'DEBUG')
 LOG_FORMAT=os.getenv('LOG_FORMAT', "[%(levelname)s] [%(filename)s:%(funcName)s:%(lineno)d]")
+LOGGING_OK_JOBS = eval(str(os.getenv('LOGGING_OK_JOBS', True)))
 MACHINEID='%s.%s'%(platform.node(), os.getpid())
 
 #GOOGLE_APP_CREDENTIALS

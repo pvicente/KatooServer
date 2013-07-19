@@ -27,9 +27,12 @@ DEFAULT_RESULT_TTL = 5
 DEFAULT_WORKER_TTL = 420
 TWISTED_WARMUP = 5
 
+LOGGING_OK_JOBS = True
+
 green = make_colorizer('darkgreen')
 yellow = make_colorizer('darkyellow')
 blue = make_colorizer('darkblue')
+
 
 class Worker(service.Service, RedisMixin, rq.worker.Worker):
     redis_death_workers_keys = "rq:workers:death"
@@ -189,8 +192,10 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
             exc_string = ''.join(traceback.format_exception(*exc_info))
         else:
             exc_string = failure.getTraceback()
+        
+        meta = ','.join([item for item in job.meta.values()])
         job.meta['failure'] = failure
-        self.log.msg('JOB_FAILED %s: %r'%(job, exc_string))
+        self.log.msg('[%s] JOB_FAILED %s: %s'%(meta, job, exc_string))
         yield self.failed_queue.quarantine(job, exc_info=exc_string)
     
     @defer.inlineCallbacks
@@ -247,8 +252,6 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     
     @defer.inlineCallbacks
     def errback_perform_job(self, failure, job):
-        #TODO: Remove log
-        self.log.err(failure, 'PERFORM_JOB %s'%(job))
         yield self.move_to_failed_queue(job, failure=failure)
     
     @defer.inlineCallbacks
@@ -260,11 +263,12 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         job._status = Status.FINISHED
         job.ended_at = times.now()
         
-        #TODO: Remove log
-        if rv is None:
-            self.log.msg('[%s] Job OK'%(job))
-        else:
-            self.log.msg('[%s] Job OK, result = %r' % (job, rv))
+        if LOGGING_OK_JOBS:
+            meta = ','.join([item for item in job.meta.values()])
+            if rv is None:
+                self.log.msg('[%s] Job OK. %s'%(meta, job))
+            else:
+                self.log.msg('[%s] Job OK. %s. result = %r' % (meta, job, rv))
         
         result_ttl =  self.default_result_ttl if job.result_ttl is None else job.result_ttl
         if result_ttl == 0:
