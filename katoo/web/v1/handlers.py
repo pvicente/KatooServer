@@ -104,7 +104,6 @@ class GoogleHandler(MyRequestHandler):
         elif user.connected:
             user_to_logout = yield GoogleUser.load(userid=key, jid=self.args['_jid'])
         else:
-            self.log.info('WEB_HANDLER_REMOVE %s due to it is disconnected and new login is coming', user.userid)
             yield GoogleUser.remove(user.userid)
         
         if not user_to_logout is None:
