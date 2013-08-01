@@ -18,9 +18,6 @@ class KatooApp(Singleton):
         except KeyError:
             return None
     
-    def getAPNService(self):
-        return self.getService(conf.APNSERVICE_NAME)
-    
     def start(self):
         self.service.startService()
     
