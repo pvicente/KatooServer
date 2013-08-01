@@ -17,11 +17,13 @@ log = getLogger(__name__)
 
 class DistributedAPI(object):
     """API with distributed behaviour must subclass it to be performed"""
-    def __init__(self, key=None, queue=None):
+    def __init__(self, key=None, queue=None, synchronous_call=False):
         self.key = key
         self.queue_name = None if conf.DIST_DISABLED else queue
         self.enqueued = False
+        self.sync = synchronous_call
         self._log = getLoggerAdapter(log, id=self.key)
+
     
     def __getstate__(self):
         self._log = None
@@ -93,7 +95,7 @@ class SynchronousCall(object):
                          result_ttl=self.result_ttl, status=Status.QUEUED)
                 job.meta['userid']=calling_self.key
                 yield queue.enqueue_job(job)
-                if self.sync:
+                if self.sync or calling_self.sync:
                     ret = yield self.get_result(job)
             defer.returnValue(ret)
         return wrapped_f

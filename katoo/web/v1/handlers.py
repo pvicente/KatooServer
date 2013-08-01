@@ -113,7 +113,7 @@ class GoogleHandler(MyRequestHandler):
                 self.log.info('WEB_HANDLER_LOGOUT %s with other jid: %s->%s', key, user.jid, self.args['_jid'])
             
             if user_to_logout.connected:
-                yield API(key, queue=user_to_logout.worker).logout_sync(user_to_logout.userid)
+                yield API(key, queue=user_to_logout.worker, synchronous_call=True).logout(user_to_logout.userid)
             else:
                 yield GoogleUser.remove(user_to_logout.userid)
         
