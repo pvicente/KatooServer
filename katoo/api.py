@@ -76,7 +76,7 @@ class API(DistributedAPI):
             yield xmppuser.save()
         
     
-    @AsynchronousCall(queue=None) #Queue is assigned at run time
+    @AsynchronousCall(queue=None) #Queue is assigned at runtime
     def update(self, userid, **kwargs):
         self.log.info('UPDATE. Data: %s', kwargs)
         running_client = KatooApp().getService(userid)
@@ -96,7 +96,7 @@ class API(DistributedAPI):
         roster = running_client.roster
         yield roster.set(jid, **kwargs)
     
-    @AsynchronousCall(queue=None) #Queue is assigned at run time
+    @AsynchronousCall(queue=None) #Queue is assigned at runtime
     @defer.inlineCallbacks
     def logout(self, userid):
         try:
@@ -110,11 +110,22 @@ class API(DistributedAPI):
         finally:
             yield GoogleUser.remove(userid)
     
-    @AsynchronousCall(queue=None) #Queue is assigned at run time
+    @AsynchronousCall(queue=None) #Queue is assigned at runtime
     def disconnect(self, userid, change_state=True):
         self.log.info('DISCONNECTING')
         running_client = KatooApp().getService(userid)
         if running_client is None:
             raise XMPPUserNotLogged('User %s is not running in current worker'%(userid))
         return running_client.disconnect(change_state)
+    
+    @AsynchronousCall(queue=None) #Queue is assigned at runtime
+    @defer.inlineCallbacks
+    def xmpp_send_keep_alive(self, userid):
+        running_client = KatooApp().getService(userid)
+        if running_client is None:
+            raise XMPPUserNotLogged('User %s is not running in current worker'%(userid))
+        try:
+            yield running_client.handler.protocol.send(' ')
+        except Exception as e:
+            self.log.warning('Exception launch %s', e)
     

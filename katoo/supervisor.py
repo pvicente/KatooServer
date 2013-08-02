@@ -17,7 +17,6 @@ from twisted.application import service
 from twisted.internet import defer, reactor
 from twisted.internet.task import LoopingCall
 import cyclone.httpclient
-from katoo.xmpp.tasks import KeepAliveTask
 
 log = getLogger(__name__, level='INFO')
 
@@ -48,11 +47,6 @@ class LocalSupervisor(Supervisor):
             t = LoopingCall(self.avoidHerokuUnidling, conf.HEROKU_UNIDLING_URL)
             self.registerTask(t)
             t.start(1800, now = True)
-        if not KatooApp().getService(conf.MACHINEID) is None and conf.XMPP_KEEP_ALIVE_TIME > 0:
-            self.log.info('Launching XMPP_KEEP_ALIVE_TASK')
-            t = LoopingCall(KeepAliveTask)
-            self.registerTask(t)
-            t.start(conf.XMPP_KEEP_ALIVE_TIME, now=False)
         return service.Service.startService(self)
 
 class GlobalSupervisor(Supervisor):
@@ -181,7 +175,7 @@ class GlobalSupervisor(Supervisor):
                 yield API(user.userid, queue=user.worker).disconnect(user.userid)
                 yield APNSAPI(user.userid).sendcustom(lang=user.lang, token=user.pushtoken, badgenumber=user.badgenumber, type_msg='disconnect', sound='')
             except Exception as e:
-                self.log.error('Exception %s disconnecting user %s', e, data['_userid'])
+                self.log.err(e, '[%s] Exception disconnecting user'%(data['_userid']))
     
     @defer.inlineCallbacks
     def reconnectUsers(self):
@@ -232,7 +226,29 @@ class GlobalSupervisor(Supervisor):
                     w = Worker([], name=name)
                     w.log = self.log
                     yield w.register_death()
-            
+    
+    @defer.inlineCallbacks
+    def xmpp_keep_alive(self):
+        workers = yield Worker.getWorkers(Worker.redis_workers_keys)
+        if workers:
+            self.log.info('XMPP_KEEP_ALIVE_TASK STARTED %s running worker(s)', len(workers))
+        for worker in workers:
+            name = worker.get('name')
+            if name is None:
+                self.log.warning('XMPP_KEEP_ALIVE_TASK worker data is wrong %s', worker)
+                continue
+            connected_users = yield GoogleUser.get_connected(name)
+            total_users = len(connected_users)
+            for i in xrange(total_users):
+                    try:
+                        data = connected_users[i]
+                        user = GoogleUser(**data)
+                        yield API(user.userid, queue=name).xmpp_send_keep_alive(user.userid)
+                    except Exception as e:
+                        self.log.err(e, '[%s] Exception while sending XMPP_KEEP_ALIVE'%(data['_userid']))
+        if workers:
+            self.log.info('XMPP_KEEP_ALIVE_TASK FINISHED %s running worker(s)', len(workers))
+        
     
     def startService(self):
         t = LoopingCall(self.disconnectAwayUsers)
@@ -250,5 +266,10 @@ class GlobalSupervisor(Supervisor):
             t = LoopingCall(self.runningWorkers)
             self.registerTask(t)
             t.start(conf.TASK_RUNNING_WORKERS, now = False)
+        
+        if conf.XMPP_KEEP_ALIVE_TIME > 0:
+            t = LoopingCall(self.xmpp_keep_alive)
+            self.registerTask(t)
+            t.start(conf.XMPP_KEEP_ALIVE_TIME, now = False)
         
         return service.Service.startService(self)
