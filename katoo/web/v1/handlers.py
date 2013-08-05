@@ -90,7 +90,12 @@ class GoogleHandler(MyRequestHandler):
     @defer.inlineCallbacks
     def get(self, key):
         self.constructor(key)
-        raise cyclone.web.HTTPError(404)
+        user = yield GoogleUser.load(key)
+        if user is None or not user.connected:
+            raise cyclone.web.HTTPError(404)
+        
+        response_data = {'resource_connected': not user.away}
+        self._response_json(response_data)
     
     @defer.inlineCallbacks
     def post(self, key):
