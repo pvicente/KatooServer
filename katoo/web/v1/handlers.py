@@ -94,7 +94,7 @@ class GoogleHandler(MyRequestHandler):
         if user is None or not user.connected:
             raise cyclone.web.HTTPError(404)
         
-        response_data = {'resource_connected': not user.away}
+        response_data = {'success': True, 'reason': 'ok', 'resource_connected': not user.away}
         self._response_json(response_data)
     
     @defer.inlineCallbacks
