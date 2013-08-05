@@ -21,7 +21,7 @@ There are more technical information about the project in the oficial [wiki](htt
 
  2. Install [virtualbox](https://www.virtualbox.org/wiki/Downloads)
 
- 3. Install [vagrant](http://downloads.vagrantup.com/)
+ 3. Install [vagrant](http://downloads.vagrantup.com/) 1.2.2 (there is a problem with later versions)
 
  4. Install [heroku toolbet to deploy on Heroku](https://toolbelt.heroku.com/)
 
