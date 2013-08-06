@@ -4,6 +4,7 @@ Created on Aug 6, 2013
 @author: pvicente
 '''
 
+from katoo import KatooApp
 from twisted.application import service
 from twisted.internet import reactor
 from twisted.internet.protocol import ProcessProtocol
@@ -27,11 +28,10 @@ class MultiProcessProtocol(ProcessProtocol):
     def errConnectionLost(self):
         print "errConnectionLost! The child closed their stderr."
     def processExited(self, reason):
-        print "processExited, status %d" % (reason.value.exitCode,)
+        print "processExited, status %s" % (reason.value.exitCode,)
     def processEnded(self, reason):
-        print "processEnded, status %d" % (reason.value.exitCode,)
+        print "processEnded, status %s" % (reason.value.exitCode,)
         print "quitting"
-        reactor.stop()
 
 class MultiProcess(service.Service):
     def __init__(self):
@@ -39,14 +39,15 @@ class MultiProcess(service.Service):
         self.childs = []
         
     def startService(self):
-        for _ in xrange(2):
-            self.childs.append(reactor.spawnProcess(self.protocol, 'twistd', ['twistd', '-ny', 'runxmpp.py', '--pidfile=xmpp.pid'], env=os.environ, childFDs={0:0, 1:1, 2:2}))
+        for i in xrange(2):
+            self.childs.append(reactor.spawnProcess(self.protocol, 'twistd', ['twistd', '-ny', 'runxmpp.py', '--pidfile=xmpp%s.pid'%(i)], env=os.environ, childFDs={0:0, 1:1, 2:2}))
     
     def stopService(self):
         for child in self.childs:
-            child.signalProcess('KILL')
+            child.signalProcess('TERM')
+             
 
-application = service.Application('KatooAppMultiProcess')
+application = KatooApp().app
 
 m = MultiProcess()
 m.setServiceParent(application)
