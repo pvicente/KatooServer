@@ -28,6 +28,9 @@ DEFAULT_WORKER_TTL = 420
 TWISTED_WARMUP = 5
 
 LOGGING_OK_JOBS = True
+BASE_INCREMENT_CYCLES=25
+NOJOB_INCREMET_CYCLES=200
+TOP_CYCLES=400
 
 green = make_colorizer('darkgreen')
 yellow = make_colorizer('darkyellow')
@@ -61,6 +64,8 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         self.default_warmup = default_warmup
         self._lastTime = datetime.utcnow()
         self._processedJobs = 0
+        self._cycles = 0
+        self._increment_cycles=BASE_INCREMENT_CYCLES
     
     @classmethod
     @defer.inlineCallbacks
@@ -140,11 +145,25 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     def set_lastTime(self, value):
         delta = value - self._lastTime
         seconds = delta.seconds
-        jobs = (self._processedJobs*1.0)/seconds if seconds > 0 else self._processedJobs*1.0
-        self._processedJobs = 0
-        self.log.msg('REFRESH_LAST_TIME %s second(s) ago. %.2f jobs/second'%(seconds, jobs))
-        self._lastTime = value
-        return self.connection.hset(self.key, 'lastTime', self._lastTime)
+        if seconds > 2:
+            jobs = (self._processedJobs*1.0)/seconds if seconds > 0 else self._processedJobs*1.0
+            self._processedJobs = 0
+            self.log.msg('REFRESH_LAST_TIME %s second(s) ago. %.2f jobs/second'%(seconds, jobs))
+            self._lastTime = value
+            return self.connection.hset(self.key, 'lastTime', self._lastTime)
+    
+    def cycles_inc(self, job=True):
+        if job:
+            self._increment_cycles/=2
+            self._cycles+=self._increment_cycles or 1
+            self._processedJobs+=1
+        else:
+            self._increment_cycles = BASE_INCREMENT_CYCLES
+            self._cycles+=NOJOB_INCREMET_CYCLES
+        
+        if self._cycles>=TOP_CYCLES:
+            self._cycles = 0
+            self.set_lastTime(datetime.utcnow())
     
     @property
     def state(self):
@@ -203,15 +222,9 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         yield self.set_state('starting')
         connection_errors = 0
         alive = True
-        cycles = 0
         while not self.stopped and alive:
             res = job = None
             try:
-                if cycles >= 250:
-                    #every 250 cycles (aprox 5 seconds) when idle lastTime is updated
-                    cycles = 0
-                    yield self.set_lastTime(datetime.utcnow())
-
                 yield self.set_state('idle')
                 
                 alive = yield self.is_alive()
@@ -223,10 +236,10 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
                 res = yield Queue.dequeue_any(queue_keys=self.queue_keys(), timeout=self.blocking_time, connection=self.connection)
                 connection_errors = 0
                 if res is None:
-                    cycles+=100
+                    self.cycles_inc(job=False)
                     continue
                 
-                cycles+=1
+                self.cycles_inc()
                 
                 yield self.set_state('busy')
                 
@@ -235,7 +248,6 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
                 d = threads.deferToThread(job.perform)
                 d.addCallback(self.callback_perform_job)
                 d.addErrback(self.errback_perform_job, job=job)
-                self._processedJobs+=1
             except cyclone.redis.ConnectionError as e:
                 self.log.err(e, 'REDIS_CONNECTION_ERROR')
                 connection_errors += 1
