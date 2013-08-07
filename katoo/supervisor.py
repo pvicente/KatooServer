@@ -34,8 +34,8 @@ class Supervisor(service.Service):
         return service.Service.stopService(self, *args, **kwargs)
 
 class LocalSupervisor(Supervisor):
-    name='LOCAL-SUPERVISOR'
-    log = getLoggerAdapter(log, id='%s-%s'%(name, conf.MACHINEID))
+    name='LocalSupervisor'
+    log = getLoggerAdapter(log, id=name)
     
     @defer.inlineCallbacks
     def avoidHerokuUnidling(self, url):
@@ -50,8 +50,8 @@ class LocalSupervisor(Supervisor):
         return service.Service.startService(self)
 
 class GlobalSupervisor(Supervisor):
-    name = 'GLOBAL_SUPERVISOR'
-    log = getLoggerAdapter(log, id='%s-%s'%(name, conf.MACHINEID))
+    name = 'GlobalSupervisor'
+    log = getLoggerAdapter(log, id=name)
     
     def __init__(self):
         Supervisor.__init__(self)

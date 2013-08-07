@@ -8,12 +8,15 @@ import os, platform
 conf_file = os.path.realpath(__file__)
 conf_dir = os.path.dirname(conf_file)
 
+
+
 #PARAMETERS
+MACHINEID='%s.%s'%(platform.node(), os.getpid())
 TWISTED_WARMUP=os.getenv('TWISTED_WARMUP', 2)
 LOG_LEVEL=os.getenv('LOG_LEVEL', 'DEBUG')
-LOG_FORMAT=os.getenv('LOG_FORMAT', "[%(levelname)s] [%(filename)s:%(funcName)s:%(lineno)d]")
+LOG_FORMAT=os.getenv('LOG_FORMAT', "[%s] "%(MACHINEID)+"[%(levelname)s] [%(filename)s:%(funcName)s:%(lineno)d]")
 LOGGING_OK_JOBS = eval(str(os.getenv('LOGGING_OK_JOBS', True)))
-MACHINEID='%s.%s'%(platform.node(), os.getpid())
+
 
 #GOOGLE_APP_CREDENTIALS
 GOOGLE_CLIENT_ID=os.getenv('GOOGLE_CLIENT_ID', '1066150010031.apps.googleusercontent.com')
