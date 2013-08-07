@@ -8,12 +8,16 @@ import os, platform
 conf_file = os.path.realpath(__file__)
 conf_dir = os.path.dirname(conf_file)
 
+
+
 #PARAMETERS
-TWISTED_WARMUP=os.getenv('TWISTED_WARMUP', 2)
-LOG_LEVEL=os.getenv('LOG_LEVEL', 'DEBUG')
-LOG_FORMAT=os.getenv('LOG_FORMAT', "[%(levelname)s] [%(filename)s:%(funcName)s:%(lineno)d]")
-LOGGING_OK_JOBS = eval(str(os.getenv('LOGGING_OK_JOBS', True)))
 MACHINEID='%s.%s'%(platform.node(), os.getpid())
+MULTIPROCESS=int(os.getenv('MULTIPROCESS', 0))
+TWISTED_WARMUP=int(os.getenv('TWISTED_WARMUP', 2))
+LOG_LEVEL=os.getenv('LOG_LEVEL', 'DEBUG')
+LOG_FORMAT=os.getenv('LOG_FORMAT', "[%s] "%(MACHINEID)+"[%(levelname)s] [%(filename)s:%(funcName)s:%(lineno)d]")
+LOGGING_OK_JOBS = eval(str(os.getenv('LOGGING_OK_JOBS', True)))
+
 
 #GOOGLE_APP_CREDENTIALS
 GOOGLE_CLIENT_ID=os.getenv('GOOGLE_CLIENT_ID', '1066150010031.apps.googleusercontent.com')
@@ -23,6 +27,8 @@ GOOGLE_OAUTH2_URL='https://accounts.google.com/o/oauth2/token'
 #WEBSERVICE
 PORT=int(os.getenv('PORT', 5000))
 LISTEN=os.getenv('LISTEN', '0.0.0.0')
+ADOPTED_STREAM=os.getenv('ADOPTED_STREAM', None)
+BACKLOG=int(os.getenv('BACKLOG', 50))
 LOG_REQUESTS=eval(str(os.getenv('LOG_REQUESTS', True)))
 CYCLONE_DEBUG=eval(str(os.getenv('CYCLONE_DEBUG', True)))
 USER_AGENT=os.getenv('USER_AGENT', '(Katoo)')

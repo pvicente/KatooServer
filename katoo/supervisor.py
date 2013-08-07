@@ -5,7 +5,7 @@ Created on Jun 12, 2013
 '''
 from datetime import datetime
 from dateutil import parser
-from katoo import conf, KatooApp
+from katoo import conf
 from katoo.api import API
 from katoo.apns.api import API as APNSAPI
 from katoo.data import GoogleUser
@@ -27,15 +27,15 @@ class Supervisor(service.Service):
     def registerTask(self, t):
         self.tasks.append(t)
     
-    def stopService(self, *args, **kwargs):
+    def stopService(self):
+        service.Service.stopService(self)
         for task in self.tasks:
             self.log.info('STOPPING_TASK %s', task)
             task.stop()
-        return service.Service.stopService(self, *args, **kwargs)
 
-class LocalSupervisor(Supervisor):
-    name='LOCAL-SUPERVISOR'
-    log = getLoggerAdapter(log, id='%s-%s'%(name, conf.MACHINEID))
+class HerokuUnidlingSupervisor(Supervisor):
+    name='HEROKU_UNIDLING_SUPERVISOR'
+    log = getLoggerAdapter(log, id=name)
     
     @defer.inlineCallbacks
     def avoidHerokuUnidling(self, url):
@@ -43,15 +43,15 @@ class LocalSupervisor(Supervisor):
         yield cyclone.httpclient.fetch(url)
     
     def startService(self):
+        Supervisor.startService(self)
         if not conf.HEROKU_UNIDLING_URL is None:
             t = LoopingCall(self.avoidHerokuUnidling, conf.HEROKU_UNIDLING_URL)
             self.registerTask(t)
             t.start(1800, now = True)
-        return service.Service.startService(self)
 
 class GlobalSupervisor(Supervisor):
     name = 'GLOBAL_SUPERVISOR'
-    log = getLoggerAdapter(log, id='%s-%s'%(name, conf.MACHINEID))
+    log = getLoggerAdapter(log, id=name)
     
     def __init__(self):
         Supervisor.__init__(self)
@@ -251,6 +251,8 @@ class GlobalSupervisor(Supervisor):
         
     
     def startService(self):
+        Supervisor.startService(self)
+        
         t = LoopingCall(self.disconnectAwayUsers)
         self.registerTask(t)
         t.start(conf.TASK_DISCONNECT_SECONDS, now = False)
@@ -272,4 +274,3 @@ class GlobalSupervisor(Supervisor):
             self.registerTask(t)
             t.start(conf.XMPP_KEEP_ALIVE_TIME, now = False)
         
-        return service.Service.startService(self)

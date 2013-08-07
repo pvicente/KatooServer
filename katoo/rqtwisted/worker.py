@@ -294,12 +294,12 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
                 yield self.connection.expire(job.key, result_ttl)
     
     def startService(self):
+        service.Service.startService(self)
         reactor.callLater(self.default_warmup, self.register_birth)
         for _ in xrange(self.loops):
             reactor.callLater(self.default_warmup+1, self.work)
-        service.Service.startService(self)
 
     def stopService(self):
-        self._stopped = True
         service.Service.stopService(self)
+        self._stopped = True
         return self.register_death()

@@ -153,7 +153,7 @@ if __name__ == '__main__':
     
     app = KatooApp().app
     w=Worker([conf.MACHINEID, conf.DIST_QUEUE_LOGIN], name=conf.MACHINEID, loops=conf.REDIS_WORKERS)
-    w.log = getLoggerAdapter(getLogger('WORKER', level='INFO'), id='WORKER-%s'%(conf.MACHINEID))
+    w.log = getLoggerAdapter(getLogger('WORKER', level='INFO'), id='WORKER')
     w.setServiceParent(app)
     KatooApp().service.startService()
     reactor.callLater(5, example)

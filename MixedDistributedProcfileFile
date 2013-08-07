@@ -1,0 +1,2 @@
+web: twistd -ny runwebxmpp.py --pidfile=web.pid
+supervisor: twistd -ny runsupervisorpush.py --pidfile=supervisor.pid
