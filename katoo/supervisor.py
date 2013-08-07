@@ -5,7 +5,7 @@ Created on Jun 12, 2013
 '''
 from datetime import datetime
 from dateutil import parser
-from katoo import conf, KatooApp
+from katoo import conf
 from katoo.api import API
 from katoo.apns.api import API as APNSAPI
 from katoo.data import GoogleUser
@@ -33,8 +33,8 @@ class Supervisor(service.Service):
             task.stop()
         return service.Service.stopService(self, *args, **kwargs)
 
-class LocalSupervisor(Supervisor):
-    name='LocalSupervisor'
+class HerokuUnidlingSupervisor(Supervisor):
+    name='HEROKU_UNIDLING_SUPERVISOR'
     log = getLoggerAdapter(log, id=name)
     
     @defer.inlineCallbacks
@@ -50,7 +50,7 @@ class LocalSupervisor(Supervisor):
         return service.Service.startService(self)
 
 class GlobalSupervisor(Supervisor):
-    name = 'GlobalSupervisor'
+    name = 'GLOBAL_SUPERVISOR'
     log = getLoggerAdapter(log, id=name)
     
     def __init__(self):

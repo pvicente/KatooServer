@@ -6,7 +6,7 @@ Created on Aug 7, 2013
 from katoo import conf, KatooApp
 from katoo.apns.api import KatooAPNSService
 from katoo.rqtwisted import worker
-from katoo.supervisor import LocalSupervisor, GlobalSupervisor
+from katoo.supervisor import HerokuUnidlingSupervisor, GlobalSupervisor
 from katoo.utils.applog import getLoggerAdapter, getLogger
 from katoo.utils.multiprocess import MultiProcess
 from katoo.web import app
@@ -27,10 +27,13 @@ application = KatooApp().app
 if conf.ADOPTED_STREAM is None:
     stream = reactor.listenTCP(port=conf.PORT, factory=app, backlog=conf.BACKLOG, interface=conf.LISTEN)
     os.environ['ADOPTED_STREAM']=str(stream.fileno())
-    workers_supervisor = GlobalSupervisor()
-    workers_supervisor.setServiceParent(application)
-    supervisor = LocalSupervisor()
+    
+    supervisor = GlobalSupervisor()
     supervisor.setServiceParent(application)
+    
+    heroku_unidling_supervisor = HerokuUnidlingSupervisor()
+    heroku_unidling_supervisor.setServiceParent(application)
+    
     if conf.MULTIPROCESS>0:
         m=MultiProcess(__file__, number=conf.MULTIPROCESS, fds=[stream.fileno()])
         m.setServiceParent(application)

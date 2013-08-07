@@ -6,13 +6,9 @@ Created on Jul 8, 2013
 from katoo import conf, KatooApp
 from katoo.apns.api import KatooAPNSService
 from katoo.rqtwisted import worker
-from katoo.supervisor import LocalSupervisor
 from katoo.utils.applog import getLoggerAdapter, getLogger
 
 application = KatooApp().app
-
-supervisor = LocalSupervisor()
-supervisor.setServiceParent(application)
 
 KatooAPNSService().service.setServiceParent(application)
 
