@@ -4,7 +4,6 @@ Created on Aug 7, 2013
 @author: pvicente
 '''
 from applog import getLogger, getLoggerAdapter
-from katoo.utils.time import sleep
 from twisted.application import service
 from twisted.internet import reactor, defer
 from twisted.internet.protocol import ProcessProtocol
