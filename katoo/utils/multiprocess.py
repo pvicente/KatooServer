@@ -54,10 +54,14 @@ class MultiProcess(service.Service):
         self.childs = []
         
     def startService(self):
+        service.Service.startService(self)
         for i in xrange(self.procnumbers):
             reactor.spawnProcess(MultiProcessProtocol(self), 'twistd', ['twistd', '-ny', self.command, '--pidfile=%s-%s.pid'%(self.command, i)], env=os.environ, childFDs=self.childFDs)
     
     def stopService(self):
+        service.Service.stopService(self)
         for child in self.childs:
-            child.transport.signalProcess('TERM')
+            if not child.ended:
+                child.transport.signalProcess('TERM')
+        
         #TODO: pending to test exit and send KILL to ensure death
