@@ -1,6 +1,7 @@
 Twisted==13.0.0
 cyclone==1.1
 hiredis==0.1.1
+newrelic==1.13.1.31
 pyOpenSSL==0.13
 python-dateutil==2.1
 pytz==2013b

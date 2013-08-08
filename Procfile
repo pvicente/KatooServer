@@ -1,1 +1,1 @@
-web: twistd -ny runall.py
+web: newrelic-admin run-program twistd -ny runall.py
