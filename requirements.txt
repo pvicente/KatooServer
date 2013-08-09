@@ -1,7 +1,7 @@
 Twisted==13.0.0
 configobj==4.7.2
 cyclone==1.1
-diamond==3.3.544
+-e git+https://github.com/pvicente/Diamond.git@master#egg=diamond
 hiredis==0.1.1
 librato-metrics==0.4.8
 psutil==1.0.1
