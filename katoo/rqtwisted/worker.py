@@ -26,6 +26,8 @@ import traceback
 DEFAULT_RESULT_TTL = 5
 DEFAULT_WORKER_TTL = 420
 TWISTED_WARMUP = 5
+JOBS_REPORT_TIME=20
+JOBS_REPORT_STORE_TIME=60
 
 LOGGING_OK_JOBS = True
 BASE_INCREMENT_CYCLES=25
@@ -62,7 +64,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         self.blocking_time = blocking_time
         self.loops = loops
         self.default_warmup = default_warmup
-        self._lastTime = datetime.utcnow()
+        self._lastTime = self._lastTimeJobReport = self._lastTimeStoreJobs = datetime.utcnow()
         self._processedJobs = 0
         self._cycles = 0
         self._increment_cycles=BASE_INCREMENT_CYCLES
@@ -142,14 +144,25 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     def lastTime(self):
         return self._lastTime
     
-    def set_lastTime(self, value):
-        delta = value - self._lastTime
+    def reportJobs(self, now):
+        delta = now - self._lastTimeJobReport
+        if delta.seconds >= JOBS_REPORT_TIME:
+            self._lastTimeJobReport = now
+            store_jobs_time = now - self._lastTimeStoreJobs
+            seconds = store_jobs_time.seconds
+            jobs = (self._processedJobs*1.0)/seconds if seconds > 0 else self._processedJobs*1.0
+            self.log.msg('source=%s measure=total_jobs val=%.2f units=jobs/s'%(self.name, jobs))
+            if seconds >= JOBS_REPORT_STORE_TIME:
+                self._processedJobs = 0
+                self._lastTimeStoreJobs = now
+        
+    
+    def set_lastTime(self, now):
+        delta = now - self._lastTime
         seconds = delta.seconds
         if seconds > 2:
-            jobs = (self._processedJobs*1.0)/seconds if seconds > 0 else self._processedJobs*1.0
-            self._processedJobs = 0
-            self.log.msg('REFRESH_LAST_TIME %s second(s) ago. %.2f jobs/second'%(seconds, jobs))
-            self._lastTime = value
+            self.reportJobs(now)
+            self._lastTime = now
             return self.connection.hset(self.key, 'lastTime', self._lastTime)
     
     def cycles_inc(self, job=True):

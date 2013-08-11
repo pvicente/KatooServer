@@ -8,8 +8,6 @@ import os, platform
 conf_file = os.path.realpath(__file__)
 conf_dir = os.path.dirname(conf_file)
 
-
-
 #PARAMETERS
 MACHINEID='%s.%s'%(platform.node(), os.getpid())
 MULTIPROCESS=int(os.getenv('MULTIPROCESS', 0))
@@ -40,6 +38,8 @@ USER_AGENT_BL=frozenset(eval(os.getenv('USER_AGENT_BL', '[]')))
 REDIS_WORKERS=int(os.getenv('REDIS_WORKERS', 1))
 REDIS_URL=os.getenv('REDISCLOUD_URL', 'redis://localhost:6379')
 REDIS_POOL=int(os.getenv('REDIS_POOL', 10))
+REDIS_WORKERS_REPORT_TIME=int(os.getenv('REDIS_WORKERS_REPORT_TIME', 20))
+REDIS_WORKERS_REPORT_STORE_TIME=int(os.getenv('REDIS_WORKERS_REPORT_STORE_TIME', 60))
 
 #MONGO
 MONGO_URL=os.getenv('MONGOLAB_URI', 'mongodb://localhost:27017')
