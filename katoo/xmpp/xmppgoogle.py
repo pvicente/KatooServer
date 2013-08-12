@@ -103,7 +103,6 @@ class GoogleHandler(GenericXMPPHandler):
         d.addCallback(self.protocol.onRosterReceived)
         
     
-    @IncrementMetric(name='presence_available', unit=METRIC_UNIT)
     @IncrementMetric(name='presence_available', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onAvailableReceived(self, jid):
         if self.isOwnBareJid(jid) and jid.resource == self.user.resource:
@@ -112,7 +111,6 @@ class GoogleHandler(GenericXMPPHandler):
             return self.user.save()
         self.log.debug('XMPP_GO_ONLINE %s <- %s@%s/%r', self.user.jid, jid.user, jid.host, jid.resource)
     
-    @IncrementMetric(name='presence_unavailable', unit=METRIC_UNIT)
     @IncrementMetric(name='presence_unavailable', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onUnavailableReceived(self, jid):
         if self.isOwnBareJid(jid) and jid.resource == self.user.resource:
@@ -130,7 +128,6 @@ class GoogleHandler(GenericXMPPHandler):
     def onRosterRemove(self, item):
         pass
     
-    @IncrementMetric(name='message_received', unit=METRIC_UNIT)
     @IncrementMetric(name='message_received', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def onMessageReceived(self, fromjid, msgid, body):
