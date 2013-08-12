@@ -6,7 +6,8 @@ Created on Aug 7, 2013
 from katoo import conf, KatooApp
 from katoo.apns.api import KatooAPNSService
 from katoo.rqtwisted import worker
-from katoo.supervisor import HerokuUnidlingSupervisor, GlobalSupervisor
+from katoo.supervisor import HerokuUnidlingSupervisor, GlobalSupervisor,\
+    MetricsSupervisor
 from katoo.utils.applog import getLoggerAdapter, getLogger
 from katoo.utils.multiprocess import MultiProcess
 from katoo.web import app
@@ -40,11 +41,12 @@ if conf.ADOPTED_STREAM is None:
 else:
     reactor.adoptStreamPort(int(conf.ADOPTED_STREAM), AF_INET, app)
 
+metrics_supervisor = MetricsSupervisor()
+metrics_supervisor.setServiceParent(application)
+
 KatooAPNSService().service.setServiceParent(application)
 
 if conf.REDIS_WORKERS > 0:
-    worker.JOBS_REPORT_TIME=conf.REDIS_WORKERS_REPORT_TIME
-    worker.JOBS_REPORT_STORE_TIME=conf.REDIS_WORKERS_REPORT_STORE_TIME
     worker.LOGGING_OK_JOBS = conf.LOGGING_OK_JOBS
     w=worker.Worker([conf.MACHINEID, conf.DIST_QUEUE_LOGIN, conf.DIST_QUEUE_RELOGIN, conf.DIST_QUEUE_PUSH], name=conf.MACHINEID, loops=conf.REDIS_WORKERS, default_result_ttl=conf.DIST_DEFAULT_TTL, default_warmup=conf.TWISTED_WARMUP)
     w.log = getLoggerAdapter(getLogger('WORKER', level='INFO'), id='WORKER')

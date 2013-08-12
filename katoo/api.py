@@ -7,11 +7,16 @@ from datetime import datetime
 from katoo import KatooApp, conf
 from katoo.data import GoogleUser
 from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
+from katoo.metrics import Metric
 from katoo.rqtwisted.job import Job, NoSuchJobError
 from katoo.rqtwisted.queue import Queue
 from katoo.system import DistributedAPI, SynchronousCall, AsynchronousCall
 from katoo.xmpp.xmppgoogle import XMPPGoogle
 from twisted.internet import defer
+
+METRIC_INCREMENT = 1 if conf.REDIS_WORKERS == 0 else 0.5
+METRIC_UNIT = 'calls'
+METRIC_SOURCE = 'KATOO_API'
 
 class API(DistributedAPI):
     
@@ -22,6 +27,7 @@ class API(DistributedAPI):
             raise XMPPUserAlreadyLogged('Service %s already running'%(running_client))
         XMPPGoogle(xmppuser, KatooApp().app)
     
+    @Metric(name='api_login', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
     @SynchronousCall(queue=conf.DIST_QUEUE_LOGIN)
     @defer.inlineCallbacks
     def login(self, xmppuser):
@@ -30,6 +36,7 @@ class API(DistributedAPI):
         xmppuser.worker=conf.MACHINEID
         yield xmppuser.save()
     
+    @Metric(name='api_relogin', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
     @AsynchronousCall(queue=conf.DIST_QUEUE_RELOGIN)
     @defer.inlineCallbacks
     def relogin(self, xmppuser, pending_jobs):
@@ -76,6 +83,7 @@ class API(DistributedAPI):
             yield xmppuser.save()
         
     
+    @Metric(name='api_update', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
     @AsynchronousCall(queue=None) #Queue is assigned at runtime
     def update(self, userid, **kwargs):
         self.log.info('UPDATE. Data: %s', kwargs)
@@ -86,6 +94,7 @@ class API(DistributedAPI):
         xmppuser.update(**kwargs)
         return xmppuser.save()
     
+    @Metric(name='api_update_contact', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
     @AsynchronousCall(queue=None) #Queue is assigned at run time
     @defer.inlineCallbacks
     def update_contact(self, userid, jid, **kwargs):
@@ -96,6 +105,7 @@ class API(DistributedAPI):
         roster = running_client.roster
         yield roster.set(jid, **kwargs)
     
+    @Metric(name='api_logout', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
     @AsynchronousCall(queue=None) #Queue is assigned at runtime
     @defer.inlineCallbacks
     def logout(self, userid):
@@ -110,6 +120,7 @@ class API(DistributedAPI):
         finally:
             yield GoogleUser.remove(userid)
     
+    @Metric(name='api_disconnect', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
     @AsynchronousCall(queue=None) #Queue is assigned at runtime
     def disconnect(self, userid, change_state=True):
         self.log.info('DISCONNECTING')
@@ -118,6 +129,7 @@ class API(DistributedAPI):
             raise XMPPUserNotLogged('User %s is not running in current worker'%(userid))
         return running_client.disconnect(change_state)
     
+    @Metric(name='api_xmpp_send_keep_alive', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
     @AsynchronousCall(queue=None) #Queue is assigned at runtime
     @defer.inlineCallbacks
     def xmpp_send_keep_alive(self, userid):
