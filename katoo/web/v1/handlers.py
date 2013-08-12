@@ -110,7 +110,7 @@ class GoogleHandler(MyRequestHandler):
         response_data = {'success': True, 'reason': 'ok', 'resource_connected': not user.away}
         self._response_json(response_data)
     
-    @IncrementMetric(name='reatapi_post_google', unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @IncrementMetric(name='restapi_post_google', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def post(self, key):
         self.constructor(key, login_arguments, metric=self.METRICS['post'])
