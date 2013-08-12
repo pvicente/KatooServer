@@ -10,7 +10,7 @@ from katoo.utils.patterns import Singleton
 
 log = getLogger(__name__, 'INFO')
 
-class Accumulator(object):
+class SamplingAccumulator(object):
     def __init__(self):
         self._samples=[]
     
@@ -39,6 +39,16 @@ class Accumulator(object):
         
         return ret
 
+class SimpleAccumulator(object):
+    def __init__(self):
+        self._value=0
+    
+    def add(self, value):
+        self._value+=value
+    
+    def data(self):
+        return {'sum': self._value}
+
 class MetricsHub(Singleton):
     def constructor(self):
         self.metrics=[]
@@ -50,15 +60,19 @@ class MetricsHub(Singleton):
 class Metric(object):
     log = getLoggerAdapter(log, id='METRIC')
     
-    def __init__(self, name, value, unit=None, source=conf.MACHINEID, average=False):
+    def __init__(self, name, value, unit=None, source=conf.MACHINEID, average=False, sampling=False):
         self._source = source
         self._name = name
         self._value = value
         self._unit = '' if unit is None else ' units=%s'%(unit)
         self._average=average
-        self._accumulator = Accumulator()
+        self._sampling=sampling
+        self._reset_accumulator()
         MetricsHub().metrics.append(self)
         self._nodata_string='source=%s measure=%s val=0.00%s'%(self._source, self._name, self._unit)
+    
+    def _reset_accumulator(self):
+        self._accumulator = SimpleAccumulator() if not self._sampling else SamplingAccumulator()
     
     def __call__(self, f):
         @wraps(f)
@@ -77,7 +91,7 @@ class Metric(object):
                 if key != 'sum':
                     meassure='%s_%s'%(self._name, key)
                 self.log.info('source=%s measure=%s val=%.2f%s',self._source, meassure, value, self._unit)
-            self._accumulator = Accumulator()
+            self._reset_accumulator()
         else:
             self.log.info(self._nodata_string)
 
