@@ -121,7 +121,8 @@ class GoogleHandler(MyRequestHandler):
         if user is None:
             user_to_logout = yield GoogleUser.load(pushtoken=self.args['_pushtoken'])
         elif user.connected:
-            user_to_logout = yield GoogleUser.load(userid=key, jid=self.args['_jid'])
+            if user.jid != self.args['_jid']:
+                user_to_logout = user
         else:
             yield GoogleUser.remove(user.userid)
         
@@ -135,6 +136,8 @@ class GoogleHandler(MyRequestHandler):
                 yield API(key, queue=user_to_logout.worker, synchronous_call=True).logout(user_to_logout.userid)
             else:
                 yield GoogleUser.remove(user_to_logout.userid)
+            
+            user = None
         
         try:
             response_data = {'success': False, 'reason': 'Already logged'}
