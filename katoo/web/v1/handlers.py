@@ -15,8 +15,12 @@ from katoo.utils.connections import RedisMixin
 from twisted.internet import defer
 import cyclone.web
 import re
+from katoo.metrics import IncrementMetric
 
 log = getLogger(__name__)
+
+METRIC_UNIT='requests'
+METRIC_SOURCE='web'
 
 class RequiredArgument(object):
     pass
@@ -87,6 +91,8 @@ class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
             raise cyclone.web.HTTPError(403)
 
 class GoogleHandler(MyRequestHandler):
+    
+    @IncrementMetric(name='restapi_get_/google/*', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def get(self, key):
         self.constructor(key)
@@ -97,6 +103,7 @@ class GoogleHandler(MyRequestHandler):
         response_data = {'success': True, 'reason': 'ok', 'resource_connected': not user.away}
         self._response_json(response_data)
     
+    @IncrementMetric(name='reatapi_post_/google/*', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def post(self, key):
         self.constructor(key, login_arguments)
@@ -133,6 +140,7 @@ class GoogleHandler(MyRequestHandler):
         response_data.update(dict(background_time=conf.XMPP_BACKGROUND_TIME, resource_prefix=conf.XMPP_RESOURCE, gtalk_priority=conf.XMPP_GTALK_PRIORITY))
         self._response_json(response_data)
     
+    @IncrementMetric(name='restapi_put_/google/*', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def put(self, key):
         self.constructor(key, update_arguments)
@@ -145,6 +153,7 @@ class GoogleHandler(MyRequestHandler):
         except XMPPUserNotLogged as e:
             raise cyclone.web.HTTPError(500, str(e))
     
+    @IncrementMetric(name='restapi_delete_/google/*', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def delete(self, key):
         self.constructor(key)
@@ -158,6 +167,8 @@ class GoogleHandler(MyRequestHandler):
         self._response_json({'success': True, 'reason': 'ok'})
 
 class GoogleMessagesHandler(MyRequestHandler):
+    
+    @IncrementMetric(name='restapi_get_/google/messages/*', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def get(self, key):
         self.constructor(key)
@@ -177,6 +188,7 @@ class GoogleMessagesHandler(MyRequestHandler):
         self.constructor(key)
         raise cyclone.web.HTTPError(404)
     
+    @IncrementMetric(name='restapi_delete_/google/messages/*', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def delete(self, key):
         self.constructor(key)
@@ -204,6 +216,7 @@ class GoogleContactsHandler(MyRequestHandler):
         self.constructor(key)
         raise cyclone.web.HTTPError(404)
     
+    @IncrementMetric(name='restapi_put_/google/contacts/*', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def put(self, key):
         self.constructor(key, contact_arguments)
