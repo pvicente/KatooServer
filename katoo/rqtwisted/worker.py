@@ -26,8 +26,6 @@ import traceback
 DEFAULT_RESULT_TTL = 5
 DEFAULT_WORKER_TTL = 420
 TWISTED_WARMUP = 5
-JOBS_REPORT_TIME=20
-JOBS_REPORT_STORE_TIME=60
 
 LOGGING_OK_JOBS = True
 BASE_INCREMENT_CYCLES=25
@@ -64,8 +62,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         self.blocking_time = blocking_time
         self.loops = loops
         self.default_warmup = default_warmup
-        self._lastTime = self._lastTimeJobReport = self._lastTimeStoreJobs = datetime.utcnow()
-        self._processedJobs = 0
+        self._lastTime = datetime.utcnow()
         self._cycles = 0
         self._increment_cycles=BASE_INCREMENT_CYCLES
     
@@ -144,24 +141,10 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     def lastTime(self):
         return self._lastTime
     
-    def reportJobs(self, now):
-        delta = now - self._lastTimeJobReport
-        if delta.seconds >= JOBS_REPORT_TIME:
-            self._lastTimeJobReport = now
-            store_jobs_time = now - self._lastTimeStoreJobs
-            seconds = store_jobs_time.seconds
-            jobs = (self._processedJobs*1.0)/seconds if seconds > 0 else self._processedJobs*1.0
-            self.log.msg('source=%s measure=total_jobs val=%.2f units=jobs/s'%(self.name, jobs))
-            if seconds >= JOBS_REPORT_STORE_TIME:
-                self._processedJobs = 0
-                self._lastTimeStoreJobs = now
-        
-    
     def set_lastTime(self, now):
         delta = now - self._lastTime
         seconds = delta.seconds
         if seconds > 2:
-            self.reportJobs(now)
             self._lastTime = now
             return self.connection.hset(self.key, 'lastTime', self._lastTime)
     
@@ -169,7 +152,6 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         if job:
             self._increment_cycles/=2
             self._cycles+=self._increment_cycles or 1
-            self._processedJobs+=1
         else:
             self._increment_cycles = BASE_INCREMENT_CYCLES
             self._cycles+=NOJOB_INCREMET_CYCLES

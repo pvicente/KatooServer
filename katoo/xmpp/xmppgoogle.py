@@ -17,7 +17,7 @@ import urllib
 from katoo.metrics import IncrementMetric
 
 METRIC_SOURCE='XMPPGOOGLE'
-METRIC_UNIT='event'
+METRIC_UNIT='events'
 
 class RosterManager(object):
     ROSTER_IN_MEMORY=conf.XMPP_ROSTER_IN_MEMORY

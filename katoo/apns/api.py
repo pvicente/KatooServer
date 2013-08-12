@@ -5,12 +5,17 @@ Created on Jun 11, 2013
 '''
 from apnmessage import PushParser, get_custom_message, CustomMessageException
 from katoo import conf
+from katoo.metrics import Metric
 from katoo.system import DistributedAPI, AsynchronousCall
 from katoo.txapns.txapns.apns import APNSService
 from katoo.txapns.txapns.encoding import encode_notifications
 from katoo.txapns.txapns.payload import Payload, PayloadTooLargeError, \
     MAX_PAYLOAD_LENGTH
 from katoo.utils.patterns import Singleton
+
+METRIC_INCREMENT = 1 if conf.REDIS_WORKERS == 0 else 0.5
+METRIC_UNIT = 'calls'
+METRIC_SOURCE = 'KATOO_APNS_API'
 
 class KatooAPNSService(Singleton):
     def constructor(self):
@@ -32,12 +37,14 @@ class API(DistributedAPI):
         notification = encode_notifications(token, payload.dict())
         return KatooAPNSService().service.write(notification)
     
+    @Metric(name='apns_api_sendchatmessage', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
     @AsynchronousCall(conf.DIST_QUEUE_PUSH)
     def sendchatmessage(self, msg, token, sound, badgenumber, jid, fullname, emoji):
         message = u'{0}{1}: {2}'.format(emoji, fullname, PushParser.parse_message(msg))
         self.log.debug('SEND_CHAT_MESSAGE jid: %r fullname: %r badgenumber: %r sound: %r token: %r . %r. Raw msg: %r', jid, fullname, badgenumber, sound, token, message, msg)
         return self._sendapn(token=token , msg=message, sound=sound, badgenumber=badgenumber, jid=jid)
     
+    @Metric(name='apns_api_sendcustom', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
     @AsynchronousCall(conf.DIST_QUEUE_PUSH)
     def sendcustom(self, lang, token, badgenumber, type_msg, sound='', inter_msg=' ', **kwargs):
         '''send custom push notifications and kwargs are extra parameters in push_notification'''
