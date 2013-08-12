@@ -6,7 +6,8 @@ Created on Aug 7, 2013
 from katoo import conf, KatooApp
 from katoo.apns.api import KatooAPNSService
 from katoo.rqtwisted import worker
-from katoo.supervisor import HerokuUnidlingSupervisor, GlobalSupervisor
+from katoo.supervisor import HerokuUnidlingSupervisor, GlobalSupervisor,\
+    MetricsSupervisor
 from katoo.utils.applog import getLoggerAdapter, getLogger
 from katoo.utils.multiprocess import MultiProcess
 from katoo.web import app
@@ -39,6 +40,9 @@ if conf.ADOPTED_STREAM is None:
         m.setServiceParent(application)
 else:
     reactor.adoptStreamPort(int(conf.ADOPTED_STREAM), AF_INET, app)
+
+metrics_supervisor = MetricsSupervisor()
+metrics_supervisor.setServiceParent(application)
 
 KatooAPNSService().service.setServiceParent(application)
 

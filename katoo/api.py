@@ -7,11 +7,14 @@ from datetime import datetime
 from katoo import KatooApp, conf
 from katoo.data import GoogleUser
 from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
+from katoo.metrics import Metric
 from katoo.rqtwisted.job import Job, NoSuchJobError
 from katoo.rqtwisted.queue import Queue
 from katoo.system import DistributedAPI, SynchronousCall, AsynchronousCall
 from katoo.xmpp.xmppgoogle import XMPPGoogle
 from twisted.internet import defer
+
+METRIC_INCREMENT = 1 if conf.REDIS_WORKERS == 0 else 0.5
 
 class API(DistributedAPI):
     
@@ -30,6 +33,8 @@ class API(DistributedAPI):
         xmppuser.worker=conf.MACHINEID
         yield xmppuser.save()
     
+    @Metric(name='jobs_total_relogin', value=METRIC_INCREMENT, unit='jobs', source=conf.DIST_QUEUE_RELOGIN)
+    @Metric(name='jobs_relogin', value=METRIC_INCREMENT, unit='jobs')
     @AsynchronousCall(queue=conf.DIST_QUEUE_RELOGIN)
     @defer.inlineCallbacks
     def relogin(self, xmppuser, pending_jobs):

@@ -9,6 +9,7 @@ from katoo import conf
 from katoo.api import API
 from katoo.apns.api import API as APNSAPI
 from katoo.data import GoogleUser
+from katoo.metrics import MetricsHub
 from katoo.rqtwisted.job import Job
 from katoo.rqtwisted.queue import Queue
 from katoo.rqtwisted.worker import Worker
@@ -48,6 +49,19 @@ class HerokuUnidlingSupervisor(Supervisor):
             t = LoopingCall(self.avoidHerokuUnidling, conf.HEROKU_UNIDLING_URL)
             self.registerTask(t)
             t.start(1800, now = True)
+
+class MetricsSupervisor(Supervisor):
+    name='METRICS_SUPERVISOR'
+    log = getLoggerAdapter(log, id=name)
+    
+    def report(self):
+        MetricsHub().report()
+    
+    def startService(self):
+        Supervisor.startService(self)
+        t = LoopingCall(self.report)
+        self.registerTask(t)
+        t.start(conf.METRICS_REPORT_TIME, now=False)
 
 class GlobalSupervisor(Supervisor):
     name = 'GLOBAL_SUPERVISOR'

@@ -3,6 +3,9 @@ from katoo.utils.applog import TwistedLogging
 from katoo.utils.connections import RedisMixin, MongoMixin
 from katoo.utils.patterns import Singleton
 from twisted.application import service
+from katoo.rqtwisted import job
+from katoo.utils.decorators import for_methods
+from katoo.metrics import IncrementMetric
 
 class KatooApp(Singleton):
     def constructor(self):
@@ -26,5 +29,9 @@ class KatooApp(Singleton):
     
     def __iter__(self):
         return iter(self.service)
+
+@for_methods(method_list=['perform'], decorator=IncrementMetric(name='jobs_performed', unit='jobs'))
+class KatooJob(job.Job):
+    pass
 
 KatooApp()
