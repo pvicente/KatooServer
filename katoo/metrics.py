@@ -58,6 +58,7 @@ class Metric(object):
         self._average=average
         self._accumulator = Accumulator()
         MetricsHub().metrics.append(self)
+        self._nodata_string='source=%s measure=%s val=0.00%s'%(self._source, self._name, self._unit)
     
     def __call__(self, f):
         @wraps(f)
@@ -77,6 +78,8 @@ class Metric(object):
                     meassure='%s_%s'%(self._name, key)
                 self.log.info('source=%s measure=%s val=%.2f%s',self._source, meassure, value, self._unit)
             self._accumulator = Accumulator()
+        else:
+            self.log.info(self._nodata_string)
 
 class IncrementMetric(Metric):
     def __init__(self, name, unit=None, source=conf.MACHINEID):
