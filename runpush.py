@@ -6,6 +6,7 @@ Created on Jul 8, 2013
 from katoo import conf, KatooApp
 from katoo.apns.api import KatooAPNSService
 from katoo.rqtwisted import worker
+from katoo.supervisor import MetricsSupervisor
 from katoo.utils.applog import getLoggerAdapter, getLogger
 from katoo.utils.multiprocess import MultiProcess
 import os
@@ -18,6 +19,9 @@ if conf.ADOPTED_STREAM is None:
     if conf.MULTIPROCESS>0:
         m=MultiProcess(__file__, number=conf.MULTIPROCESS)
         m.setServiceParent(application)
+
+metrics_supervisor = MetricsSupervisor()
+metrics_supervisor.setServiceParent(application)
 
 KatooAPNSService().service.setServiceParent(application)
 

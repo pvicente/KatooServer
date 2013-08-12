@@ -4,6 +4,7 @@ Created on Jul 8, 2013
 @author: pvicente
 '''
 from katoo import conf, KatooApp
+from katoo.supervisor import MetricsSupervisor
 from katoo.utils.multiprocess import MultiProcess
 from katoo.web import app
 from socket import AF_INET
@@ -30,4 +31,5 @@ if conf.ADOPTED_STREAM is None:
 else:
     reactor.adoptStreamPort(int(conf.ADOPTED_STREAM), AF_INET, app)
     
-
+metrics_supervisor = MetricsSupervisor()
+metrics_supervisor.setServiceParent(application)
