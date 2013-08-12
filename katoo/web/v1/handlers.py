@@ -10,17 +10,18 @@ from katoo import conf
 from katoo.api import API
 from katoo.data import GoogleUser, GoogleMessage
 from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
+from katoo.metrics import IncrementMetric, Metric
 from katoo.utils.applog import getLoggerAdapter, getLogger
 from katoo.utils.connections import RedisMixin
 from twisted.internet import defer
 import cyclone.web
 import re
-from katoo.metrics import IncrementMetric
 
 log = getLogger(__name__)
 
 METRIC_UNIT='requests'
-METRIC_SOURCE='web'
+METRIC_UNIT_TIME='ms'
+METRIC_SOURCE='RESTAPI'
 
 class RequiredArgument(object):
     pass
@@ -69,7 +70,7 @@ class CheckUserAgent(object):
         return self._user_agent
 
 class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
-    
+    METRICS={}
     def __init__(self, application, request, **kwargs):
         cyclone.web.RequestHandler.__init__(self, application, request, **kwargs)
         self.log = getLoggerAdapter(log)
@@ -82,8 +83,9 @@ class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
         self.response = json_encode(value)
         self.finish(self.response)
         
-    def constructor(self, key, args_class=None):
+    def constructor(self, key, args_class=None, metric=None):
         self.log = getLoggerAdapter(log, id=key)
+        self.metric = metric
         self.key = key
         self.args = '' if args_class is None else args_class(self).args
         agent = CheckUserAgent(self.request.headers.get('User-Agent', ''))
@@ -91,11 +93,16 @@ class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
             raise cyclone.web.HTTPError(403)
 
 class GoogleHandler(MyRequestHandler):
+    METRICS={'get':    Metric(name='time_get_/google/*', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, average=True, sampling=True),
+             'post':   Metric(name='time_post_/google/*', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, average=True, sampling=True),
+             'put':    Metric(name='time_put_/google/*', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, average=True, sampling=True),
+             'delete': Metric(name='time_delete_/google/*', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, average=True, sampling=True)
+             }
     
     @IncrementMetric(name='restapi_get_/google/*', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def get(self, key):
-        self.constructor(key)
+        self.constructor(key, metric=self.METRICS['get'])
         user = yield GoogleUser.load(key)
         if user is None or not user.connected:
             raise cyclone.web.HTTPError(404)
@@ -106,7 +113,7 @@ class GoogleHandler(MyRequestHandler):
     @IncrementMetric(name='reatapi_post_/google/*', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def post(self, key):
-        self.constructor(key, login_arguments)
+        self.constructor(key, login_arguments, metric=self.METRICS['post'])
         
         user = yield GoogleUser.load(key)
         user_to_logout = None
@@ -143,7 +150,7 @@ class GoogleHandler(MyRequestHandler):
     @IncrementMetric(name='restapi_put_/google/*', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def put(self, key):
-        self.constructor(key, update_arguments)
+        self.constructor(key, update_arguments, metric=self.METRICS['put'])
         user = yield GoogleUser.load(key)
         if user is None or not user.connected:
             raise cyclone.web.HTTPError(404)
@@ -156,7 +163,7 @@ class GoogleHandler(MyRequestHandler):
     @IncrementMetric(name='restapi_delete_/google/*', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def delete(self, key):
-        self.constructor(key)
+        self.constructor(key, metric=self.METRICS['delete'])
         user = yield GoogleUser.load(key)
         if user is None:
             raise cyclone.web.HTTPError(404)
@@ -167,11 +174,14 @@ class GoogleHandler(MyRequestHandler):
         self._response_json({'success': True, 'reason': 'ok'})
 
 class GoogleMessagesHandler(MyRequestHandler):
+    METRICS={'get':    Metric(name='time_get_/google/messages/*', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, average=True, sampling=True),
+             'delete': Metric(name='time_delete_/google/messages/*', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, average=True, sampling=True)
+             }
     
     @IncrementMetric(name='restapi_get_/google/messages/*', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def get(self, key):
-        self.constructor(key)
+        self.constructor(key, metric=self.METRICS['get'])
         user = yield GoogleUser.load(key)
         if user is None:
             raise cyclone.web.HTTPError(404)
@@ -191,7 +201,7 @@ class GoogleMessagesHandler(MyRequestHandler):
     @IncrementMetric(name='restapi_delete_/google/messages/*', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def delete(self, key):
-        self.constructor(key)
+        self.constructor(key, metric=self.METRICS['delete'])
         user = yield GoogleUser.load(key)
         if user is None:
             raise cyclone.web.HTTPError(404)
@@ -206,6 +216,8 @@ class GoogleMessagesHandler(MyRequestHandler):
             raise cyclone.web.HTTPError(500, str(e))
     
 class GoogleContactsHandler(MyRequestHandler):
+    METRICS={'put':    Metric(name='time_put_/google/contacts/*', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, average=True, sampling=True)}
+    
     @defer.inlineCallbacks
     def get(self, key):
         self.constructor(key)
@@ -219,7 +231,7 @@ class GoogleContactsHandler(MyRequestHandler):
     @IncrementMetric(name='restapi_put_/google/contacts/*', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def put(self, key):
-        self.constructor(key, contact_arguments)
+        self.constructor(key, contact_arguments, metric=self.METRICS['put'])
         user = yield GoogleUser.load(key)
         if user is None or not user.connected:
             raise cyclone.web.HTTPError(404)

@@ -20,22 +20,19 @@ class SamplingAccumulator(object):
     def data(self):
         ret = dict()
         size = len(self._samples)
+        
         if size == 0:
-            return ret
-
-        samples_sum = sum(self._samples)
-        samples_max = max(self._samples)
-        samples_min = min(self._samples)
-        samples_average = samples_sum/(size*1.0)
+            samples_sum = samples_max = samples_min = samples_average = 0.00
+        else:
+            samples_sum = sum(self._samples)
+            samples_max = max(self._samples)
+            samples_min = min(self._samples)
+            samples_average = samples_sum/(size*1.0)
         
         ret['sum'] = samples_sum
-        
-        if size > 1:
-            ret['average'] = samples_average
-        
-        if samples_max != samples_min:
-            ret['max'] = samples_max
-            ret['min'] = samples_min
+        ret['average'] = samples_average
+        ret['max'] = samples_max
+        ret['min'] = samples_min
         
         return ret
 
@@ -69,32 +66,31 @@ class Metric(object):
         self._sampling=sampling
         self._reset_accumulator()
         MetricsHub().metrics.append(self)
-        self._nodata_string='source=%s measure=%s val=0.00%s'%(self._source, self._name, self._unit)
     
     def _reset_accumulator(self):
         self._accumulator = SimpleAccumulator() if not self._sampling else SamplingAccumulator()
     
+    def add(self, value):
+        self._accumulator.add(value)
+    
     def __call__(self, f):
         @wraps(f)
         def wrapped_f(*args, **kwargs):
-            self._accumulator.add(self._value)
+            self.add(self._value)
             return f(*args, **kwargs)
         return wrapped_f
     
     def report(self):
         data = self._accumulator.data()
-        if data:
-            for key,value in data.iteritems():
-                meassure = self._name
-                if key == 'average' and not self._average:
-                    continue
-                if key != 'sum':
-                    meassure='%s_%s'%(self._name, key)
-                self.log.info('source=%s measure=%s val=%.2f%s',self._source, meassure, value, self._unit)
-            self._reset_accumulator()
-        else:
-            self.log.info(self._nodata_string)
-
+        for key,value in data.iteritems():
+            meassure = self._name
+            if key == 'average' and not self._average:
+                continue
+            if key != 'sum':
+                meassure='%s_%s'%(self._name, key)
+            self.log.info('source=%s measure=%s val=%.2f%s',self._source, meassure, value, self._unit)
+        self._reset_accumulator()
+    
 class IncrementMetric(Metric):
     def __init__(self, name, unit=None, source=conf.MACHINEID):
         Metric.__init__(self, name, 1, unit=unit, source=source)

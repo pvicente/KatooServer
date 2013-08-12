@@ -4,10 +4,11 @@ import cyclone.bottle
 import logging
 import v1.handlers
 from katoo.utils.applog import getLoggerAdapter, getLogger
+from katoo.metrics import IncrementMetric
 
 log = getLogger(__name__)
 
-class BaseHandler(cyclone.web.Application, RedisMixin):
+class BaseHandlerNoLog(cyclone.web.Application, RedisMixin):
     def __init__(self):
             handlers = [
                 (r"/1/google/messages/(.+)", v1.handlers.GoogleMessagesHandler),
@@ -20,14 +21,18 @@ class BaseHandler(cyclone.web.Application, RedisMixin):
             cyclone.web.Application.__init__(self, handlers, **settings)
             self.log = getLoggerAdapter(log)
     
+    @IncrementMetric(name='restapi_total', unit=v1.handlers.METRIC_UNIT, source=v1.handlers.METRIC_SOURCE)
     def log_request(self, handler):
-        request_time = 1000.0 * handler.request.request_time()
-        getattr(handler, "log", self.log).info("%s %s %.2f(ms) User-Agent: %s Request: %s Response: %s", handler.get_status(), handler._request_summary(), request_time, 
-                                               handler.request.headers.get('User-Agent',''), getattr(handler, 'args', ''), getattr(handler, 'response', ''))
+        self._request_time = 1000 * handler.request.request_time()
+        metric = getattr(handler, 'metric', None)
+        if metric:
+            metric.add(self._request_time)
 
-class BaseHandlerNoLog(BaseHandler):
+class BaseHandler(BaseHandlerNoLog):
     def log_request(self, handler):
-        pass
+        BaseHandlerNoLog.log_request(self, handler)
+        getattr(handler, "log", self.log).info("%s %s %.2f(ms) User-Agent: %s Request: %s Response: %s", handler.get_status(), handler._request_summary(), self._request_time, 
+                                               handler.request.headers.get('User-Agent',''), getattr(handler, 'args', ''), getattr(handler, 'response', ''))
 
 
 app = BaseHandler() if conf.LOG_REQUESTS else BaseHandlerNoLog()
