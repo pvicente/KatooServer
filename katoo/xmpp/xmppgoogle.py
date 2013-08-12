@@ -103,7 +103,7 @@ class GoogleHandler(GenericXMPPHandler):
         d.addCallback(self.protocol.onRosterReceived)
         
     
-    @IncrementMetric(name='presence_available', unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @IncrementMetric(name='xmppgoogle_presence_available', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onAvailableReceived(self, jid):
         if self.isOwnBareJid(jid) and jid.resource == self.user.resource:
             self.log.info('APP_GO_ONLINE %s',self.user.jid)
@@ -111,7 +111,7 @@ class GoogleHandler(GenericXMPPHandler):
             return self.user.save()
         self.log.debug('XMPP_GO_ONLINE %s <- %s@%s/%r', self.user.jid, jid.user, jid.host, jid.resource)
     
-    @IncrementMetric(name='presence_unavailable', unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @IncrementMetric(name='xmppgoogle_presence_unavailable', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onUnavailableReceived(self, jid):
         if self.isOwnBareJid(jid) and jid.resource == self.user.resource:
             self.log.info('APP_GO_AWAY %s', self.user.jid)
@@ -128,7 +128,7 @@ class GoogleHandler(GenericXMPPHandler):
     def onRosterRemove(self, item):
         pass
     
-    @IncrementMetric(name='message_received', unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @IncrementMetric(name='xmppgoogle_message_received', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def onMessageReceived(self, fromjid, msgid, body):
         self.log.debug("MESSAGE_RECEIVED to %s. msgid(%s) from(%s): %r", self.user.jid, msgid, fromjid, body)
