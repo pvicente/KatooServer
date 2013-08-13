@@ -5,11 +5,15 @@ Created on Jun 4, 2013
 '''
 
 from datetime import datetime, timedelta
+from katoo.metrics import IncrementMetric
 from katoo.txMongoModel.mongomodel.model import Model, Indexes, Sort
 from katoo.utils.connections import MongoMixin
 from twisted.internet import defer
 from txmongo._pymongo.objectid import ObjectId
 import conf
+
+METRIC_UNIT='calls'
+METRIC_SOURCE='data'
 
 class ModelMixin(Model, MongoMixin):
     def __init__(self, collectionName, mongourl=None, indexes=None):
@@ -68,6 +72,7 @@ class GoogleRosterItem(object):
             return cls.model.remove({'_userid': userid, '_jid': jid})
     
     @classmethod
+    @IncrementMetric(name='rosteritem_load', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def load(cls, userid, jid):
         d = cls.model.find_one(spec={'_userid': userid, '_jid': jid})
         d.addCallback(lambda result: None if not result else cls(**result))
@@ -82,6 +87,7 @@ class GoogleRosterItem(object):
         if isinstance(_id, ObjectId):
             self._id = _id
     
+    @IncrementMetric(name='rosteritem_save', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def save(self):
         data=vars(self)
         d = self.model.update({'_userid': self.userid, '_jid': self.jid}, upsert=True, multi=False, **data)
