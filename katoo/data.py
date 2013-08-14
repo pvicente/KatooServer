@@ -13,7 +13,7 @@ from txmongo._pymongo.objectid import ObjectId
 import conf
 
 METRIC_UNIT='calls'
-METRIC_SOURCE='data'
+METRIC_SOURCE='DATA'
 
 class ModelMixin(Model, MongoMixin):
     def __init__(self, collectionName, mongourl=None, indexes=None):

@@ -40,7 +40,7 @@ class RosterManager(object):
         else:
             return key
     
-    @IncrementMetric(name='rostermanager_get', unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @IncrementMetric(name='rostermanager_get', unit='calls', source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def get(self, key, default=None):
         barejid = self._getBareJid(key)
@@ -50,7 +50,7 @@ class RosterManager(object):
         ret = yield GoogleRosterItem.load(self._userid, barejid)
         defer.returnValue(default if ret is None else ret)
     
-    @IncrementMetric(name='rostermanager_set', unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @IncrementMetric(name='rostermanager_set', unit='calls', source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def set(self, key, **kwargs):
         barejid = self._getBareJid(key)
