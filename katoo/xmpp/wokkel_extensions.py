@@ -5,7 +5,7 @@ Created on May 25, 2013
 '''
 from functools import wraps
 from katoo.utils.applog import getLogger, getLoggerAdapter
-from katoo.utils.decorators import for_methods
+from katoo.utils.decorators import inject_decorators
 from twisted.internet import reactor
 from twisted.words.protocols.jabber.sasl import SASLNoAcceptableMechanism, \
     get_mechanisms, SASLInitiatingInitializer, SASLAuthError
@@ -166,7 +166,7 @@ def new_auth_methods(f):
             return res
     return wrapper
 
-@for_methods(method_list=['setMechanism'], decorator=new_auth_methods)
+@inject_decorators(method_decorator_dict={'setMechanism' : new_auth_methods})
 class DecoratedSASLInitiatingInitializer(SASLInitiatingInitializer):
     """Injecting new_auth_methods decorator to setMechanism method"""
     pass
@@ -182,7 +182,7 @@ class DecoratedSASLInitiatingInitializer(SASLInitiatingInitializer):
 #      
 #     return wrapper
 #  
-# @for_methods(method_list=['write', 'writeSequence'], decorator=log_writes)
+# @inject_decorators(method_decorator_dict={'write': log_writes, 'writeSequence': log_writes})
 # class MYConnection(Connection):
 #     """Logging all writes of TCPTransport"""
 #     pass
