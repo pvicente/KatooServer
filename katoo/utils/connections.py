@@ -6,6 +6,8 @@ Created on May 29, 2013
 from cyclone import redis
 from cyclone.redis import ResponseError, RedisFactory
 from katoo import conf
+from katoo.metrics import IncrementMetric, Metric
+from katoo.utils.decorators import inject_decorators
 from twisted.internet import defer
 from twisted.python import log
 from txmongo._pymongo import helpers
@@ -67,8 +69,20 @@ class RedisMixin(object):
             RedisFactory.protocol = AuthRedisProtocol
             cls.redis_conn = redis.lazyConnectionPool(host=hostname, port=port, dbid=cls.redis_db, poolsize=conf.REDIS_POOL, reconnect=True)
 
-
+@inject_decorators(method_decorator_dict={'sendMessage':  IncrementMetric(name='mongo_sendMessage', unit='calls', source='MONGO'),
+                                          'dataReceived': IncrementMetric(name='mongo_dataReceived', unit='calls', source='MONGO'),
+                                          'messageReceived':   IncrementMetric(name='mongo_messageReceived', unit='calls', source='MONGO'),
+                                          'querySuccess':   IncrementMetric(name='mongo_querySuccess', unit='calls', source='MONGO'),
+                                          'queryFailure':   IncrementMetric(name='mongo_queryFailure', unit='calls', source='MONGO'),
+                                          'OP_INSERT': IncrementMetric(name='mongo_op_insert', unit='calls', source='MONGO'),
+                                          'OP_UPDATE':     IncrementMetric(name='mongo_op_update', unit='calls', source='MONGO'),
+                                          'OP_DELETE':   IncrementMetric(name='mongo_op_delete', unit='calls', source='MONGO'),
+                                          'OP_KILL_CURSORS': IncrementMetric(name='mongo_op_kill_cursors', unit='calls', source='MONGO'),
+                                          'OP_GET_MORE': IncrementMetric(name='mongo_op_get_more', unit='calls', source='MONGO'),
+                                          'OP_QUERY': IncrementMetric(name='mongo_op_query', unit='calls', source='MONGO')
+                                          })
 class AuthMongoProtocol(txmongo.MongoProtocol):
+    CONNECTIONS_METRIC=Metric(name='mongo_connections', value=None, unit='calls', source='MONGO', reset=False)
     username=None
     password=None
     database=None
@@ -115,11 +129,18 @@ class AuthMongoProtocol(txmongo.MongoProtocol):
         else:
             d.errback(result['errmsg'])
     
+    @IncrementMetric(name='mongo_connectionMade', unit='calls', source='MONGO')
     @defer.inlineCallbacks
     def connectionMade(self):
         if not self.username is None:
             yield self._authenticate(self.username, self.password)
+        self.CONNECTIONS_METRIC.add(1)
         yield txmongo.MongoProtocol.connectionMade(self)
+    
+    @IncrementMetric(name='mongo_connectionLost', unit='calls', source='MONGO')
+    def connectionLost(self, reason):
+        self.CONNECTIONS_METRIC.add(-1)
+        return txmongo.MongoProtocol.connectionLost(self, reason)
     
 class MongoMixin(object):
     mongo_conn = None

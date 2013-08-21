@@ -57,13 +57,14 @@ class MetricsHub(Singleton):
 class Metric(object):
     log = getLoggerAdapter(log, id='METRIC')
     
-    def __init__(self, name, value, unit=None, source=conf.MACHINEID, average=False, sampling=False):
+    def __init__(self, name, value, unit=None, source=conf.MACHINEID, average=False, sampling=False, reset=True):
         self._source = source
         self._name = name
         self._value = value
         self._unit = '' if unit is None else ' units=%s'%(unit)
         self._average=average
         self._sampling=sampling
+        self._reset = reset
         self._reset_accumulator()
         MetricsHub().metrics.append(self)
     
@@ -89,7 +90,8 @@ class Metric(object):
             if key != 'sum':
                 meassure='%s_%s'%(self._name, key)
             self.log.info('source=%s measure=%s val=%.2f%s',self._source, meassure, value, self._unit)
-        self._reset_accumulator()
+        if self._reset:
+            self._reset_accumulator()
     
 class IncrementMetric(Metric):
     def __init__(self, name, unit=None, source=conf.MACHINEID):
