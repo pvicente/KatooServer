@@ -9,7 +9,7 @@ from katoo import conf
 from katoo.api import API
 from katoo.apns.api import API as APNSAPI
 from katoo.data import GoogleUser
-from katoo.metrics import MetricsHub
+from katoo.metrics import MetricsHub, Metric
 from katoo.rqtwisted.job import Job
 from katoo.rqtwisted.queue import Queue
 from katoo.rqtwisted.worker import Worker
@@ -62,7 +62,11 @@ class MetricsSupervisor(Supervisor):
         t = LoopingCall(self.report)
         self.registerTask(t)
         t.start(conf.METRICS_REPORT_TIME, now=False)
-
+    
+    def stopService(self):
+        Supervisor.stopService(self)
+        self.report()
+    
 class GlobalSupervisor(Supervisor):
     name = 'GLOBAL_SUPERVISOR'
     log = getLoggerAdapter(log, id=name)
