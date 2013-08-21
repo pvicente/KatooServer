@@ -33,9 +33,24 @@ def url_parse(url, scheme):
     
     return (url.hostname, url.port or 6379, db, url.username, url.password)
 
+@inject_decorators(method_decorator_dict={ 'execute_command': IncrementMetric(name='redis_execute_command', unit='calls', source='REDIS'),
+                                           'replyReceived': IncrementMetric(name='redis_replyReceived', unit='calls', source='REDIS'),
+                                           'exists': IncrementMetric(name='redis_op_exists', unit='calls', source='REDIS'),
+                                           'hget': IncrementMetric(name='redis_op_hget', unit='calls', source='REDIS'),
+                                           'hgetall': IncrementMetric(name='redis_op_hgetall', unit='calls', source='REDIS'),
+                                           'hset': IncrementMetric(name='redis_op_hset', unit='calls', source='REDIS'),
+                                           'hmset': IncrementMetric(name='redis_op_hmset', unit='calls', source='REDIS'),
+                                           'delete': IncrementMetric(name='redis_op_delete', unit='calls', source='REDIS'),
+                                           'rpush': IncrementMetric(name='redis_op_rpush', unit='calls', source='REDIS'),
+                                           'lpop': IncrementMetric(name='redis_op_lpop', unit='calls', source='REDIS'),
+                                           'blpop': IncrementMetric(name='redis_op_blpop', unit='calls', source='REDIS'),
+                                           'expire': IncrementMetric(name='redis_op_expire', unit='calls', source='REDIS')
+                                          })
 class AuthRedisProtocol(redis.RedisProtocol):
+    CONNECTIONS_METRIC=Metric(name='redis_connections', value=None, unit='connections', source='REDIS', reset=False)
     password = None
     
+    @IncrementMetric(name='redis_connectionMade', unit='calls', source='REDIS')
     @defer.inlineCallbacks
     def connectionMade(self):
         if not self.password is None:
@@ -53,6 +68,12 @@ class AuthRedisProtocol(redis.RedisProtocol):
                 yield redis.RedisProtocol.connectionMade(self)
         else:
             yield redis.RedisProtocol.connectionMade(self)
+        self.CONNECTIONS_METRIC.add(1)
+    
+    @IncrementMetric(name='redis_connectionLost', unit='calls', source='REDIS')
+    def connectionLost(self, why):
+        self.CONNECTIONS_METRIC.add(-1)
+        return redis.RedisProtocol.connectionLost(self, why)
 
 class RedisMixin(object):
     redis_conn = None
@@ -82,7 +103,7 @@ class RedisMixin(object):
                                           'OP_QUERY': IncrementMetric(name='mongo_op_query', unit='calls', source='MONGO')
                                           })
 class AuthMongoProtocol(txmongo.MongoProtocol):
-    CONNECTIONS_METRIC=Metric(name='mongo_connections', value=None, unit='calls', source='MONGO', reset=False)
+    CONNECTIONS_METRIC=Metric(name='mongo_connections', value=None, unit='connections', source='MONGO', reset=False)
     username=None
     password=None
     database=None
