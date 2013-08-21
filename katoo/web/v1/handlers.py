@@ -123,8 +123,6 @@ class GoogleHandler(MyRequestHandler):
         elif user.connected:
             if user.jid != self.args['_jid']:
                 user_to_logout = user
-        else:
-            yield GoogleUser.remove(user.userid)
         
         if not user_to_logout is None:
             if user is None:
