@@ -6,6 +6,7 @@ Created on Jun 5, 2013
 from katoo import conf
 from katoo.apns.api import API
 from katoo.data import GoogleMessage, GoogleRosterItem
+from katoo.metrics import IncrementMetric, Metric
 from twisted.internet import defer
 from twisted.words.protocols.jabber import jid
 from wokkel_extensions import ReauthXMPPClient
@@ -14,7 +15,6 @@ import cyclone.httpclient
 import json
 import time
 import urllib
-from katoo.metrics import IncrementMetric
 
 METRIC_SOURCE='XMPPGOOGLE'
 METRIC_UNIT='events'
@@ -65,6 +65,8 @@ class RosterManager(object):
         defer.returnValue(None)
     
 class GoogleHandler(GenericXMPPHandler):
+    CONNECTIONS_METRIC=Metric(name='xmppgoogle_connections', value=None, unit='connections', source=METRIC_SOURCE, reset=False)
+    
     def __init__(self, client):
         GenericXMPPHandler.__init__(self, client)
         self.user = client.user
@@ -76,11 +78,13 @@ class GoogleHandler(GenericXMPPHandler):
     
     @IncrementMetric(name='xmppgoogle_connection_established', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onConnectionEstablished(self):
+        self.CONNECTIONS_METRIC.add(1)
         self.connectionTime = None
         self.log.info('CONNECTION_ESTABLISHED %s', self.user.jid)
     
     @IncrementMetric(name='xmppgoogle_connection_lost', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onConnectionLost(self, reason):
+        self.CONNECTIONS_METRIC.add(-1)
         connectedTime = 0 if self.connectionTime is None else time.time() - self.connectionTime
         isAuthenticating = self.client.isAuthenticating()
         self.log.info('CONNECTION_LOST %s. Connected Time: %s. Authenticating: %s. Reason %s', self.user.jid, connectedTime, isAuthenticating, str(reason))
