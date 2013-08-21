@@ -34,7 +34,12 @@ class KatooApp(Singleton):
 class KatooJob(job.Job):
     pass
 
-@inject_decorators(method_decorator_dict={'callback_perform_job': IncrementMetric(name='jobs_ok', unit='jobs', source='RQTWISTED'), 'errback_perform_job': IncrementMetric(name='jobs_failed', unit='jobs', source='RQTWISTED')})
+@inject_decorators(method_decorator_dict={'callback_perform_job': IncrementMetric(name='jobs_ok', unit='jobs', source='RQTWISTED'), 
+                                          'errback_perform_job': IncrementMetric(name='jobs_failed', unit='jobs', source='RQTWISTED', reset=False),
+                                          'work': IncrementMetric(name='workers_running', unit='workers', source='RQTWISTED', reset=False),
+                                          'register_birth': IncrementMetric(name='live_workers', unit='workers', source='RQTWISTED', reset=False),
+                                          'register_death': IncrementMetric(name='death_workers', unit='workers', source='RQTWISTED', reset=False)
+                                          })
 class KatooWorker(worker.Worker):
     pass
 

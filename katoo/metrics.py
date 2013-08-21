@@ -94,5 +94,5 @@ class Metric(object):
             self._reset_accumulator()
     
 class IncrementMetric(Metric):
-    def __init__(self, name, unit=None, source=conf.MACHINEID):
-        Metric.__init__(self, name, 1, unit=unit, source=source)
+    def __init__(self, name, unit=None, source=conf.MACHINEID, reset=True):
+        Metric.__init__(self, name, 1, unit=unit, source=source, reset=reset)
