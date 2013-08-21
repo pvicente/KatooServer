@@ -5,11 +5,15 @@ Created on Jun 4, 2013
 '''
 
 from datetime import datetime, timedelta
+from katoo.metrics import IncrementMetric
 from katoo.txMongoModel.mongomodel.model import Model, Indexes, Sort
 from katoo.utils.connections import MongoMixin
 from twisted.internet import defer
 from txmongo._pymongo.objectid import ObjectId
 import conf
+
+METRIC_UNIT='calls'
+METRIC_SOURCE='DATA'
 
 class ModelMixin(Model, MongoMixin):
     def __init__(self, collectionName, mongourl=None, indexes=None):
@@ -55,12 +59,14 @@ class GoogleRosterItem(object):
     model = DataModel(collectionName='googleroster', indexes=Indexes(['_userid', ('_userid','_jid')]))
     
     @classmethod
+    @IncrementMetric(name='rosteritem_exists', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def exists(cls, userid):
         d = cls.model.find_one(spec={'_userid': userid})
         d.addCallback(lambda result: None if not result else cls(**result))
         return d
     
     @classmethod
+    @IncrementMetric(name='rosteritem_remove', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def remove(cls, userid, jid=None):
         if jid is None:
             return cls.model.remove({'_userid': userid})
@@ -68,6 +74,7 @@ class GoogleRosterItem(object):
             return cls.model.remove({'_userid': userid, '_jid': jid})
     
     @classmethod
+    @IncrementMetric(name='rosteritem_load', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def load(cls, userid, jid):
         d = cls.model.find_one(spec={'_userid': userid, '_jid': jid})
         d.addCallback(lambda result: None if not result else cls(**result))
@@ -82,6 +89,7 @@ class GoogleRosterItem(object):
         if isinstance(_id, ObjectId):
             self._id = _id
     
+    @IncrementMetric(name='rosteritem_save', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def save(self):
         data=vars(self)
         d = self.model.update({'_userid': self.userid, '_jid': self.jid}, upsert=True, multi=False, **data)
@@ -139,6 +147,7 @@ class GoogleUser(object):
                                                                      ('_connected', '_worker'), ('_connected', '_onMigrationTime', '_onReloging'), dict(fields='_lastTimeConnected', expireAfterSeconds=conf.XMPP_REMOVE_TIME) ]))
     
     @classmethod
+    @IncrementMetric(name='googleuser_load', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def load(cls, userid=None, jid=None, pushtoken=None):
         if userid is None and jid is None and pushtoken is None:
             return defer.returnValue(None)
@@ -148,6 +157,7 @@ class GoogleUser(object):
         return d
     
     @classmethod
+    @IncrementMetric(name='googleuser_remove', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def remove(cls, userid):
         return defer.DeferredList([cls.model.remove({'_userid': userid}), GoogleMessage.flushMessages(userid), GoogleRosterItem.remove(userid)])
     
@@ -209,6 +219,7 @@ class GoogleUser(object):
         if isinstance(_id, ObjectId):
             self._id = _id
     
+    @IncrementMetric(name='googleuser_save', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def save(self):
         data=vars(self)
         return self.model.update({'_userid': self.userid}, upsert=True, multi=False, **data)

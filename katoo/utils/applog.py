@@ -4,7 +4,7 @@ Created on Jun 28, 2013
 @author: pvicente
 '''
 from functools import wraps
-from katoo.utils.decorators import for_methods
+from katoo.utils.decorators import inject_decorators
 from patterns import Singleton
 from twisted.python import log, failure
 import logging
@@ -20,7 +20,7 @@ def add_context(f):
         return f(self, msg, kwargs)
     return wrapper
 
-@for_methods(method_list=['process'], decorator=add_context)
+@inject_decorators(method_decorator_dict={'process': add_context})
 class AppLoggingAdapter(logging.LoggerAdapter):
     def __init__(self, logger, extra):
         logging.LoggerAdapter.__init__(self, logger, extra)

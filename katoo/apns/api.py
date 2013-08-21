@@ -5,21 +5,41 @@ Created on Jun 11, 2013
 '''
 from apnmessage import PushParser, get_custom_message, CustomMessageException
 from katoo import conf
-from katoo.metrics import Metric
+from katoo.metrics import Metric, IncrementMetric
 from katoo.system import DistributedAPI, AsynchronousCall
-from katoo.txapns.txapns.apns import APNSService
+from katoo.txapns.txapns.apns import APNSService, APNSProtocol, \
+    APNSClientFactory
 from katoo.txapns.txapns.encoding import encode_notifications
 from katoo.txapns.txapns.payload import Payload, PayloadTooLargeError, \
     MAX_PAYLOAD_LENGTH
+from katoo.utils.decorators import inject_decorators
 from katoo.utils.patterns import Singleton
 
 METRIC_INCREMENT = 1 if conf.REDIS_WORKERS == 0 else 0.5
 METRIC_UNIT = 'calls'
-METRIC_SOURCE = 'KATOO_APNS_API'
+METRIC_SOURCE = 'APNS'
+
+@inject_decorators(method_decorator_dict={'sendMessage': IncrementMetric(name='apns_sendMessage', unit='calls', source=METRIC_SOURCE)})
+class KatooAPNSProtocol(APNSProtocol):
+    CONNECTIONS_METRIC=Metric(name='apns_connections', value=None, unit='connections', source=METRIC_SOURCE, reset=False)
+    
+    @IncrementMetric(name='apns_connectionMade', unit='calls', source=METRIC_SOURCE)
+    def connectionMade(self):
+        self.CONNECTIONS_METRIC.add(1)
+        return APNSProtocol.connectionMade(self)
+    
+    @IncrementMetric(name='apns_connectionLost', unit='calls', source=METRIC_SOURCE)
+    def connectionLost(self, reason):
+        self.CONNECTIONS_METRIC.add(-1)
+        return APNSProtocol.connectionLost(self, reason)
+
+class KatooAPNSClientFactory(APNSClientFactory):
+    protocol=KatooAPNSProtocol
 
 class KatooAPNSService(Singleton):
     def constructor(self):
         self.service = APNSService(cert_path=conf.APNS_CERT, environment=conf.APNS_SANDBOX, timeout=conf.APNS_TIMEOUT)
+        self.service.clientProtocolFactory=KatooAPNSClientFactory
         self.service.setName(conf.APNSERVICE_NAME)
 
 class API(DistributedAPI):
