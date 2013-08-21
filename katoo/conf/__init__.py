@@ -59,8 +59,8 @@ XMPP_RESOURCE=os.getenv('XMPP_STATE', 'katooserv')
 XMPP_KEEP_ALIVE_TIME=int(os.getenv('XMPP_KEEP_ALIVE_TIME', 300))
 
 #APNS
-APNS_SANDBOX = "sandbox" if os.getenv('PRODUCTION', None) is None else "production"
-APNS_CERT = conf_dir + ('/certificates/development.pem' if APNS_SANDBOX else '/certificates/production.pem')
+APNS_SANDBOX = "sandbox" if eval(str(os.getenv('PRODUCTION', None))) is None else "production"
+APNS_CERT = conf_dir + ('/certificates/development.pem' if APNS_SANDBOX == 'sandbox' else '/certificates/production.pem')
 APNS_TIMEOUT = int(os.getenv('APNS_TIMEOUT', 5))
 APNSERVICE_NAME= 'APNS'
 
