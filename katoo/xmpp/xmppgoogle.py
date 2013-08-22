@@ -129,8 +129,15 @@ class GoogleHandler(GenericXMPPHandler):
         self.log.debug('XMPP_GO_OFFLINE %s <- %s@%s/%r', self.user.jid, jid.user, jid.host, jid.resource)
     
     @IncrementMetric(name='xmppgoogle_roster_received', unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @defer.inlineCallbacks
     def onRosterReceived(self, roster):
-        self.roster.processRoster(roster)
+        yield self.roster.processRoster(roster)
+        
+        if not self.user.connected:
+            #Remove data due to user is disconnected while processing is performed
+            yield GoogleRosterItem.remove(self.user.userid)
+        
+        self.log.info('ROSTER_RECEIVED. PROCESSED ROSTER %s', self.user.jid)
     
     @IncrementMetric(name='xmppgoogle_roster_set', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onRosterSet(self, item):
