@@ -40,7 +40,8 @@ class API(DistributedAPI):
     @AsynchronousCall(queue=conf.DIST_QUEUE_RELOGIN)
     @defer.inlineCallbacks
     def relogin(self, xmppuser, pending_jobs):
-        self.log.info('RELOGIN %s. Pending_Jobs: %s. Data: %s', xmppuser.jid, len(pending_jobs), xmppuser)
+        len_pending_jobs = len(pending_jobs)
+        self.log.info('RELOGIN %s. Pending_Jobs: %s. Data: %s', xmppuser.jid, len_pending_jobs, xmppuser)
         yield self._shared_login(xmppuser)
         
         xmppuser.onMigrationTime = datetime.utcnow()
@@ -48,6 +49,7 @@ class API(DistributedAPI):
         
         queue = Queue(conf.MACHINEID)
         
+        self.log.info('perform relogin %s. Enqueuing pending jobs %s before migration was launched. Data %s', xmppuser.jid, len_pending_jobs, xmppuser)
         #Enqueue pending jobs before migration was launched
         for job_id in pending_jobs:
             try:
@@ -55,7 +57,9 @@ class API(DistributedAPI):
                 yield queue.enqueue_job(job)
             except NoSuchJobError:
                 pass
+        self.log.info('perform relogin %s. Finished enqueuing pending jobs before migration was launched.', xmppuser.jid)
         
+        self.log.info('perform relogin %s. Enqueing pending jobs after migration was launched.', xmppuser.jid)
         #Enqueue pending jobs after migration was launched
         migration_queue = Queue(xmppuser.userid)
         migration_job_ids = yield migration_queue.job_ids
@@ -77,11 +81,14 @@ class API(DistributedAPI):
                 migration_job_ids = yield migration_queue.job_ids
                 yield migration_queue.empty()
         
+        self.log.info('perform relogin %s. Finished enqueing jobs after migration was launched. Data %s', xmppuser.jid, xmppuser)
+        
         if xmppuser.worker != conf.MACHINEID:
             xmppuser.worker=conf.MACHINEID
             xmppuser.onMigrationTime=''
             yield xmppuser.save()
         
+        self.log.info('RELOGIN %s. Finished. Data %s', xmppuser.jid, xmppuser)
     
     @Metric(name='api_update', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
     @AsynchronousCall(queue=None) #Queue is assigned at runtime
