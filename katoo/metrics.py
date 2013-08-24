@@ -10,15 +10,32 @@ from katoo.utils.patterns import Singleton
 
 log = getLogger(__name__, 'INFO')
 
-class SamplingAccumulator(object):
-    def __init__(self):
+class Accumulator(object):
+    def __init__(self, source, name, unit):
+        self._name = '%s.%s'%(source,name)
+        self._unit = unit
+        self.reset()
+    
+    @property
+    def name(self):
+        return self._name
+    
+    @property
+    def unit(self):
+        return self._unit
+    
+    def reset(self):
+        raise NotImplementedError()
+
+class SamplingAccumulator(Accumulator):
+    def reset(self):
         self._samples=[]
     
     def add(self, value):
         self._samples.append(value)
     
     def data(self):
-        ret = dict()
+        ret = []
         size = len(self._samples)
         
         if size == 0:
@@ -29,22 +46,25 @@ class SamplingAccumulator(object):
             samples_min = min(self._samples)
             samples_average = samples_sum/(size*1.0)
         
-        ret['sum'] = samples_sum
-        ret['average'] = samples_average
-        ret['max'] = samples_max
-        ret['min'] = samples_min
+        ret.append('sample#%s=%.2f%s'%(self.name, samples_sum, self.unit))
+        ret.append('sample#%s_average=%.2f%s'%(self.name, samples_average, self.unit))
+        ret.append('sample#%s_max=%.2f%s'%(self.name, samples_max, self.unit))
+        ret.append('sample#%s_min=%.2f%s'%(self.name, samples_min, self.unit))
         
         return ret
-
-class SimpleAccumulator(object):
-    def __init__(self):
-        self._value=0
+    
+    def __str__(self):
+        return ' '.join(self.data())
+    
+class SimpleAccumulator(Accumulator):
+    def reset(self):
+        self._value = 0
     
     def add(self, value):
         self._value+=value
     
-    def data(self):
-        return {'sum': self._value}
+    def __str__(self):
+        return 'sample#%s=%.2f%s'%(self.name, self._value, self.unit)
 
 class MetricsHub(Singleton):
     def constructor(self):
@@ -57,19 +77,12 @@ class MetricsHub(Singleton):
 class Metric(object):
     log = getLoggerAdapter(log, id='METRIC')
     
-    def __init__(self, name, value, unit=None, source=conf.MACHINEID, average=False, sampling=False, reset=True):
-        self._source = source
-        self._name = name
+    def __init__(self, name, value, unit='', source=conf.MACHINEID, sampling=False, reset=True):
         self._value = value
-        self._unit = '' if unit is None else ' units=%s'%(unit)
-        self._average=average
-        self._sampling=sampling
+        self._accumulator = SimpleAccumulator(source, name, unit) if not sampling else SamplingAccumulator(source, name, unit)
         self._reset = reset
-        self._reset_accumulator()
         MetricsHub().metrics.append(self)
     
-    def _reset_accumulator(self):
-        self._accumulator = SimpleAccumulator() if not self._sampling else SamplingAccumulator()
     
     def add(self, value):
         self._accumulator.add(value)
@@ -82,16 +95,9 @@ class Metric(object):
         return wrapped_f
     
     def report(self):
-        data = self._accumulator.data()
-        for key,value in data.iteritems():
-            meassure = self._name
-            if key == 'average' and not self._average:
-                continue
-            if key != 'sum':
-                meassure='%s_%s'%(self._name, key)
-            self.log.info('source=%s measure=%s val=%.2f%s',self._source, meassure, value, self._unit)
+        self.log.info(self._accumulator)
         if self._reset:
-            self._reset_accumulator()
+            self._accumulator.reset()
     
 class IncrementMetric(Metric):
     def __init__(self, name, unit=None, source=conf.MACHINEID, reset=True):

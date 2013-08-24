@@ -93,10 +93,10 @@ class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
             raise cyclone.web.HTTPError(403)
 
 class GoogleHandler(MyRequestHandler):
-    METRICS={'get':    Metric(name='time_restapi_get_google', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, average=True, sampling=True),
-             'post':   Metric(name='time_restapi_post_google', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, average=True, sampling=True),
-             'put':    Metric(name='time_restapi_put_google', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, average=True, sampling=True),
-             'delete': Metric(name='time_restapi_delete_google', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, average=True, sampling=True)
+    METRICS={'get':    Metric(name='time_restapi_get_google', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, sampling=True),
+             'post':   Metric(name='time_restapi_post_google', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, sampling=True),
+             'put':    Metric(name='time_restapi_put_google', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, sampling=True),
+             'delete': Metric(name='time_restapi_delete_google', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, sampling=True)
              }
     
     @IncrementMetric(name='restapi_get_google', unit=METRIC_UNIT, source=METRIC_SOURCE)
@@ -175,8 +175,8 @@ class GoogleHandler(MyRequestHandler):
         self._response_json({'success': True, 'reason': 'ok'})
 
 class GoogleMessagesHandler(MyRequestHandler):
-    METRICS={'get':    Metric(name='time_restapi_get_google_messages', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, average=True, sampling=True),
-             'delete': Metric(name='time_restapi_delete_google_messages', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, average=True, sampling=True)
+    METRICS={'get':    Metric(name='time_restapi_get_google_messages', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, sampling=True),
+             'delete': Metric(name='time_restapi_delete_google_messages', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, sampling=True)
              }
     
     @IncrementMetric(name='restapi_get_google_messages', unit=METRIC_UNIT, source=METRIC_SOURCE)
@@ -217,7 +217,7 @@ class GoogleMessagesHandler(MyRequestHandler):
             raise cyclone.web.HTTPError(500, str(e))
     
 class GoogleContactsHandler(MyRequestHandler):
-    METRICS={'put':    Metric(name='time_restapi_put_google_contacts', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, average=True, sampling=True)}
+    METRICS={'put':    Metric(name='time_restapi_put_google_contacts', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, sampling=True)}
     
     @defer.inlineCallbacks
     def get(self, key):
