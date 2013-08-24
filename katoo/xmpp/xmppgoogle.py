@@ -65,7 +65,7 @@ class RosterManager(object):
         defer.returnValue(None)
     
 class GoogleHandler(GenericXMPPHandler):
-    CONNECTIONS_METRIC=Metric(name='xmppgoogle_connections', value=None, unit='connections', source=METRIC_SOURCE, reset=False)
+    CONNECTIONS_METRIC=Metric(name='connections', value=None, unit='connections', source=METRIC_SOURCE, reset=False)
     
     def __init__(self, client):
         GenericXMPPHandler.__init__(self, client)

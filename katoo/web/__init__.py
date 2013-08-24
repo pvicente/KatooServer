@@ -20,9 +20,9 @@ class BaseHandlerNoLog(cyclone.web.Application, RedisMixin):
             )
             cyclone.web.Application.__init__(self, handlers, **settings)
             self.log = getLoggerAdapter(log)
-            self.metric = Metric(name='time_restapi', value=None, unit=v1.handlers.METRIC_UNIT_TIME, source=v1.handlers.METRIC_SOURCE, sampling=True)
+            self.metric = Metric(name='time', value=None, unit=v1.handlers.METRIC_UNIT_TIME, source=v1.handlers.METRIC_SOURCE, sampling=True)
     
-    @IncrementMetric(name='restapi_total', unit=v1.handlers.METRIC_UNIT, source=v1.handlers.METRIC_SOURCE)
+    @IncrementMetric(name='total', unit=v1.handlers.METRIC_UNIT, source=v1.handlers.METRIC_SOURCE)
     def log_request(self, handler):
         self._request_time = 1000 * handler.request.request_time()
         self.metric.add(self._request_time)

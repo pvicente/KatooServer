@@ -19,16 +19,16 @@ METRIC_INCREMENT = 1 if conf.REDIS_WORKERS == 0 else 0.5
 METRIC_UNIT = 'calls'
 METRIC_SOURCE = 'APNS'
 
-@inject_decorators(method_decorator_dict={'sendMessage': IncrementMetric(name='apns_sendMessage', unit='calls', source=METRIC_SOURCE)})
+@inject_decorators(method_decorator_dict={'sendMessage': IncrementMetric(name='sendMessage', unit='calls', source=METRIC_SOURCE)})
 class KatooAPNSProtocol(APNSProtocol):
-    CONNECTIONS_METRIC=Metric(name='apns_connections', value=None, unit='connections', source=METRIC_SOURCE, reset=False)
+    CONNECTIONS_METRIC=Metric(name='connections', value=None, unit='connections', source=METRIC_SOURCE, reset=False)
     
-    @IncrementMetric(name='apns_connectionMade', unit='calls', source=METRIC_SOURCE)
+    @IncrementMetric(name='connectionMade', unit='calls', source=METRIC_SOURCE)
     def connectionMade(self):
         self.CONNECTIONS_METRIC.add(1)
         return APNSProtocol.connectionMade(self)
     
-    @IncrementMetric(name='apns_connectionLost', unit='calls', source=METRIC_SOURCE)
+    @IncrementMetric(name='connectionLost', unit='calls', source=METRIC_SOURCE)
     def connectionLost(self, reason):
         self.CONNECTIONS_METRIC.add(-1)
         return APNSProtocol.connectionLost(self, reason)
@@ -57,14 +57,14 @@ class API(DistributedAPI):
         notification = encode_notifications(token, payload.dict())
         return KatooAPNSService().service.write(notification)
     
-    @Metric(name='apns_api_sendchatmessage', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @Metric(name='sendchatmessage', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
     @AsynchronousCall(conf.DIST_QUEUE_PUSH)
     def sendchatmessage(self, msg, token, sound, badgenumber, jid, fullname, emoji):
         message = u'{0}{1}: {2}'.format(emoji, fullname, PushParser.parse_message(msg))
         self.log.debug('SEND_CHAT_MESSAGE jid: %r fullname: %r badgenumber: %r sound: %r token: %r . %r. Raw msg: %r', jid, fullname, badgenumber, sound, token, message, msg)
         return self._sendapn(token=token , msg=message, sound=sound, badgenumber=badgenumber, jid=jid)
     
-    @Metric(name='apns_api_sendcustom', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @Metric(name='sendcustom', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
     @AsynchronousCall(conf.DIST_QUEUE_PUSH)
     def sendcustom(self, lang, token, badgenumber, type_msg, sound='', inter_msg=' ', **kwargs):
         '''send custom push notifications and kwargs are extra parameters in push_notification'''
