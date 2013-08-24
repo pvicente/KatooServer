@@ -81,8 +81,7 @@ class MetricsHub(Singleton):
         self._metrics[metric.source].append(metric)
     
     def report(self):
-        for metrics in self._metrics.itervalues():
-            self.log.info(' '.join([str(metric) for metric in metrics]))
+        self.log.info(' '.join([' '.join([str(metric) for metric in metrics]) for metrics in self._metrics.itervalues()]))
     
 class Metric(object):
     def __init__(self, name, value, unit='', source=conf.MACHINEID, sampling=False, reset=True):
