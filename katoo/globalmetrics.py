@@ -55,12 +55,14 @@ class MongoMetrics(GlobalMetrics):
         self._metrics = dict([(model.collection, self._create_metrics(model.collection)) for model in self._models])
         self._user_metrics = {'connected': Metric(name='googleusers.connected', value=None, unit='users', source='MONGO'),
                        'away': Metric(name='googleusers.away', value=None, unit='users', source='MONGO'),
+                       'onLine': Metric(name='googleusers.onLine', value=None, unit='users', source='MONGO'),
                        'disconnected': Metric(name='googleusers.disconnected', value=None, unit='users', source='MONGO'),
                        'onRelogin': Metric(name='googleusers.onRelogin', value=None, unit='users', source='MONGO')
                        }
         
         self._user_queries = {'connected': {'_connected': True},
                                'away': {'_connected': True, '_away': True},
+                               'onLine': {'_connected': True, '_away': False},
                                'disconnected': {'_connected': False},
                                'onRelogin': {'_connected': True, '_onReloging': True}
                              }
