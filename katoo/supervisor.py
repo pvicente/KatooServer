@@ -9,7 +9,7 @@ from katoo import conf, KatooApp
 from katoo.api import API
 from katoo.apns.api import API as APNSAPI
 from katoo.data import GoogleUser
-from katoo.globalmetrics import RedisMetrics
+from katoo.globalmetrics import RedisMetrics, MongoMetrics
 from katoo.metrics import MetricsHub
 from katoo.rqtwisted.job import Job
 from katoo.rqtwisted.queue import Queue
@@ -86,7 +86,7 @@ class GlobalSupervisor(Supervisor):
     def __init__(self):
         Supervisor.__init__(self)
         self.checkingMigrateUsers = False
-        self._globalmetrics=[RedisMetrics()]
+        self._globalmetrics=[RedisMetrics(), MongoMetrics()]
     
     def _attach_global_metrics(self):
         service = KatooApp().getService(MetricsSupervisor.name)

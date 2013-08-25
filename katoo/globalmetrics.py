@@ -8,18 +8,19 @@ from katoo.metrics import Metric
 from katoo.rqtwisted.queue import Queue, FailedQueue
 from katoo.utils.connections import RedisMixin
 from twisted.internet import defer
+from katoo.data import GoogleMessage, GoogleRosterItem, GoogleUser
 
 
-class GlobalMetric(object):
+class GlobalMetrics(object):
     def register(self, service):
         service.register(self)
     
     def report(self):
         raise NotImplementedError()
 
-class RedisMetrics(GlobalMetric):
+class RedisMetrics(GlobalMetrics):
     SOURCE='REDIS'
-    UNIT='items'
+    UNIT='keys'
     def __init__(self):
         self._connection = RedisMixin.redis_conn
         self._keys=Metric(name="keys", value=None, unit=self.UNIT, source=self.SOURCE)
@@ -38,4 +39,27 @@ class RedisMetrics(GlobalMetric):
             queue = Queue(name=key, connection=self._connection)
             items = yield queue.count
             self._items[key].add(items)
+
+class MongoMetrics(GlobalMetrics):
+    SOURCE='MONGO'
+    
+    def _create_metrics(self, collectionName):
+        return {'count': Metric(name='%s.documents'%(collectionName), value=None, unit='documents', source='MONGO'),
+                 'storageSize': Metric(name='%s.size'%(collectionName), value=None, unit='KB', source='MONGO'),
+                 'nindexes': Metric(name='%s.indexes'%(collectionName), value=None, unit='indexes', source='MONGO'),
+                 'totalIndexSize': Metric(name='%s.index_size'%(collectionName), value=None, unit='KB', source='MONGO')
+                }
+    
+    def __init__(self):
+        self._models = [GoogleMessage.model, GoogleRosterItem.model, GoogleUser.model]
+        self._metrics = dict([(model.collection, self._create_metrics(model.collection)) for model in self._models])
+    
+    
+    @defer.inlineCallbacks
+    def report(self):
+        for model in self._models:
+            stats = yield model.stats()
+            metrics = self._metrics[model.collection]
+            for key in metrics:
+                metrics[key].add(stats[key])
     
