@@ -5,11 +5,12 @@ Created on Jun 12, 2013
 '''
 from datetime import datetime
 from dateutil import parser
-from katoo import conf
+from katoo import conf, KatooApp
 from katoo.api import API
 from katoo.apns.api import API as APNSAPI
 from katoo.data import GoogleUser
-from katoo.metrics import MetricsHub, Metric
+from katoo.globalmetrics import RedisMetrics, MongoMetrics
+from katoo.metrics import MetricsHub
 from katoo.rqtwisted.job import Job
 from katoo.rqtwisted.queue import Queue
 from katoo.rqtwisted.worker import Worker
@@ -54,7 +55,18 @@ class MetricsSupervisor(Supervisor):
     name='METRICS_SUPERVISOR'
     log = getLoggerAdapter(log, id=name)
     
+    def __init__(self):
+        Supervisor.__init__(self)
+        self._globalmetrics=[]
+    
+    def register(self, global_metric):
+        self._globalmetrics.append(global_metric)
+    
+    @defer.inlineCallbacks
     def report(self):
+        if self.running:
+            for global_metric in self._globalmetrics:
+                yield global_metric.report()
         MetricsHub().report()
     
     def startService(self):
@@ -74,6 +86,12 @@ class GlobalSupervisor(Supervisor):
     def __init__(self):
         Supervisor.__init__(self)
         self.checkingMigrateUsers = False
+        self._globalmetrics=[RedisMetrics(), MongoMetrics()]
+    
+    def _attach_global_metrics(self):
+        service = KatooApp().getService(MetricsSupervisor.name)
+        for metric in self._globalmetrics:
+            metric.register(service)
     
     @defer.inlineCallbacks
     def processOnMigrationUsers(self):
@@ -291,4 +309,6 @@ class GlobalSupervisor(Supervisor):
             t = LoopingCall(self.xmpp_keep_alive)
             self.registerTask(t)
             t.start(conf.XMPP_KEEP_ALIVE_TIME, now = False)
+        
+        reactor.callLater(conf.TWISTED_WARMUP, self._attach_global_metrics)
         
