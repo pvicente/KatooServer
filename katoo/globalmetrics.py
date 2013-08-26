@@ -4,12 +4,15 @@ Created on Aug 25, 2013
 @author: pvicente
 '''
 from katoo import conf
+from katoo.data import GoogleMessage, GoogleRosterItem, GoogleUser
 from katoo.metrics import Metric
 from katoo.rqtwisted.queue import Queue, FailedQueue
+from katoo.utils.applog import getLogger, getLoggerAdapter
 from katoo.utils.connections import RedisMixin
 from twisted.internet import defer
-from katoo.data import GoogleMessage, GoogleRosterItem, GoogleUser
 
+
+log = getLoggerAdapter(getLogger(__name__),id='GLOBAL_METRICS')
 
 class GlobalMetrics(object):
     def register(self, service):
@@ -45,9 +48,10 @@ class MongoMetrics(GlobalMetrics):
     
     def _create_metrics(self, collectionName):
         return {'count': Metric(name='%s.documents'%(collectionName), value=None, unit='documents', source='MONGO'),
-                 'storageSize': Metric(name='%s.size'%(collectionName), value=None, unit='KB', source='MONGO'),
+                 'size': Metric(name='%s.size'%(collectionName), value=None, unit=conf.MONGO_STORAGE_UNIT, source='MONGO'),
+                 'storageSize': Metric(name='%s.storage_size'%(collectionName), value=None, unit=conf.MONGO_STORAGE_UNIT, source='MONGO'),
                  'nindexes': Metric(name='%s.indexes'%(collectionName), value=None, unit='indexes', source='MONGO'),
-                 'totalIndexSize': Metric(name='%s.index_size'%(collectionName), value=None, unit='KB', source='MONGO')
+                 'totalIndexSize': Metric(name='%s.index_size'%(collectionName), value=None, unit=conf.MONGO_STORAGE_UNIT, source='MONGO')
                 }
     
     def __init__(self):
@@ -71,10 +75,11 @@ class MongoMetrics(GlobalMetrics):
     @defer.inlineCallbacks
     def report(self):
         for model in self._models:
-            stats = yield model.stats()
+            stats = yield model.stats(scale=conf.MONGO_STORAGE_UNIT_SCALE)
+            log.debug('MONGO_STATS for %s. %s', model.collection, stats)
             metrics = self._metrics[model.collection]
             for key in metrics:
-                metrics[key].add(stats[key])
+                metrics[key].add(stats.get('key', 0.0))
         
         for query in self._user_queries:
             count = yield GoogleUser.model.count(self._user_queries[query])
