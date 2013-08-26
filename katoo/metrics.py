@@ -12,10 +12,11 @@ from collections import defaultdict
 log = getLogger(__name__, 'INFO')
 
 class Accumulator(object):
-    def __init__(self, source, name, unit):
+    def __init__(self, source, name, unit, scale):
         self._name = '%s.%s'%(source,name)
         self._source = source
         self._unit = unit
+        self._scale = scale*1.0
         self.reset()
     
     @property
@@ -47,9 +48,9 @@ class SamplingAccumulator(Accumulator):
         if size == 0:
             samples_sum = samples_max = samples_min = samples_average = 0.00
         else:
-            samples_sum = sum(self._samples)
-            samples_max = max(self._samples)
-            samples_min = min(self._samples)
+            samples_sum = sum(self._samples)/self._scale
+            samples_max = max(self._samples)/self._scale
+            samples_min = min(self._samples)/self._scale
             samples_average = samples_sum/(size*1.0)
         
         ret.append('sample#%s=%.2f%s'%(self.name, samples_sum, self.unit))
@@ -70,7 +71,7 @@ class SimpleAccumulator(Accumulator):
         self._value+=value
     
     def __str__(self):
-        return 'sample#%s=%.2f%s'%(self.name, self._value, self.unit)
+        return 'sample#%s=%.2f%s'%(self.name, self._value/self._scale, self.unit)
 
 class MetricsHub(Singleton):
     def constructor(self):
@@ -84,9 +85,9 @@ class MetricsHub(Singleton):
         self.log.info(' '.join([' '.join([str(metric) for metric in metrics]) for metrics in self._metrics.itervalues()]))
     
 class Metric(object):
-    def __init__(self, name, value, unit='', source=conf.MACHINEID, sampling=False, reset=True):
+    def __init__(self, name, value, unit='', source=conf.MACHINEID, sampling=False, reset=True, scale=1):
         self._value = value
-        self._accumulator = SimpleAccumulator(source, name, unit) if not sampling else SamplingAccumulator(source, name, unit)
+        self._accumulator = SimpleAccumulator(source, name, unit, scale) if not sampling else SamplingAccumulator(source, name, unit, scale)
         self._reset = reset
         MetricsHub().append(self)
     
