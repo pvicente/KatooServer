@@ -3,13 +3,20 @@ Created on Aug 12, 2013
 
 @author: pvicente
 '''
+from collections import defaultdict
 from functools import wraps
 from katoo import conf
-from katoo.utils.applog import getLogger, getLoggerAdapter
 from katoo.utils.patterns import Singleton
-from collections import defaultdict
+import logging
 
-log = getLogger(__name__, 'INFO')
+#Special log format to filter default format with regular expressions
+FORMAT="[%s]"%(conf.MACHINEID)+" %(message)s"
+formatter = logging.Formatter(fmt=FORMAT)
+handler = logging.StreamHandler()
+handler.setFormatter(formatter)
+log = logging.getLogger(__name__)
+log.addHandler(handler)
+log.propagate=False
 
 class Accumulator(object):
     def __init__(self, source, name, unit, scale):
@@ -76,13 +83,12 @@ class SimpleAccumulator(Accumulator):
 class MetricsHub(Singleton):
     def constructor(self):
         self._metrics=defaultdict(list)
-        self.log = getLoggerAdapter(log, id='METRICS')
     
     def append(self, metric):
         self._metrics[metric.source].append(metric)
     
     def report(self):
-        self.log.info(' '.join([' '.join([str(metric) for metric in metrics]) for metrics in self._metrics.itervalues()]))
+        log.info(' '.join([' '.join([str(metric) for metric in metrics]) for metrics in self._metrics.itervalues()]))
     
 class Metric(object):
     def __init__(self, name, value, unit='', source=conf.MACHINEID, sampling=False, reset=True, scale=1):
