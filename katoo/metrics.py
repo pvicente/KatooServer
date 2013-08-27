@@ -87,8 +87,30 @@ class MetricsHub(Singleton):
     def append(self, metric):
         self._metrics[metric.source].append(metric)
     
+    @staticmethod
+    def split_output_len(seq, length):
+        output = []
+        temp=[]
+        curr_len = 0
+        for i in seq:
+            str_len = i[1]
+            if curr_len + str_len >= length:
+                output.append(' '.join(temp))
+                temp=[]
+                curr_len = 0
+            else:
+                temp.append(i[0])
+                curr_len+=i[1]
+        return output
+    
     def report(self):
-        log.info(' '.join([' '.join([str(metric) for metric in metrics]) for metrics in self._metrics.itervalues()]))
+        str_metrics = []
+        for metrics in self._metrics.itervalues():
+            str_metrics.extend(str(metric) for metric in metrics)
+        
+        output = self.split_output_len(zip(str_metrics, [len(i) for i in str_metrics]), conf.METRICS_OUTPUT_LEN)
+        for out in output:
+            log.info(out)
     
 class Metric(object):
     def __init__(self, name, value, unit='', source=conf.MACHINEID, sampling=False, reset=True, scale=1):

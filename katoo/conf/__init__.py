@@ -16,6 +16,7 @@ LOG_LEVEL=os.getenv('LOG_LEVEL', 'DEBUG')
 LOG_FORMAT=os.getenv('LOG_FORMAT', "[%s] "%(MACHINEID)+"[%(levelname)s] [%(filename)s:%(funcName)s:%(lineno)d]")
 LOGGING_OK_JOBS = eval(str(os.getenv('LOGGING_OK_JOBS', True)))
 METRICS_REPORT_TIME = int(os.getenv('METRICS_REPORT_TIME', 60))
+METRICS_OUTPUT_LEN = int(os.getenv('METRICS_OUTPUT_LEN', 950))
 
 #GOOGLE_APP_CREDENTIALS
 GOOGLE_CLIENT_ID=os.getenv('GOOGLE_CLIENT_ID', '1066150010031.apps.googleusercontent.com')
