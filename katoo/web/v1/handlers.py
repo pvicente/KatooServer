@@ -118,8 +118,11 @@ class GoogleHandler(MyRequestHandler):
         user = yield GoogleUser.load(key)
         user_to_logout = None
         
+        pushtoken=self.args['_pushtoken']
+        
         if user is None:
-            user_to_logout = yield GoogleUser.load(pushtoken=self.args['_pushtoken'])
+            if pushtoken:
+                user_to_logout = yield GoogleUser.load(pushtoken=pushtoken)
         elif user.connected:
             if user.jid != self.args['_jid']:
                 user_to_logout = user

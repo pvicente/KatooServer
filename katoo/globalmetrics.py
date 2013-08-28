@@ -56,7 +56,8 @@ class MongoMetrics(Observer):
                               'away': Metric(name='googleusers.away', value=None, unit='users', source='MONGO'),
                               'onLine': Metric(name='googleusers.onLine', value=None, unit='users', source='MONGO'),
                               'disconnected': Metric(name='googleusers.disconnected', value=None, unit='users', source='MONGO'),
-                              'onRelogin': Metric(name='googleusers.onRelogin', value=None, unit='users', source='MONGO')
+                              'onRelogin': Metric(name='googleusers.onRelogin', value=None, unit='users', source='MONGO'),
+                              'nopushtoken': Metric(name='googleusers.nopushtoken', value=None, unit='users', source='MONGO')
                               }
         
         self._global_metrics = {'objects': Metric(name='documents', value=None, unit='documents', source='MONGO'),
@@ -72,7 +73,8 @@ class MongoMetrics(Observer):
                               'away': {'_connected': True, '_away': True},
                               'onLine': {'_connected': True, '_away': False},
                               'disconnected': {'_connected': False},
-                              'onRelogin': {'_connected': True, '_onReloging': True}
+                              'onRelogin': {'_connected': True, '_onReloging': True},
+                              'nopushtoken':{'_connected': True, '_pushtoken': ''}
                               }
         
     
