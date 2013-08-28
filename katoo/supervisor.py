@@ -19,6 +19,7 @@ from twisted.application import service
 from twisted.internet import defer, reactor
 from twisted.internet.task import LoopingCall
 import cyclone.httpclient
+from katoo.utils.patterns import Subject
 
 log = getLogger(__name__, level='INFO')
 
@@ -51,22 +52,18 @@ class HerokuUnidlingSupervisor(Supervisor):
             self.registerTask(t)
             t.start(1800, now = True)
 
-class MetricsSupervisor(Supervisor):
+class MetricsSupervisor(Supervisor, Subject):
     name='METRICS_SUPERVISOR'
     log = getLoggerAdapter(log, id=name)
     
     def __init__(self):
         Supervisor.__init__(self)
-        self._globalmetrics=[]
-    
-    def register(self, global_metric):
-        self._globalmetrics.append(global_metric)
+        Subject.__init__(self)
     
     @defer.inlineCallbacks
     def report(self):
         if self.running:
-            for global_metric in self._globalmetrics:
-                yield global_metric.report()
+            yield self.notifyObservers()
         MetricsHub().report()
     
     def startService(self):
@@ -91,7 +88,7 @@ class GlobalSupervisor(Supervisor):
     def _attach_global_metrics(self):
         service = KatooApp().getService(MetricsSupervisor.name)
         for metric in self._globalmetrics:
-            metric.register(service)
+            service.registerObserver(metric)
     
     @defer.inlineCallbacks
     def processOnMigrationUsers(self):
