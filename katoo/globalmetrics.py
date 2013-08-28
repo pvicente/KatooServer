@@ -9,19 +9,13 @@ from katoo.metrics import Metric
 from katoo.rqtwisted.queue import Queue, FailedQueue
 from katoo.utils.applog import getLogger, getLoggerAdapter
 from katoo.utils.connections import RedisMixin
+from katoo.utils.patterns import Observer
 from twisted.internet import defer
 
 
 log = getLoggerAdapter(getLogger(__name__),id='GLOBAL_METRICS')
 
-class GlobalMetrics(object):
-    def register(self, service):
-        service.register(self)
-    
-    def report(self):
-        raise NotImplementedError()
-
-class RedisMetrics(GlobalMetrics):
+class RedisMetrics(Observer):
     SOURCE='REDIS'
     UNIT='keys'
     def __init__(self):
@@ -35,7 +29,7 @@ class RedisMetrics(GlobalMetrics):
                      }
     
     @defer.inlineCallbacks
-    def report(self):
+    def notify(self):
         keys = yield self._connection.dbsize()
         self._keys.add(keys)
         for key in self._items:
@@ -43,7 +37,7 @@ class RedisMetrics(GlobalMetrics):
             items = yield queue.count
             self._items[key].add(items)
 
-class MongoMetrics(GlobalMetrics):
+class MongoMetrics(Observer):
     SOURCE='MONGO'
     
     def _create_metrics(self, collectionName):
@@ -83,7 +77,7 @@ class MongoMetrics(GlobalMetrics):
         
     
     @defer.inlineCallbacks
-    def report(self):
+    def notify(self):
         stats = yield GoogleUser.model.stats(collection_stats=False)
         log.debug('MONGO_STATS global. %s', stats)
         for key in self._global_metrics:

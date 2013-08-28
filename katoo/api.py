@@ -136,14 +136,3 @@ class API(DistributedAPI):
             raise XMPPUserNotLogged('User %s is not running in current worker'%(userid))
         return running_client.disconnect(change_state)
     
-    @Metric(name='xmpp_send_keep_alive', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
-    @AsynchronousCall(queue=None) #Queue is assigned at runtime
-    @defer.inlineCallbacks
-    def xmpp_send_keep_alive(self, userid):
-        running_client = KatooApp().getService(userid)
-        if not running_client is None:
-            try:
-                yield running_client.handler.protocol.send(' ')
-            except Exception as e:
-                self.log.warning('Exception launch %s', e)
-    

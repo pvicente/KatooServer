@@ -3,10 +3,11 @@ Created on Jun 5, 2013
 
 @author: pvicente
 '''
-from katoo import conf
+from katoo import conf, KatooApp
 from katoo.apns.api import API
 from katoo.data import GoogleMessage, GoogleRosterItem
 from katoo.metrics import IncrementMetric, Metric
+from katoo.utils.patterns import Observer
 from twisted.internet import defer
 from twisted.words.protocols.jabber import jid
 from wokkel_extensions import ReauthXMPPClient
@@ -169,9 +170,10 @@ class GoogleHandler(GenericXMPPHandler):
         except Exception as e:
             self.log.err(e, 'ON_MESSAGE_RECEIVED_EXCEPTION')
     
-class XMPPGoogle(ReauthXMPPClient):
+class XMPPGoogle(ReauthXMPPClient, Observer):
     def __init__(self, user, app):
         ReauthXMPPClient.__init__(self, jid=jid.JID("%s/%s"%(user.jid,conf.XMPP_RESOURCE)), password=user.token, host="talk.google.com", port=5222, logid=user.userid)
+        Observer.__init__(self)
         self.user = user
         self.retries = 0
         self.logTraffic = conf.XMPP_LOG_TRAFFIC
@@ -182,6 +184,11 @@ class XMPPGoogle(ReauthXMPPClient):
         protocol.setHandlerParent(self)
         self.setServiceParent(app)
         
+        #Register in XMPP_KEEPALIVE_SERVICE
+        KatooApp().getService('XMPP_KEEPALIVE_SUPERVISOR').registerObserver(self)
+    
+    def notify(self):
+        return self.handler.protocol.send(' ')
     
     @property
     def name(self):
@@ -236,6 +243,9 @@ class XMPPGoogle(ReauthXMPPClient):
     @IncrementMetric(name='xmppgoogle_disconnect', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def disconnect(self, change_state=True):
         self.log.info('DISCONNECTED %s', self.user.jid)
+        #Unregister in XMPP_KEEPALIVE_SERVICE
+        KatooApp().getService('XMPP_KEEPALIVE_SUPERVISOR').unregisterObserver(self)
+        
         deferred_list = [defer.maybeDeferred(self.disownServiceParent)]
         if change_state:
             self.user.away = True
@@ -252,30 +262,20 @@ if __name__ == '__main__':
     import os
     from twisted.internet import reactor
     from katoo.data import GoogleUser
-    from katoo import KatooApp
     from wokkel_extensions import XMPPClient
-    from twisted.internet.task import LoopingCall
     from katoo.utils.applog import getLogger, getLoggerAdapter
     from katoo.apns.api import KatooAPNSService
+    from katoo.supervisor import XMPPKeepAliveSupervisor
     
     my_log = getLoggerAdapter(getLogger(__name__, level="INFO"), id='MYLOG')
-    
-    @defer.inlineCallbacks
-    def keep_alive(client):
-        handler = getattr(client, 'handler', None)
-        protocol = None if handler is None else getattr(handler, 'protocol', None)
-        my_log.info('Handler %s Protocol %s', handler, protocol)
-        if protocol:
-            
-            yield protocol.send(' ')
     
     app = KatooApp().app
     KatooAPNSService().service.setServiceParent(app)
     KatooApp().start()
+    XMPPKeepAliveSupervisor().setServiceParent(app)
+    
     import twisted.python.log
     twisted.python.log.startLoggingWithObserver(KatooApp().log.emit)
     xmppclient = XMPPGoogle(GoogleUser("1", _token=os.getenv('TOKEN'), _refreshtoken=os.getenv('REFRESHTOKEN'), _resource="asdfasdf", _pushtoken=os.getenv('PUSHTOKEN', None), _jid=os.getenv('JID'), _pushsound='cell1.aif', _favoritesound='cell7.aif', _away=True), app)
     xmppclient.log.info("Instance XMPPGoogle %s. Instance ReauthXMPP %s Instance XMPPClient %s Instance GoogleUser %s", isinstance(xmppclient, XMPPGoogle), isinstance(xmppclient, ReauthXMPPClient), isinstance(xmppclient, XMPPClient), isinstance(xmppclient, GoogleUser))
-    t = LoopingCall(keep_alive, xmppclient)
-    t.start(1, now=False)
     reactor.run()
