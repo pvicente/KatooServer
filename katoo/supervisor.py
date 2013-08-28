@@ -78,6 +78,7 @@ class MetricsSupervisor(Supervisor, Subject):
 
 class XMPPKeepAliveSupervisor(Supervisor, Subject):
     name='XMPP_KEEPALIVE_SUPERVISOR'
+    log = getLoggerAdapter(log, id=name)
     
     def __init__(self):
         Supervisor.__init__(self)

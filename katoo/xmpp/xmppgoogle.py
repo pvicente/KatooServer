@@ -33,7 +33,7 @@ class RosterManager(object):
             defaultName = k.user if isinstance(k, jid.JID) else k
             name = getattr(v, 'name', '')
             if defaultName is None:
-                self.log.warning('defaultName is None. key: %s type_key: %s. name from roster: %s', k, type(k), v, name)
+                self.log.warning('defaultName is None. key: %s type_key: %s. name from roster: %s', k, type(k), name)
             else:
                 name = name if name else defaultName
                 yield self.set(k,name=name)
