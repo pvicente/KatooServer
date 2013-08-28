@@ -27,16 +27,20 @@ class RosterManager(object):
         self._roster = {}
         self.log = log
     
+    @staticmethod
+    def getName(roster_item):
+        fromjid = getattr(roster_item, 'jid', None)
+        defaultName = fromjid.user if isinstance(fromjid, jid.JID) else fromjid
+        name = getattr(roster_item, 'name', '')
+        name = name if name else defaultName
+        return fromjid, name
+    
     @defer.inlineCallbacks
     def processRoster(self, roster):
-        for k,v in roster.iteritems():
-            defaultName = k.user if isinstance(k, jid.JID) else k
-            name = getattr(v, 'name', '')
-            if defaultName is None:
-                self.log.warning('defaultName is None. key: %s type_key: %s. name from roster: %s', k, type(k), name)
-            else:
-                name = name if name else defaultName
-                yield self.set(k,name=name)
+        for v in roster.itervalues():
+            jid, name = self.getName(v)
+            if name:
+                yield self.set(jid,name=name)
     
     def _getBareJid(self, key):
         if isinstance(key, jid.JID):
@@ -146,10 +150,12 @@ class GoogleHandler(GenericXMPPHandler):
     @IncrementMetric(name='xmppgoogle_roster_set', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onRosterSet(self, item):
         self.log.info('onRosterSet to %s <- item %s', self.user.jid, item)
-        pass
+        fromjid, name = self.roster.getName(item)
+        self.roster.set(fromjid, name=name)
     
     @IncrementMetric(name='xmppgoogle_roster_remove', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onRosterRemove(self, item):
+        #We don't remove roster items
         self.log.info('onRosterRemove to %s <- item %s', self.user.jid, item)
     
     @IncrementMetric(name='xmppgoogle_message_received', unit=METRIC_UNIT, source=METRIC_SOURCE)
