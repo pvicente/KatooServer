@@ -32,8 +32,11 @@ class RosterManager(object):
         for k,v in roster.iteritems():
             defaultName = k.user if isinstance(k, jid.JID) else k
             name = getattr(v, 'name', '')
-            name = name if name else defaultName
-            yield self.set(k,name=name)
+            if defaultName is None:
+                self.log.warning('defaultName is None. key: %s type_key: %s. name from roster: %s', k, type(k), v, name)
+            else:
+                name = name if name else defaultName
+                yield self.set(k,name=name)
     
     def _getBareJid(self, key):
         if isinstance(key, jid.JID):
