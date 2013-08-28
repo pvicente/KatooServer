@@ -5,7 +5,7 @@ Created on Jul 8, 2013
 '''
 from katoo import conf, KatooApp
 from katoo.rqtwisted import worker
-from katoo.supervisor import MetricsSupervisor
+from katoo.supervisor import MetricsSupervisor, XMPPKeepAliveSupervisor
 from katoo.utils.applog import getLoggerAdapter, getLogger
 from katoo.utils.multiprocess import MultiProcess
 import os
@@ -21,6 +21,9 @@ if conf.ADOPTED_STREAM is None:
 
 metrics_supervisor = MetricsSupervisor()
 metrics_supervisor.setServiceParent(application)
+
+xmpp_keepalive_supervisor = XMPPKeepAliveSupervisor()
+xmpp_keepalive_supervisor.setServiceParent(application)
 
 if conf.REDIS_WORKERS > 0:
     worker.LOGGING_OK_JOBS = conf.LOGGING_OK_JOBS
