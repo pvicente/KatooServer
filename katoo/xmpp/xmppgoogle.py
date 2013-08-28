@@ -145,11 +145,12 @@ class GoogleHandler(GenericXMPPHandler):
     
     @IncrementMetric(name='xmppgoogle_roster_set', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onRosterSet(self, item):
+        self.log.info('onRosterSet to %s <- item %s', self.user.jid, item)
         pass
     
     @IncrementMetric(name='xmppgoogle_roster_remove', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onRosterRemove(self, item):
-        pass
+        self.log.info('onRosterRemove to %s <- item %s', self.user.jid, item)
     
     @IncrementMetric(name='xmppgoogle_message_received', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
@@ -164,6 +165,9 @@ class GoogleHandler(GenericXMPPHandler):
                 if roster_item is None:
                     roster_item = GoogleRosterItem(_userid=self.user.userid, _jid=barefromjid)
                     roster_item.name = fromjid.user
+                    #Set in roster to retrieve later
+                    yield self.roster.set(fromjid, name=roster_item.name)
+                
                 self.user.badgenumber += 1
                 self.log.debug('SENDING_PUSH %s. RosterItem: %s, User data: %s', self.user.jid, roster_item, self.user)
                 yield API(self.user.userid).sendchatmessage(msg=body, token=self.user.pushtoken, badgenumber=self.user.badgenumber, jid=roster_item.jid, fullname=roster_item.contactName, 
