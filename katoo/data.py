@@ -143,7 +143,7 @@ class GoogleRosterItem(object):
         self._favorite = eval(str(value))
     
 class GoogleUser(object):
-    model = DataModel(collectionName='googleusers', indexes=Indexes([dict(fields='_userid', unique=True), dict(fields='_pushtoken', unique=True), ('_userid, _jid'), ('_connected','_away', '_lastTimeConnected'),
+    model = DataModel(collectionName='googleusers', indexes=Indexes([dict(fields='_userid', unique=True), '_pushtoken', ('_userid, _jid'), ('_connected','_away', '_lastTimeConnected'),
                                                                      ('_connected', '_worker'), ('_connected', '_onMigrationTime', '_onReloging'), dict(fields='_lastTimeConnected', expireAfterSeconds=conf.XMPP_REMOVE_TIME) ]))
     
     @classmethod
