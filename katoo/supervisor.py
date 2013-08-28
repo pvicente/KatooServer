@@ -75,7 +75,21 @@ class MetricsSupervisor(Supervisor, Subject):
     def stopService(self):
         Supervisor.stopService(self)
         self.report()
+
+class XMPPKeepAliveSupervisor(Supervisor, Subject):
+    name='XMPP_KEEPALIVE_SUPERVISOR'
     
+    def __init__(self):
+        Supervisor.__init__(self)
+        Subject.__init__(self)
+    
+    def startService(self):
+        Supervisor.startService(self)
+        if conf.XMPP_KEEP_ALIVE_TIME>0:
+            t = LoopingCall(self.notifyObservers)
+            self.registerTask(t)
+            t.start(conf.XMPP_KEEP_ALIVE_TIME, now=False)
+
 class GlobalSupervisor(Supervisor):
     name = 'GLOBAL_SUPERVISOR'
     log = getLoggerAdapter(log, id=name)
@@ -260,29 +274,6 @@ class GlobalSupervisor(Supervisor):
                     w.log = self.log
                     yield w.register_death()
     
-    @defer.inlineCallbacks
-    def xmpp_keep_alive(self):
-        workers = yield Worker.getWorkers(Worker.redis_workers_keys)
-        if workers:
-            self.log.info('XMPP_KEEP_ALIVE_TASK STARTED %s running worker(s)', len(workers))
-        for worker in workers:
-            name = worker.get('name')
-            if name is None:
-                self.log.warning('XMPP_KEEP_ALIVE_TASK worker data is wrong %s', worker)
-                continue
-            connected_users = yield GoogleUser.get_connected(name)
-            total_users = len(connected_users)
-            for i in xrange(total_users):
-                    try:
-                        data = connected_users[i]
-                        user = GoogleUser(**data)
-                        yield API(user.userid, queue=name).xmpp_send_keep_alive(user.userid)
-                    except Exception as e:
-                        self.log.err(e, '[%s] Exception while sending XMPP_KEEP_ALIVE'%(data['_userid']))
-        if workers:
-            self.log.info('XMPP_KEEP_ALIVE_TASK FINISHED %s running worker(s)', len(workers))
-        
-    
     def startService(self):
         Supervisor.startService(self)
         
@@ -301,11 +292,6 @@ class GlobalSupervisor(Supervisor):
             t = LoopingCall(self.runningWorkers)
             self.registerTask(t)
             t.start(conf.TASK_RUNNING_WORKERS, now = False)
-        
-        if conf.XMPP_KEEP_ALIVE_TIME > 0:
-            t = LoopingCall(self.xmpp_keep_alive)
-            self.registerTask(t)
-            t.start(conf.XMPP_KEEP_ALIVE_TIME, now = False)
         
         reactor.callLater(conf.TWISTED_WARMUP, self._attach_global_metrics)
         

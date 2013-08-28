@@ -3,10 +3,11 @@ Created on Jun 5, 2013
 
 @author: pvicente
 '''
-from katoo import conf
+from katoo import conf, KatooApp
 from katoo.apns.api import API
 from katoo.data import GoogleMessage, GoogleRosterItem
 from katoo.metrics import IncrementMetric, Metric
+from katoo.utils.patterns import Observer
 from twisted.internet import defer
 from twisted.words.protocols.jabber import jid
 from wokkel_extensions import ReauthXMPPClient
@@ -169,9 +170,10 @@ class GoogleHandler(GenericXMPPHandler):
         except Exception as e:
             self.log.err(e, 'ON_MESSAGE_RECEIVED_EXCEPTION')
     
-class XMPPGoogle(ReauthXMPPClient):
+class XMPPGoogle(ReauthXMPPClient, Observer):
     def __init__(self, user, app):
         ReauthXMPPClient.__init__(self, jid=jid.JID("%s/%s"%(user.jid,conf.XMPP_RESOURCE)), password=user.token, host="talk.google.com", port=5222, logid=user.userid)
+        Observer.__init__(self)
         self.user = user
         self.retries = 0
         self.logTraffic = conf.XMPP_LOG_TRAFFIC
@@ -182,6 +184,11 @@ class XMPPGoogle(ReauthXMPPClient):
         protocol.setHandlerParent(self)
         self.setServiceParent(app)
         
+        #Register in XMPP_KEEPALIVE_SERVICE
+        KatooApp().getService('XMPP_KEEPALIVE_SUPERVISOR').registerObserver(self)
+    
+    def notify(self):
+        return self.handler.protocol.send(' ')
     
     @property
     def name(self):
@@ -236,6 +243,9 @@ class XMPPGoogle(ReauthXMPPClient):
     @IncrementMetric(name='xmppgoogle_disconnect', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def disconnect(self, change_state=True):
         self.log.info('DISCONNECTED %s', self.user.jid)
+        #Unregister in XMPP_KEEPALIVE_SERVICE
+        KatooApp().getService('XMPP_KEEPALIVE_SUPERVISOR').unregisterObserver(self)
+        
         deferred_list = [defer.maybeDeferred(self.disownServiceParent)]
         if change_state:
             self.user.away = True
@@ -252,7 +262,6 @@ if __name__ == '__main__':
     import os
     from twisted.internet import reactor
     from katoo.data import GoogleUser
-    from katoo import KatooApp
     from wokkel_extensions import XMPPClient
     from twisted.internet.task import LoopingCall
     from katoo.utils.applog import getLogger, getLoggerAdapter

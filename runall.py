@@ -7,7 +7,7 @@ from katoo import conf, KatooApp
 from katoo.apns.api import KatooAPNSService
 from katoo.rqtwisted import worker
 from katoo.supervisor import HerokuUnidlingSupervisor, GlobalSupervisor,\
-    MetricsSupervisor
+    MetricsSupervisor, XMPPKeepAliveSupervisor
 from katoo.utils.applog import getLoggerAdapter, getLogger
 from katoo.utils.multiprocess import MultiProcess
 from katoo.web import app
@@ -43,6 +43,9 @@ else:
 
 metrics_supervisor = MetricsSupervisor()
 metrics_supervisor.setServiceParent(application)
+
+xmpp_keepalive_supervisor = XMPPKeepAliveSupervisor()
+xmpp_keepalive_supervisor.setServiceParent(application)
 
 KatooAPNSService().service.setServiceParent(application)
 
