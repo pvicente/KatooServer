@@ -3,7 +3,7 @@ Created on Jun 11, 2013
 
 @author: pvicente
 '''
-from apnmessage import PushParser, get_custom_message, CustomMessageException
+from apnmessage import PushParser
 from katoo import conf
 from katoo.metrics import Metric, IncrementMetric
 from katoo.system import DistributedAPI, AsynchronousCall
@@ -59,22 +59,17 @@ class API(DistributedAPI):
     
     @Metric(name='sendchatmessage', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
     @AsynchronousCall(conf.DIST_QUEUE_PUSH)
-    def sendchatmessage(self, msg, token, sound, badgenumber, jid, fullname, emoji):
-        message = u'{0}{1}: {2}'.format(emoji, fullname, PushParser.parse_message(msg))
+    def sendchatmessage(self, msg, token, sound, badgenumber, jid, fullname, favorite):
+        message = u'{0}{1}: {2}'.format(u'\ue32f' if favorite else '', fullname, PushParser.parse_message(msg))
         self.log.debug('SEND_CHAT_MESSAGE jid: %r fullname: %r badgenumber: %r sound: %r token: %r . %r. Raw msg: %r', jid, fullname, badgenumber, sound, token, message, msg)
         return self._sendapn(token=token , msg=message, sound=sound, badgenumber=badgenumber, jid=jid)
     
-    @Metric(name='sendcustom', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @Metric(name='sendpush', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
     @AsynchronousCall(conf.DIST_QUEUE_PUSH)
-    def sendcustom(self, lang, token, badgenumber, type_msg, sound='', inter_msg=' ', **kwargs):
-        '''send custom push notifications and kwargs are extra parameters in push_notification'''
-        try:
-            emoji,message = get_custom_message(lang = lang, type_msg = type_msg)
-            message = u'{0}{1}{2}'.format(emoji, inter_msg, message)
-            self.log.debug('SEND_CUSTOM_MESSAGE type: %r lang: %r badgenumber: %r sound: %r token: %r kwargs: %s. %r', type_msg, lang, badgenumber, sound, token, kwargs, message)
-            return self._sendapn(msg = message, token=token, badgenumber=badgenumber, sound=sound, **kwargs)
-        except CustomMessageException as e:
-            self.log.err(e, 'APNS_GET_CUSTOM_MESSAGE')
+    def sendpush(self, message, token, badgenumber, sound=''):
+        self.log.debug('SEND_PUSH: %s token: %s, badgenumber: %s, sound: %s', message, token, badgenumber, sound)
+        return self._sendapn(token, message, sound, badgenumber)
+    
 
 if __name__ == '__main__':
     import sys,os
