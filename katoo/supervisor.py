@@ -62,8 +62,7 @@ class MetricsSupervisor(Supervisor, Subject):
     
     @defer.inlineCallbacks
     def report(self):
-        if self.running:
-            yield self.notifyObservers()
+        yield self.notifyObservers()
         MetricsHub().report()
     
     def startService(self):
@@ -74,7 +73,6 @@ class MetricsSupervisor(Supervisor, Subject):
     
     def stopService(self):
         Supervisor.stopService(self)
-        self.report()
 
 class XMPPKeepAliveSupervisor(Supervisor, Subject):
     name='XMPP_KEEPALIVE_SUPERVISOR'
