@@ -59,8 +59,8 @@ class API(DistributedAPI):
     
     @Metric(name='sendchatmessage', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
     @AsynchronousCall(conf.DIST_QUEUE_PUSH)
-    def sendchatmessage(self, msg, token, sound, badgenumber, jid, fullname, favorite):
-        message = u'{0}{1}: {2}'.format(u'\ue32f' if favorite else '', fullname, PushParser.parse_message(msg))
+    def sendchatmessage(self, msg, token, sound, badgenumber, jid, fullname, favorite, lang):
+        message = u'{0}{1}: {2}'.format(u'\ue32f' if favorite else '', fullname, PushParser.parse_message(msg, lang))
         self.log.debug('SEND_CHAT_MESSAGE jid: %r fullname: %r badgenumber: %r sound: %r token: %r . %r. Raw msg: %r', jid, fullname, badgenumber, sound, token, message, msg)
         return self._sendapn(token=token , msg=message, sound=sound, badgenumber=badgenumber, jid=jid)
     
@@ -81,5 +81,5 @@ if __name__ == '__main__':
     app = KatooApp().app
     KatooAPNSService().service.setServiceParent(app)
     KatooApp().start()
-    reactor.callLater(5, API().sendchatmessage, token=os.getenv('PUSHTOKEN', None), msg='esto es una prueba con txapns', sound='', badgenumber=1, jid='pedrovfer@gmail.com', fullname='Pedro')
+    reactor.callLater(5, API().sendchatmessage, token=os.getenv('PUSHTOKEN', None), msg='esto es una prueba con txapns', sound='', badgenumber=1, jid='pedrovfer@gmail.com', fullname='Pedro', favorite=False, lang='en')
     reactor.run()

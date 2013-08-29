@@ -178,7 +178,7 @@ class GoogleHandler(GenericXMPPHandler):
                 self.user.badgenumber += 1
                 self.log.debug('SENDING_PUSH %s. RosterItem: %s, User data: %s', self.user.jid, roster_item, self.user)
                 yield API(self.user.userid).sendchatmessage(msg=body, token=self.user.pushtoken, badgenumber=self.user.badgenumber, jid=roster_item.jid, fullname=roster_item.contactName, 
-                                                            sound=self.user.favoritesound if roster_item.favorite else self.user.pushsound, favorite=roster_item.favorite)
+                                                            sound=self.user.favoritesound if roster_item.favorite else self.user.pushsound, favorite=roster_item.favorite, lang=self.user.lang)
                 self.log.debug('PUSH SENT %s', self.user.jid)
                 yield self.user.save()
         except Exception as e:
