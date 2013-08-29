@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2013-08-29 21:43+0200\n"
-"PO-Revision-Date: 2013-08-29 21:51+0100\n"
+"POT-Creation-Date: 2013-08-30 01:06+0200\n"
+"PO-Revision-Date: 2013-08-30 01:10+0100\n"
 "Last-Translator: Pedro <pedrovfer@gmail.com>\n"
 "Language-Team: es <LL@li.org>\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
@@ -18,14 +18,26 @@ msgstr ""
 "Generated-By: Babel 1.3\n"
 "X-Generator: Poedit 1.5.7\n"
 
-#: /Users/pvicente/Documents/workspace/KatooServer/katoo/supervisor.py:224
+#: /Users/pvicente/Documents/workspace/KatooServer/katoo/supervisor.py:223
 msgid "disconnected"
 msgstr "Desconectado por inactividad"
 
-#: /Users/pvicente/Documents/workspace/KatooServer/katoo/xmpp/xmppgoogle.py:248
+#: /Users/pvicente/Documents/workspace/KatooServer/katoo/apns/apnmessage.py:12
+msgid "image"
+msgstr "Imagen recibida"
+
+#: /Users/pvicente/Documents/workspace/KatooServer/katoo/apns/apnmessage.py:12
+msgid "video"
+msgstr "Vídeo recibido"
+
+#: /Users/pvicente/Documents/workspace/KatooServer/katoo/apns/apnmessage.py:12
+msgid "location"
+msgstr "Localización recibida"
+
+#: /Users/pvicente/Documents/workspace/KatooServer/katoo/xmpp/xmppgoogle.py:247
 msgid "authfailed"
 msgstr "Desconectado. Error de autenticación"
 
-#: /Users/pvicente/Documents/workspace/KatooServer/katoo/xmpp/xmppgoogle.py:256
+#: /Users/pvicente/Documents/workspace/KatooServer/katoo/xmpp/xmppgoogle.py:254
 msgid "maxretries"
 msgstr "Desconectado. Problema en la conexión"
