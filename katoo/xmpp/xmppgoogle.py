@@ -16,6 +16,7 @@ import cyclone.httpclient
 import json
 import time
 import urllib
+import translate
 
 METRIC_SOURCE='XMPPGOOGLE'
 METRIC_UNIT='events'
@@ -177,7 +178,7 @@ class GoogleHandler(GenericXMPPHandler):
                 self.user.badgenumber += 1
                 self.log.debug('SENDING_PUSH %s. RosterItem: %s, User data: %s', self.user.jid, roster_item, self.user)
                 yield API(self.user.userid).sendchatmessage(msg=body, token=self.user.pushtoken, badgenumber=self.user.badgenumber, jid=roster_item.jid, fullname=roster_item.contactName, 
-                                                            sound=self.user.favoritesound if roster_item.favorite else self.user.pushsound, emoji= u'\ue32f' if roster_item.favorite else '')
+                                                            sound=self.user.favoritesound if roster_item.favorite else self.user.pushsound, favorite=roster_item.favorite, lang=self.user.lang)
                 self.log.debug('PUSH SENT %s', self.user.jid)
                 yield self.user.save()
         except Exception as e:
@@ -243,14 +244,14 @@ class XMPPGoogle(ReauthXMPPClient, Observer):
     def onAuthenticationError(self, reason):
         self.log.err(reason, 'AUTH_ERROR_EVENT %s'%(self.user.jid))
         if self.user.pushtoken:
-            API(self.user.userid).sendcustom(lang=self.user.lang, token=self.user.pushtoken, badgenumber=self.user.badgenumber, type_msg='authfailed', sound='')
+            API(self.user.userid).sendpush(message=translate.TRANSLATORS[self.user.lang]._('authfailed'), token=self.user.pushtoken, badgenumber=self.user.badgenumber, sound='')
         return self.disconnect()
     
     @IncrementMetric(name='xmppgoogle_error_maxretries', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onMaxRetries(self):
         self.log.error('CONNECTION_MAX_RETRIES %s', self.user.jid)
         if self.user.pushtoken:
-            API(self.user.userid).sendcustom(lang=self.user.lang, token=self.user.pushtoken, badgenumber=self.user.badgenumber, type_msg='maxretries', sound='')
+            API(self.user.userid).sendpush(message=translate.TRANSLATORS[self.user.lang]._('maxretries'), token=self.user.pushtoken, badgenumber=self.user.badgenumber, sound='')
         return self.disconnect()
     
     @IncrementMetric(name='xmppgoogle_disconnect', unit=METRIC_UNIT, source=METRIC_SOURCE)

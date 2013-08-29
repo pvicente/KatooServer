@@ -20,6 +20,7 @@ from twisted.internet import defer, reactor
 from twisted.internet.task import LoopingCall
 import cyclone.httpclient
 from katoo.utils.patterns import Subject
+import translate
 
 log = getLogger(__name__, level='INFO')
 
@@ -218,8 +219,8 @@ class GlobalSupervisor(Supervisor):
         for data in away_users:
             try:
                 user = GoogleUser(**data)
-                yield API(user.userid, queue=user.worker).disconnect(user.userid)
-                yield APNSAPI(user.userid).sendcustom(lang=user.lang, token=user.pushtoken, badgenumber=user.badgenumber, type_msg='disconnect', sound='')
+                API(user.userid, queue=user.worker).disconnect(user.userid)
+                APNSAPI(user.userid).sendpush(message=translate.TRANSLATORS[user.lang]._('disconnected'), token=user.pushtoken, badgenumber=user.badgenumber, sound='')
             except Exception as e:
                 self.log.err(e, '[%s] Exception disconnecting user'%(data['_userid']))
     
