@@ -94,13 +94,17 @@ class MetricsHub(Singleton):
         curr_len = 0
         for i in seq:
             str_len = i[1]
-            if curr_len + str_len >= length:
+            if curr_len + str_len > length:
                 output.append(' '.join(temp))
                 temp=[i[0]]
                 curr_len = str_len
             else:
                 temp.append(i[0])
                 curr_len+=i[1]
+        
+        if temp:
+            output.append(' '.join(temp))
+        
         return output
     
     def report(self):
