@@ -96,8 +96,8 @@ class MetricsHub(Singleton):
             str_len = i[1]
             if curr_len + str_len >= length:
                 output.append(' '.join(temp))
-                temp=[]
-                curr_len = 0
+                temp=[i[0]]
+                curr_len = str_len
             else:
                 temp.append(i[0])
                 curr_len+=i[1]
