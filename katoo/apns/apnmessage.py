@@ -14,14 +14,14 @@ declare = _('image'), _('video'), _('location')
 class PushParser():
     '''Parse emoji/smileys of messages'''
     #emoji parser
-    _emoji_string = u"\s+((\(((\^((\^((\^(\)))))))|(y(\)))))|(\-((\_(\-))))|(3((\:(\)|(\-(\)))))))|(\:((\'(\())|\(|\)|\*|(\-(\(|\)|\*|\/|D|O|P|\\|o|p))|\/|3|D|O|P|\[|\\|\]|o|p|(\|(\]))))|(\;(\)|(\-(\)))))|(\<((\(((\"(\)))))|3))|(\=(\(|\)|D|P))|(\>((\:(\(|(\-(\(|O|o))|O|o))))|(O((\.(o))|(\:(\)|(\-(\)))))))|(\^((\_(\^))))|(o((\.(O)))))\s+"
-    _emoji_dict = {':/': u'\ue40e', ':(': u'\ue058', ':)': u'\ue415', ':*': u'\ue418', 'O.o': u'\ue108', '>:-O': u'\ue416', ':-D': u'\ue057', '3:)': u'\ue11a', ':-\\': u'\ue40e', ':-P': u'\ue409', ':-O': u'\ue40b', ':\\': u'\ue40e', '(^^^)': u'\ue019', ':-o': u'\ue40b', ':|]': u'\ue12b', '=)': u'\ue415', '>:(': u'\ue059', '>:-o': u'\ue416', 'O:)': u'\ue04e', '=D': u'\ue057', 'o.O': u'\ue108', ':-p': u'\ue409', ':3': u'\ue04f', ';-)': u'\ue405', ':o': u'\ue40b', '<3': u'\ue022', '>:O': u'\ue416', '<(")': u'\ue055', '^_^': u'\ue056', ':O': u'\ue40b', 'O:-)': u'\ue04e', ';)': u'\ue405', ':p': u'\ue409', '=(': u'\ue058', '=P': u'\ue409', ':-*': u'\ue418', '3:-)': u'\ue11a', ':-(': u'\ue058', ':-)': u'\ue415', ':-/': u'\ue40e', '-_-': u'\ue403', ':D': u'\ue057', '(y)': u'\ue00e', '>:-(': u'\ue059', '>:o': u'\ue416', ":'(": u'\ue413', ':]': u'\ue415', ':[': u'\ue058', ':P': u'\ue409'}
+    _emoji_string = u"\s+((\-((\_(\-))))|(3((\:(\)|(\-(\)))))))|(\:((\'(\())|\(|\)|\*|(\-(\(|\)|\*|\/|D|O|P|\\|o|p))|\/|3|D|O|P|\[|\\|\]|o|p))|(\;(\)|(\-(\)))))|(\<(3))|(\=(\(|\)|D|P))|(\>((\:(\(|(\-(\(|O|o))|O|o))))|(O((\.(o))|(\:(\)|(\-(\)))))))|(\^((\_(\^))))|(o((\.(O)))))\s+"
+    _emoji_dict = {':/': u'\ue40e', ':(': u'\ue058', ':)': u'\ue415', ':*': u'\ue418', 'O.o': u'\ue108', '>:-O': u'\ue416', ':-D': u'\ue057', '3:)': u'\ue11a', ':-\\': u'\ue40e', ':-P': u'\ue409', ':-O': u'\ue40b', ':\\': u'\ue40e', ':-o': u'\ue40b', '=)': u'\ue415', '>:(': u'\ue059', '>:-o': u'\ue416', 'O:)': u'\ue04e', '=D': u'\ue057', 'o.O': u'\ue108', ':-p': u'\ue409', ':3': u'\ue04f', ';-)': u'\ue405', ':o': u'\ue40b', '<3': u'\ue022', '>:O': u'\ue416', '^_^': u'\ue056', ':O': u'\ue40b', 'O:-)': u'\ue04e', ';)': u'\ue405', ':p': u'\ue409', '=(': u'\ue058', '=P': u'\ue409', ':-*': u'\ue418', '3:-)': u'\ue11a', ':-(': u'\ue058', ':-)': u'\ue415', ':-/': u'\ue40e', '-_-': u'\ue403', ':D': u'\ue057', '>:-(': u'\ue059', '>:o': u'\ue416', ":'(": u'\ue413', ':]': u'\ue415', ':[': u'\ue058', ':P': u'\ue409'}
     #url parser
     _KATOO_URL = u'http://share.katooapp.com/' if conf.PRODUCTION else u'http://katoosharedev.herokuapp.com/'
     _KATOO_URL_LEN = len(_KATOO_URL)
     _MAPS_URL = u'http://maps.google.com/?q='
     _atachment_string = u'{0}p\S+|{0}v\S+|{0}a\S+|{1}\S+'.format(re.escape(_KATOO_URL), re.escape(_MAPS_URL))
-    _atachment_dict = {_KATOO_URL+'p': (u'\ue008', 'image'), _KATOO_URL+'v': (u'\ue12a', 'video'), _MAPS_URL: (u'\U0001f6a9', 'location')}
+    _atachment_dict = {_KATOO_URL+'p': (u'\ue008', 'image'), _KATOO_URL+'v': (u'\ue12a', 'video'), _MAPS_URL: (u'\U0001f4cd', 'location')}
     _regex_string = u'(' + _atachment_string + u'|' + _emoji_string + u')'
     #final regexp
     _regex_dict = dict(_emoji_dict.items()+_atachment_dict.items())
