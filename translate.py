@@ -15,7 +15,10 @@ class AppTranslators():
         self._dict = dict([(lang, Translator(self.ROOT, self.LANGUAGES, lang)) for lang in self.LANGUAGES])
     
     def __getitem__(self, key):
-        return self._dict.get(key.split('-')[0], self._default)
+        lang_key = key.split('-')
+        if len(lang_key)==2:
+            return self._default
+        return self._dict.get(lang_key[0], self._default)
     
     def getDefault(self):
         return self._default
