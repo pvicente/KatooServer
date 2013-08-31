@@ -76,11 +76,14 @@ class TwistedLogging(Singleton, log.PythonLoggingObserver):
             return ret
     
     @classmethod
-    def getLoggerDefaultFormat(cls, fmt):
-        return "%s %s %s"%(fmt, DEFAULT_CONTEXT_FMT, "%(message)s")
+    def getLoggerDefaultFormat(cls, extrafmt=None):
+        if extrafmt is None:
+            return "%s %s"%(conf.LOG_FORMAT, "%(message)s")
+        else:
+            return "%s %s %s"%(conf.LOG_FORMAT, extrafmt, "%(message)s")
     
     def constructor(self, app):
-        logging.basicConfig(format=self.getLoggerDefaultFormat(conf.LOG_FORMAT),
+        logging.basicConfig(format=self.getLoggerDefaultFormat(DEFAULT_CONTEXT_FMT),
                             level=self.getLevelFromStr(conf.LOG_LEVEL))
         log.PythonLoggingObserver.__init__(self,'katootwisted')
         self.logger = AppLoggingAdapter(self.logger, {})
