@@ -13,7 +13,7 @@ class KatooApp(Singleton):
         MongoMixin.setup()
         self.app = service.Application('KatooApp')
         self.service = self.app.getComponent(service.IService, None)
-        self.log = TwistedLogging(self.app, fmt=conf.LOG_FORMAT, level=conf.LOG_LEVEL)
+        self.log = TwistedLogging(self.app)
 
     def getService(self, name):
         try:

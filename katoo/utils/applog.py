@@ -4,6 +4,7 @@ Created on Jun 28, 2013
 @author: pvicente
 '''
 from functools import wraps
+from katoo import conf
 from katoo.utils.decorators import inject_decorators
 from patterns import Singleton
 from twisted.python import log, failure
@@ -78,8 +79,9 @@ class TwistedLogging(Singleton, log.PythonLoggingObserver):
     def getLoggerDefaultFormat(cls, fmt):
         return "%s %s %s"%(fmt, DEFAULT_CONTEXT_FMT, "%(message)s")
     
-    def constructor(self, app, fmt, level):
-        logging.basicConfig(format=self.getLoggerDefaultFormat(fmt), level=self.getLevelFromStr(level))
+    def constructor(self, app):
+        logging.basicConfig(format=self.getLoggerDefaultFormat(conf.LOG_FORMAT),
+                            level=self.getLevelFromStr(conf.LOG_LEVEL))
         log.PythonLoggingObserver.__init__(self,'katootwisted')
         self.logger = AppLoggingAdapter(self.logger, {})
         app.setComponent(log.ILogObserver, self.emit)
