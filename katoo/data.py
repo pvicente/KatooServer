@@ -357,7 +357,7 @@ class GoogleUser(object):
         self._onMigrationTime=value
     
     @property
-    def onRelogin(self):
+    def onReloging(self):
         return self._onReloging
     
 if __name__ == '__main__':

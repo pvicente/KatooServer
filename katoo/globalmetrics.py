@@ -3,6 +3,7 @@ Created on Aug 25, 2013
 
 @author: pvicente
 '''
+from datetime import datetime, timedelta
 from katoo import conf
 from katoo.data import GoogleMessage, GoogleRosterItem, GoogleUser
 from katoo.metrics import Metric
@@ -57,7 +58,8 @@ class MongoMetrics(Observer):
                               'onLine': Metric(name='googleusers.onLine', value=None, unit='users', source='MONGO'),
                               'disconnected': Metric(name='googleusers.disconnected', value=None, unit='users', source='MONGO'),
                               'onRelogin': Metric(name='googleusers.onRelogin', value=None, unit='users', source='MONGO'),
-                              'nopushtoken': Metric(name='googleusers.nopushtoken', value=None, unit='users', source='MONGO')
+                              'nopushtoken': Metric(name='googleusers.nopushtoken', value=None, unit='users', source='MONGO'),
+                              'running24hago': Metric(name='googleusers.running24hago', value=None, unit='users', source='MONGO')
                               }
         
         self._global_metrics = {'objects': Metric(name='documents', value=None, unit='documents', source='MONGO'),
@@ -74,7 +76,8 @@ class MongoMetrics(Observer):
                               'onLine': {'_connected': True, '_away': False},
                               'disconnected': {'_connected': False},
                               'onRelogin': {'_connected': True, '_onReloging': True},
-                              'nopushtoken':{'_connected': True, '_pushtoken': ''}
+                              'nopushtoken':{'_connected': True, '_pushtoken': ''},
+                              'running24hago': None
                               }
         
     
@@ -92,9 +95,14 @@ class MongoMetrics(Observer):
             for key in metrics:
                 metrics[key].add(stats.get(key, 0.0))
         
-        for query in self._user_queries:
-            count = yield GoogleUser.model.count(self._user_queries[query])
-            self._user_metrics[query].add(count)
+        for query_key in self._user_queries:
+            query = self._user_queries.get(query_key, None)
+            if query is None:
+                if query_key == 'running24hago':
+                    _24hago = datetime.utcnow() - timedelta(days=1)
+                    query = {'_connected': True, '_lastTimeConnected': {'$gte': _24hago}}
+            count = yield GoogleUser.model.count(query)
+            self._user_metrics[query_key].add(count)
         
     
     
