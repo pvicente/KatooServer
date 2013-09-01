@@ -3,9 +3,7 @@ Created on Jun 28, 2013
 
 @author: pvicente
 '''
-from functools import wraps
 from katoo import conf
-from katoo.utils.decorators import inject_decorators
 from patterns import Singleton
 from twisted.python import log, failure
 import logging
@@ -13,15 +11,6 @@ import logging
 DEFAULT_CONTEXT=dict(id='TWISTED')
 DEFAULT_CONTEXT_FMT="[%(id)s]"
 
-def add_context(f):
-    @wraps(f)
-    def wrapper(self, msg, kwargs):
-        if not self.extra:
-            self.extra=DEFAULT_CONTEXT
-        return f(self, msg, kwargs)
-    return wrapper
-
-@inject_decorators(method_decorator_dict={'process': add_context})
 class AppLoggingAdapter(logging.LoggerAdapter):
     def __init__(self, logger, extra):
         logging.LoggerAdapter.__init__(self, logger, extra)
