@@ -3,24 +3,16 @@ Created on Jun 28, 2013
 
 @author: pvicente
 '''
-from functools import wraps
-from katoo.utils.decorators import inject_decorators
+from katoo import conf
 from patterns import Singleton
 from twisted.python import log, failure
 import logging
 
-DEFAULT_CONTEXT=dict(id='-')
+logging.raiseExceptions = conf.LOG_RAISE_EXCEPTIONS
+
+DEFAULT_CONTEXT=dict(id='TWISTED')
 DEFAULT_CONTEXT_FMT="[%(id)s]"
 
-def add_context(f):
-    @wraps(f)
-    def wrapper(self, msg, kwargs):
-        if not self.extra:
-            self.extra=DEFAULT_CONTEXT
-        return f(self, msg, kwargs)
-    return wrapper
-
-@inject_decorators(method_decorator_dict={'process': add_context})
 class AppLoggingAdapter(logging.LoggerAdapter):
     def __init__(self, logger, extra):
         logging.LoggerAdapter.__init__(self, logger, extra)
@@ -75,11 +67,15 @@ class TwistedLogging(Singleton, log.PythonLoggingObserver):
             return ret
     
     @classmethod
-    def getLoggerDefaultFormat(cls, fmt):
-        return "%s %s %s"%(fmt, DEFAULT_CONTEXT_FMT, "%(message)s")
+    def getLoggerDefaultFormat(cls, extrafmt=None):
+        if extrafmt is None:
+            return "%s %s"%(conf.LOG_FORMAT, "%(message)s")
+        else:
+            return "%s %s %s"%(conf.LOG_FORMAT, extrafmt, "%(message)s")
     
-    def constructor(self, app, fmt, level):
-        logging.basicConfig(format=self.getLoggerDefaultFormat(fmt), level=self.getLevelFromStr(level))
+    def constructor(self, app):
+        logging.basicConfig(format=self.getLoggerDefaultFormat(DEFAULT_CONTEXT_FMT),
+                            level=self.getLevelFromStr(conf.LOG_LEVEL))
         log.PythonLoggingObserver.__init__(self,'katootwisted')
         self.logger = AppLoggingAdapter(self.logger, {})
         app.setComponent(log.ILogObserver, self.emit)
