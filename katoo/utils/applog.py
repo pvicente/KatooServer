@@ -8,6 +8,8 @@ from patterns import Singleton
 from twisted.python import log, failure
 import logging
 
+logging.raiseExceptions = conf.LOG_RAISE_EXCEPTIONS
+
 DEFAULT_CONTEXT=dict(id='TWISTED')
 DEFAULT_CONTEXT_FMT="[%(id)s]"
 
