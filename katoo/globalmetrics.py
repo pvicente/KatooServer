@@ -59,7 +59,9 @@ class MongoMetrics(Observer):
                               'disconnected': Metric(name='googleusers.disconnected', value=None, unit='users', source='MONGO'),
                               'onRelogin': Metric(name='googleusers.onRelogin', value=None, unit='users', source='MONGO'),
                               'nopushtoken': Metric(name='googleusers.nopushtoken', value=None, unit='users', source='MONGO'),
-                              'running24hago': Metric(name='googleusers.running24hago', value=None, unit='users', source='MONGO')
+                              'runningago24': Metric(name='googleusers.running24hago', value=None, unit='users', source='MONGO'),
+                              'runningago12': Metric(name='googleusers.running12hago', value=None, unit='users', source='MONGO'),
+                              'runningago01': Metric(name='googleusers.running1hago', value=None, unit='users', source='MONGO')
                               }
         
         self._global_metrics = {'objects': Metric(name='documents', value=None, unit='documents', source='MONGO'),
@@ -77,7 +79,9 @@ class MongoMetrics(Observer):
                               'disconnected': {'_connected': False},
                               'onRelogin': {'_connected': True, '_onReloging': True},
                               'nopushtoken':{'_connected': True, '_pushtoken': ''},
-                              'running24hago': None
+                              'runningago24': None,
+                              'runningago12': None,
+                              'runningago01': None
                               }
         
     
@@ -98,9 +102,9 @@ class MongoMetrics(Observer):
         for query_key in self._user_queries:
             query = self._user_queries.get(query_key, None)
             if query is None:
-                if query_key == 'running24hago':
-                    _24hago = datetime.utcnow() - timedelta(days=1)
-                    query = {'_connected': True, '_lastTimeConnected': {'$gte': _24hago}}
+                if query_key.find('running') == 0:
+                    timeago = datetime.utcnow() - timedelta(hours=int(query_key[-2:]))
+                    query = {'_connected': True, '_lastTimeConnected': {'$gte': timeago}}
             count = yield GoogleUser.model.count(query)
             self._user_metrics[query_key].add(count)
         
