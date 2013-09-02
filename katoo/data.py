@@ -331,7 +331,8 @@ class GoogleUser(object):
     def away(self, value):
         self._away = bool(value)
         if self._away:
-            self._lastTimeConnected = datetime.utcnow()
+            if self._lastTimeConnected is None:
+                self._lastTimeConnected = datetime.utcnow()
         else:
             self._lastTimeConnected = None
     
