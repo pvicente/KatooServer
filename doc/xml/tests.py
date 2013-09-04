@@ -288,7 +288,7 @@ class LXMLElementStreamTest:
         self.DocumentEndEvent = None
         self.cb = {"start": self.start, "end": self.end, "start-ns": self.start_ns, "end-ns": self.end_ns}
         self.events = self.cb.keys() 
-        self.parser = etree.XMLParser(resolve_entities=False, ns_clean=False, target=self)
+        self.parser = etree.XMLParser(resolve_entities=False, ns_clean=False, target=self, recover=True)
         self.currElem = None
         self.defaultNsStack = ['']
         self.documentStarted = 0
@@ -358,4 +358,27 @@ if __name__ == '__main__':
             print 'Exception launched %s'%(e.__class__.__name__), e
         
     
+    presence='''<stream:stream from="gmail.com" id="FCD1F11D3C9FBE85" version="1.0" xmlns:stream="http://etherx.jabber.org/streams" xmlns="jabber:client">
+                <stream:features>
+                <starttls xmlns="urn:ietf:params:xml:ns:xmpp-tls"><required/></starttls>
+                <mechanisms xmlns="urn:ietf:params:xml:ns:xmpp-sasl"><mechanism>X-OAUTH2</mechanism><mechanism>X-GOOGLE-TOKEN</mechanism></mechanisms>
+                </stream:features>
+                <presence from="jahanzeb@gmail.com/iTeleportService.WINDOWS.B57DFBC9" to="aileensim@gmail.com/katooserv90D7F39A"><status/>
+                <nick xmlns="http://jabber.org/protocol/nick">J-PC</nick><type xmlns="">WINDOWS</type><id xmlns="">vnc,rdp</id>
+                <xmlns:server xmlns="http://www.w3.org/2000/xmlns/"/><server xmlns=""/><show>offline</show><invisible value="true"/><priority>-127</priority>
+                <name xmlns="">iTeleportService</name><version xmlns="">6.1.0.2</version><ssh-enabled xmlns="">false</ssh-enabled><supports-dh xmlns="">false</supports-dh><rdp-username xmlns="">NT AUTHORITY\\SYSTEM</rdp-username>
+                <vnc-version xmlns=""/><os-version xmlns=""/><automanage-vnc xmlns="">true</automanage-vnc><encryption-enabled xmlns="">true</encryption-enabled>
+                <host-mac-address xmlns="">bc:85:56:31:8e:13</host-mac-address><router-mac-address xmlns="">40:4a:03:e9:0b:6b</router-mac-address><host-ips xmlns="">
+                fe80::8fc:f77:62f2:98a7;169.254.152.167;fe80::a82b:93b7:fb01:ffa5;169.254.255.165;fe80::b40e:2c23:6056:1722;192.168.70.14;fe80::5efe:c0a8:460e;2001::5ef5:79fb:242d:1964:3f57:b9f1;fe80::242d:1964:3f57:b9f1</host-ips>
+                <x xmlns="vcard-temp:x:update"><photo>3c123ca510df4b2c3cac777b94d3731a4da4f4ec</photo></x></presence>
+                </stream:stream>'''
+    
+    p = LXMLFeedParserStream()
+    p.DocumentStartEvent = docStartEvent
+    p.ElementEvent = elementEvent
+    p.DocumentEndEvent = documentEndEvent
+    try:
+        p.parse(presence)
+    except Exception as e:
+        print 'Exception launched %s'%(e.__class__.__name__), e
     
