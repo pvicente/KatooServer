@@ -3,13 +3,15 @@ Created on Sep 4, 2013
 
 @author: pvicente
 '''
+from katoo import conf
 from lxml import etree
 from twisted.words.xish import domish
 
 def elementStream():
     return LXMLFeedParserStream()
 
-domish.elementStream=elementStream
+if conf.LXMLPARSER:
+    domish.elementStream=elementStream
 
 class LXMLFeedParserStream:
     def __init__(self):

@@ -19,6 +19,7 @@ LOGGING_OK_JOBS = eval(str(os.getenv('LOGGING_OK_JOBS', True)))
 METRICS_REPORT_TIME = int(os.getenv('METRICS_REPORT_TIME', 60))
 METRICS_OUTPUT_LEN = int(os.getenv('METRICS_OUTPUT_LEN', 950))
 PRODUCTION=eval(str(os.getenv('PRODUCTION', False)))
+LXMLPARSER=eval(str(os.getenv('LXMLPARSER', False)))
 
 
 #GOOGLE_APP_CREDENTIALS
