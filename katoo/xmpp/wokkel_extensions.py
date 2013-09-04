@@ -15,6 +15,7 @@ from wokkel.client import XMPPClient, XMPPClientConnector
 from zope.interface import implements
 import os
 import time
+import lxmldomishparser
 
 __all__ = ["ReauthXMPPClient"]
 
