@@ -150,9 +150,12 @@ class GlobalSupervisor(Supervisor):
         job_ids = yield queue.job_ids
         jobs = []
         for job_id in job_ids:
-            job = yield Job.fetch(job_id, connection=queue.connection)
-            if job.meta.get('userid') == userid:
-                jobs.append(job_id)
+            try:
+                job = yield Job.fetch(job_id, connection=queue.connection)
+                if job.meta.get('userid') == userid:
+                    jobs.append(job_id)
+            except Exception as e:
+                self.log.err(e, '[%s] Exception fetching job %s while getPendingJobs in queue %s'%(userid, job_id, queue_name))
         defer.returnValue(jobs)
     
     @defer.inlineCallbacks
