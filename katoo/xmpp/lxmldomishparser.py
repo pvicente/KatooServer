@@ -94,7 +94,6 @@ class LXMLFeedParserStream:
     
     def data(self, data):
         #print 'data', data
-        data = data.strip()
         if self.currElem != None:
             self.currElem.addContent(data)
         
