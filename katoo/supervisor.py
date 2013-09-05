@@ -105,6 +105,28 @@ class GlobalSupervisor(Supervisor):
             service.registerObserver(metric)
     
     @defer.inlineCallbacks
+    def checkRunningWorkers(self):
+        workers = yield Worker.getWorkers(Worker.redis_workers_keys)
+        if workers:
+            self.log.info('CHECKING_RUNNING_WORKERS %s', len(workers))
+        for worker in workers:
+            name = worker.get('name')
+            key = worker.get('key')
+            lastTime = worker.get('lastTime')
+            if key is None or name is None or lastTime is None:
+                self.log.warning('WORKER_DATA_WRONG %s', worker)
+                continue
+            death = worker.get('death')
+            if death is None:
+                lastTime = parser.parse(lastTime)
+                delta = datetime.utcnow() - lastTime
+                if delta.seconds > conf.SUPERVISOR_WORKER_REFRESH_TIME:
+                    self.log.warning('REGISTERING_WORKER_DEATH %s has not been updated since %s second(s)', name, delta.seconds)
+                    w = Worker([], name=name)
+                    w.log = self.log
+                    yield w.register_death()
+    
+    @defer.inlineCallbacks
     def processOnMigrationUsers(self):
         onMigration_users = yield GoogleUser.get_onMigration()
         total_users = len(onMigration_users)
@@ -212,6 +234,18 @@ class GlobalSupervisor(Supervisor):
                 yield queue.empty()
     
     @defer.inlineCallbacks
+    def checkWorkers(self):
+        if not self.checkingMigrateUsers:
+            try:
+                self.checkingMigrateUsers = True
+                yield self.checkRunningWorkers()
+                yield self.processOnMigrationUsers()
+                yield self.processDeathWorkers()
+                yield self.processBadAssignedWorkers()
+            finally:
+                self.checkingMigrateUsers = False
+    
+    @defer.inlineCallbacks
     def disconnectAwayUsers(self):
         away_users = yield GoogleUser.get_away()
         away_users  = [] if not away_users else away_users
@@ -243,39 +277,6 @@ class GlobalSupervisor(Supervisor):
                     self.log.err(e, '[%s] Exception while reconnecting'%(data['_userid']))
             self.checkingMigrateUsers=False
     
-    @defer.inlineCallbacks
-    def checkMigrateUsers(self):
-        if not self.checkingMigrateUsers:
-            try:
-                self.checkingMigrateUsers = True
-                yield self.processOnMigrationUsers()
-                yield self.processDeathWorkers()
-                yield self.processBadAssignedWorkers()
-            finally:
-                self.checkingMigrateUsers = False
-    
-    @defer.inlineCallbacks
-    def runningWorkers(self):
-        workers = yield Worker.getWorkers(Worker.redis_workers_keys)
-        if workers:
-            self.log.info('CHECKING_RUNNING_WORKERS %s', len(workers))
-        for worker in workers:
-            name = worker.get('name')
-            key = worker.get('key')
-            lastTime = worker.get('lastTime')
-            if key is None or name is None or lastTime is None:
-                self.log.warning('WORKER_DATA_WRONG %s', worker)
-                continue
-            death = worker.get('death')
-            if death is None:
-                lastTime = parser.parse(lastTime)
-                delta = datetime.utcnow() - lastTime
-                if delta.seconds > conf.SUPERVISOR_WORKER_REFRESH_TIME:
-                    self.log.warning('REGISTERING_WORKER_DEATH %s has not been updated since %s second(s)', name, delta.seconds)
-                    w = Worker([], name=name)
-                    w.log = self.log
-                    yield w.register_death()
-    
     def startService(self):
         Supervisor.startService(self)
         
@@ -287,13 +288,9 @@ class GlobalSupervisor(Supervisor):
             reactor.callLater(conf.TWISTED_WARMUP, self.reconnectUsers)
         
         if conf.REDIS_WORKERS>0:
-            t = LoopingCall(self.checkMigrateUsers)
+            t = LoopingCall(self.checkWorkers)
             self.registerTask(t)
-            t.start(conf.TASK_DEATH_WORKERS, now = False)
-            
-            t = LoopingCall(self.runningWorkers)
-            self.registerTask(t)
-            t.start(conf.TASK_RUNNING_WORKERS, now = False)
+            t.start(conf.TASK_CHECK_WORKERS, now = False)
         
         reactor.callLater(conf.TWISTED_WARMUP, self._attach_global_metrics)
         
