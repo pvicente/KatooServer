@@ -82,11 +82,19 @@ class XMPPKeepAliveSupervisor(Supervisor, Subject):
     def __init__(self):
         Supervisor.__init__(self)
         Subject.__init__(self)
+        self.lastTime = datetime.utcnow()
+    
+    @defer.inlineCallbacks
+    def perform_keep_alive(self):
+        self.lastTime = datetime.utcnow()
+        yield self.notifyObservers()
+        self.log.info('Finished XMPP_KEEP_ALIVE. Elapsed %s seconds', (datetime.utcnow()-self.lastTime).seconds)
     
     def startService(self):
         Supervisor.startService(self)
         if conf.XMPP_KEEP_ALIVE_TIME>0:
-            t = LoopingCall(self.notifyObservers)
+            self.log.info('Starting XMPP_KEEP_ALIVE Supervisor')
+            t = LoopingCall(self.perform_keep_alive)
             self.registerTask(t)
             t.start(conf.XMPP_KEEP_ALIVE_TIME, now=False)
 
