@@ -97,17 +97,17 @@ class GoogleHandler(GenericXMPPHandler):
     def onConnectionLost(self, reason):
         self.CONNECTIONS_METRIC.add(-1)
         currTime = datetime.utcnow()
-        connectedTime = 0 if self.connectionTime is None else currTime - self.connectionTime
-        lastTimeKeepAlive = currTime - KatooApp().getService('XMPP_KEEPALIVE_SUPERVISOR').lastTime
+        connectedTime = 0 if self.connectionTime is None else (currTime - self.connectionTime).seconds
+        lastTimeKeepAlive = (currTime - KatooApp().getService('XMPP_KEEPALIVE_SUPERVISOR').lastTime).seconds
         isAuthenticating = self.client.isAuthenticating()
         
         self.log.info('CONNECTION_LOST %s. Connected Time: %s. LastTimeKeepAlive: %s. Authenticating: %s. Reason %s',
-                      self.user.jid, connectedTime.seconds, lastTimeKeepAlive.seconds, isAuthenticating, str(reason))
-        self.CONNECTION_TIME_METRIC.add(connectedTime.seconds)
-        self.CONNECTION_KEEP_ALIVE_TIME_METRIC.add(lastTimeKeepAlive.seconds)
+                      self.user.jid, connectedTime, lastTimeKeepAlive, isAuthenticating, str(reason))
+        self.CONNECTION_TIME_METRIC.add(connectedTime)
+        self.CONNECTION_KEEP_ALIVE_TIME_METRIC.add(lastTimeKeepAlive)
         
         if not isAuthenticating:
-            if connectedTime.seconds < conf.XMPP_MIN_CONNECTED_TIME:
+            if connectedTime < conf.XMPP_MIN_CONNECTED_TIME:
                 self.client.retries += 1
                 if self.client.retries >= conf.XMPP_MAX_RETRIES:
                     self.client.onMaxRetries()
