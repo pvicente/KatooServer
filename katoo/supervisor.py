@@ -93,7 +93,6 @@ class XMPPKeepAliveSupervisor(Supervisor, Subject):
     def startService(self):
         Supervisor.startService(self)
         if conf.XMPP_KEEP_ALIVE_TIME>0:
-            self.log.info('Starting XMPP_KEEP_ALIVE Supervisor')
             t = LoopingCall(self.perform_keep_alive)
             self.registerTask(t)
             t.start(conf.XMPP_KEEP_ALIVE_TIME, now=False)

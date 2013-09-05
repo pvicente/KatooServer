@@ -75,6 +75,8 @@ class RosterManager(object):
     
 class GoogleHandler(GenericXMPPHandler):
     CONNECTIONS_METRIC=Metric(name='connections', value=None, unit='connections', source=METRIC_SOURCE, reset=False)
+    CONNECTION_TIME_METRIC=Metric(name='connection_time', value=None, unit='seconds', source=METRIC_SOURCE, sampling=True)
+    CONNECTION_KEEP_ALIVE_TIME_METRIC=Metric(name='connection_last_time_keep_alive', value=None, unit='seconds', source=METRIC_SOURCE, sampling=True)
     
     def __init__(self, client):
         GenericXMPPHandler.__init__(self, client)
@@ -98,8 +100,12 @@ class GoogleHandler(GenericXMPPHandler):
         connectedTime = 0 if self.connectionTime is None else currTime - self.connectionTime
         lastTimeKeepAlive = currTime - KatooApp().getService('XMPP_KEEPALIVE_SUPERVISOR').lastTime
         isAuthenticating = self.client.isAuthenticating()
+        
         self.log.info('CONNECTION_LOST %s. Connected Time: %s. LastTimeKeepAlive: %s. Authenticating: %s. Reason %s',
                       self.user.jid, connectedTime.seconds, lastTimeKeepAlive.seconds, isAuthenticating, str(reason))
+        self.CONNECTION_TIME_METRIC.add(connectedTime.seconds)
+        self.CONNECTION_KEEP_ALIVE_TIME_METRIC.add(lastTimeKeepAlive.seconds)
+        
         if not isAuthenticating:
             if connectedTime.seconds < conf.XMPP_MIN_CONNECTED_TIME:
                 self.client.retries += 1
