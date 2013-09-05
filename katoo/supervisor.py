@@ -233,10 +233,12 @@ class GlobalSupervisor(Supervisor):
             for data in connected_users:
                 try:
                     user = GoogleUser(**data)
+                    last_worker = user.worker
                     user.worker = user.userid
                     yield user.save()
                     
-                    yield API(user.userid).relogin(user, [])
+                    pending_jobs = yield self.getPendingJobs(user.userid, last_worker)
+                    yield API(user.userid).relogin(user, pending_jobs)
                 except Exception as e:
                     self.log.err(e, '[%s] Exception while reconnecting'%(data['_userid']))
             self.checkingMigrateUsers=False
