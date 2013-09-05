@@ -17,6 +17,7 @@ handler.setFormatter(formatter)
 log = logging.getLogger(__name__)
 log.addHandler(handler)
 log.propagate=False
+log.setLevel(logging.INFO)
 
 class Accumulator(object):
     def __init__(self, source, name, unit, scale):
