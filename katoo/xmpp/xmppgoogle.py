@@ -14,7 +14,7 @@ from wokkel_extensions import ReauthXMPPClient
 from xmppprotocol import CompleteBotProtocol, GenericXMPPHandler
 import cyclone.httpclient
 import json
-import time
+from datetime import datetime
 import urllib
 import translate
 
@@ -75,6 +75,8 @@ class RosterManager(object):
     
 class GoogleHandler(GenericXMPPHandler):
     CONNECTIONS_METRIC=Metric(name='connections', value=None, unit='connections', source=METRIC_SOURCE, reset=False)
+    CONNECTION_TIME_METRIC=Metric(name='connection_time', value=None, unit='seconds', source=METRIC_SOURCE, sampling=True)
+    CONNECTION_KEEP_ALIVE_TIME_METRIC=Metric(name='connection_last_time_keep_alive', value=None, unit='seconds', source=METRIC_SOURCE, sampling=True)
     
     def __init__(self, client):
         GenericXMPPHandler.__init__(self, client)
@@ -94,11 +96,18 @@ class GoogleHandler(GenericXMPPHandler):
     @IncrementMetric(name='xmppgoogle_connection_lost', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onConnectionLost(self, reason):
         self.CONNECTIONS_METRIC.add(-1)
-        connectedTime = 0 if self.connectionTime is None else time.time() - self.connectionTime
+        currTime = datetime.utcnow()
+        connectedTime = 0 if self.connectionTime is None else currTime - self.connectionTime
+        lastTimeKeepAlive = currTime - KatooApp().getService('XMPP_KEEPALIVE_SUPERVISOR').lastTime
         isAuthenticating = self.client.isAuthenticating()
-        self.log.info('CONNECTION_LOST %s. Connected Time: %s. Authenticating: %s. Reason %s', self.user.jid, connectedTime, isAuthenticating, str(reason))
+        
+        self.log.info('CONNECTION_LOST %s. Connected Time: %s. LastTimeKeepAlive: %s. Authenticating: %s. Reason %s',
+                      self.user.jid, connectedTime.seconds, lastTimeKeepAlive.seconds, isAuthenticating, str(reason))
+        self.CONNECTION_TIME_METRIC.add(connectedTime.seconds)
+        self.CONNECTION_KEEP_ALIVE_TIME_METRIC.add(lastTimeKeepAlive.seconds)
+        
         if not isAuthenticating:
-            if connectedTime < conf.XMPP_MIN_CONNECTED_TIME:
+            if connectedTime.seconds < conf.XMPP_MIN_CONNECTED_TIME:
                 self.client.retries += 1
                 if self.client.retries >= conf.XMPP_MAX_RETRIES:
                     self.client.onMaxRetries()
@@ -108,7 +117,7 @@ class GoogleHandler(GenericXMPPHandler):
     
     @IncrementMetric(name='xmppgoogle_connection_authenticated', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onAuthenticated(self):
-        self.connectionTime = time.time()
+        self.connectionTime = datetime.utcnow()
         self.log.info('CONNECTION_AUTHENTICATED %s', self.user.jid)
         
         #Set away state to be restored with right value when presences will be received
