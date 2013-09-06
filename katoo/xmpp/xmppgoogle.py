@@ -161,7 +161,8 @@ class GoogleHandler(GenericXMPPHandler):
     def onRosterSet(self, item):
         self.log.info('onRosterSet to %s <- item %s', self.user.jid, item)
         fromjid, name = self.roster.getName(item)
-        self.roster.set(fromjid, name=name)
+        if name:
+            self.roster.set(fromjid, name=name)
     
     @IncrementMetric(name='xmppgoogle_roster_remove', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onRosterRemove(self, item):
