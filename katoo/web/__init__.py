@@ -21,11 +21,21 @@ class BaseHandlerNoLog(cyclone.web.Application, RedisMixin):
             cyclone.web.Application.__init__(self, handlers, **settings)
             self.log = getLoggerAdapter(log)
             self.metric = Metric(name='time', value=None, unit=v1.handlers.METRIC_UNIT_TIME, source=v1.handlers.METRIC_SOURCE, sampling=True)
+            self.metric_response_codes={1: Metric(name='response_1XX', value=None, unit='requests', source=v1.handlers.METRIC_SOURCE),
+                                        2: Metric(name='response_2XX', value=None, unit='requests', source=v1.handlers.METRIC_SOURCE),
+                                        3: Metric(name='response_3XX', value=None, unit='requests', source=v1.handlers.METRIC_SOURCE),
+                                        4: Metric(name='response_4XX', value=None, unit='requests', source=v1.handlers.METRIC_SOURCE),
+                                        5: Metric(name='response_5XX', value=None, unit='requests', source=v1.handlers.METRIC_SOURCE)
+                                        }
     
     @IncrementMetric(name='total', unit=v1.handlers.METRIC_UNIT, source=v1.handlers.METRIC_SOURCE)
     def log_request(self, handler):
         self._request_time = 1000 * handler.request.request_time()
         self.metric.add(self._request_time)
+        
+        status_metric = self.metric_response_codes.get(handler.get_status()/100, None)
+        if not status_metric is None:
+            status_metric.add(1)
         
         metric = getattr(handler, 'metric', None)
         if metric:
