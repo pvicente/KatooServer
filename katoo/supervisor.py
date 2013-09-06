@@ -10,16 +10,16 @@ from katoo.api import API
 from katoo.apns.api import API as APNSAPI
 from katoo.data import GoogleUser
 from katoo.globalmetrics import RedisMetrics, MongoMetrics
-from katoo.metrics import MetricsHub
+from katoo.metrics import MetricsHub, Metric
 from katoo.rqtwisted.job import Job
 from katoo.rqtwisted.queue import Queue
 from katoo.rqtwisted.worker import Worker
 from katoo.utils.applog import getLogger, getLoggerAdapter
+from katoo.utils.patterns import Subject
 from twisted.application import service
 from twisted.internet import defer, reactor
 from twisted.internet.task import LoopingCall
 import cyclone.httpclient
-from katoo.utils.patterns import Subject
 import translate
 
 log = getLogger(__name__, level='INFO')
@@ -83,12 +83,16 @@ class XMPPKeepAliveSupervisor(Supervisor, Subject):
         Supervisor.__init__(self)
         Subject.__init__(self)
         self.lastTime = datetime.utcnow()
+        self.metric = Metric(name='elapsed_time', value=None, unit='msec', source=self.name, scale=1000, sampling=True)
     
     @defer.inlineCallbacks
     def perform_keep_alive(self):
         self.lastTime = datetime.utcnow()
         yield self.notifyObservers()
-        self.log.info('Finished XMPP_KEEP_ALIVE. Elapsed %s seconds', (datetime.utcnow()-self.lastTime).seconds)
+        elapsedTime = datetime.utcnow()-self.lastTime
+        usecs = elapsedTime.seconds*1000000 + elapsedTime.microseconds
+        self.log.info('Finished XMPP_KEEP_ALIVE. Elapsed %s usecs', usecs)
+        self.metric.add(usecs)
     
     def startService(self):
         Supervisor.startService(self)
