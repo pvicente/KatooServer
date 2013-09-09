@@ -41,6 +41,9 @@ class KatooAPNSService(Singleton):
         self.service = APNSService(cert_path=conf.APNS_CERT, environment=conf.APNS_SANDBOX, timeout=conf.APNS_TIMEOUT)
         self.service.clientProtocolFactory=KatooAPNSClientFactory
         self.service.setName(conf.APNSERVICE_NAME)
+    
+    def write(self, notification):
+        return self.service.write(notification)
 
 class API(DistributedAPI):
     PADDING = "..."
@@ -55,7 +58,7 @@ class API(DistributedAPI):
             msg = msg[:overload]+self.PADDING
             payload = Payload(alert=msg, sound=sound, badge=badgenumber, custom=kwargs)
         notification = encode_notifications(token, payload.dict())
-        return KatooAPNSService().service.write(notification)
+        return KatooAPNSService().write(notification)
     
     @Metric(name='sendchatmessage', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
     @AsynchronousCall(conf.DIST_QUEUE_PUSH)
@@ -72,14 +75,45 @@ class API(DistributedAPI):
     
 
 if __name__ == '__main__':
-    import sys,os
-    from twisted.internet import reactor
+    from twisted.internet import reactor, defer, task
     from katoo import KatooApp
-    import twisted.python.log
+    from katoo.utils.applog import getLoggerAdapter, getLogger
+    from katoo.rqtwisted import worker
+    import os,translate
     
-    twisted.python.log.startLogging(sys.stdout)
+    my_log = getLoggerAdapter(getLogger(__name__, level="DEBUG"), id='MYLOG')
+    
+    @defer.inlineCallbacks
+    def send():
+        my_log.debug('Starting send')
+        yield API('TEST').sendpush(message=translate.TRANSLATORS['en']._('disconnected'), token=os.getenv('PUSHTOKEN', None), badgenumber=0, sound='')
+        my_log.debug('Finished send')
+    
+    @defer.inlineCallbacks
+    def close():
+        try:
+            my_log.debug('Starting close')
+            yield KatooAPNSService().service.factory.clientProtocol.transport.loseConnection()
+        except Exception:
+            pass
+        finally:
+            my_log.debug('Finished close')
+    
     app = KatooApp().app
     KatooAPNSService().service.setServiceParent(app)
     KatooApp().start()
-    reactor.callLater(5, API().sendchatmessage, token=os.getenv('PUSHTOKEN', None), msg='esto es una prueba con txapns', sound='', badgenumber=1, jid='pedrovfer@gmail.com', fullname='Pedro', favorite=False, lang='en')
+    
+    import twisted.python.log
+    twisted.python.log.startLoggingWithObserver(KatooApp().log.emit)
+    t1 = task.LoopingCall(send)
+    t1.start(2, now=False)
+    t2= task.LoopingCall(close)
+    t2.start(3, now=False)
+    
+    if conf.REDIS_WORKERS > 0:
+        worker.LOGGING_OK_JOBS = conf.LOGGING_OK_JOBS
+        w=worker.Worker([conf.MACHINEID, conf.DIST_QUEUE_LOGIN, conf.DIST_QUEUE_RELOGIN, conf.DIST_QUEUE_PUSH], name=conf.MACHINEID, loops=conf.REDIS_WORKERS, default_result_ttl=conf.DIST_DEFAULT_TTL, default_warmup=conf.TWISTED_WARMUP)
+        w.log = getLoggerAdapter(getLogger('WORKER', level='INFO'), id='WORKER')
+        w.setServiceParent(app)
+    
     reactor.run()
