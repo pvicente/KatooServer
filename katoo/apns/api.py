@@ -83,10 +83,10 @@ if __name__ == '__main__':
     
     my_log = getLoggerAdapter(getLogger(__name__, level="DEBUG"), id='MYLOG')
     
-    @defer.inlineCallbacks
+    #@defer.inlineCallbacks
     def send():
         my_log.debug('Starting send')
-        yield API('TEST').sendpush(message=translate.TRANSLATORS['en']._('disconnected'), token=os.getenv('PUSHTOKEN', None), badgenumber=0, sound='')
+        API('TEST').sendpush(message=translate.TRANSLATORS['en']._('disconnected'), token=os.getenv('PUSHTOKEN', None), badgenumber=0, sound='')
         my_log.debug('Finished send')
     
     @defer.inlineCallbacks
