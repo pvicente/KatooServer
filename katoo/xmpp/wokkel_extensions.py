@@ -6,16 +6,18 @@ Created on May 25, 2013
 from functools import wraps
 from katoo.utils.applog import getLogger, getLoggerAdapter
 from katoo.utils.decorators import inject_decorators
-from twisted.internet import reactor
+from twisted.internet import reactor, defer
+from twisted.words.protocols.jabber import error
 from twisted.words.protocols.jabber.sasl import SASLNoAcceptableMechanism, \
     get_mechanisms, SASLInitiatingInitializer, SASLAuthError
 from twisted.words.protocols.jabber.sasl_mechanisms import ISASLMechanism
 from twisted.words.xish import xmlstream
 from wokkel.client import XMPPClient, XMPPClientConnector
+from wokkel.xmppim import RosterClientProtocol, RosterRequest, RosterPushIgnored
 from zope.interface import implements
+import lxmldomishparser
 import os
 import time
-import lxmldomishparser
 
 __all__ = ["ReauthXMPPClient"]
 
@@ -172,6 +174,37 @@ class DecoratedSASLInitiatingInitializer(SASLInitiatingInitializer):
     """Injecting new_auth_methods decorator to setMechanism method"""
     pass
 
+def new_onRosterSet(f):
+    log = getLoggerAdapter(getLogger('wokkel_onRosterSet', level='INFO'), id='TWISTED')
+    
+    @wraps(f)
+    def wrapper(self, iq):
+        def trapIgnored(failure):
+            failure.trap(RosterPushIgnored)
+            raise error.StanzaError('service-unavailable')
+
+        request = RosterRequest.fromElement(iq)
+
+        if (not self.allowAnySender and
+                request.sender and
+                request.sender.userhostJID() !=
+                self.parent.jid.userhostJID()):
+            d = defer.fail(RosterPushIgnored())
+        elif request.item is None:
+            log.warning('_onRosterSet iq malformed. %s', iq.toXml())
+            d = defer.fail(RosterPushIgnored())
+        elif request.item.remove:
+            d = defer.maybeDeferred(self.removeReceived, request)
+        else:
+            d = defer.maybeDeferred(self.setReceived, request)
+        d.addErrback(trapIgnored)
+        return d
+    
+    return wrapper
+
+@inject_decorators(method_decorator_dict={'_onRosterSet': new_onRosterSet})
+class MyRosterClientProtocol(RosterClientProtocol):
+    pass
 
 #===============================================================================
 # def log_writes(f):
