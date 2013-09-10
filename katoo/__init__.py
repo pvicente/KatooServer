@@ -6,13 +6,30 @@ from katoo.utils.connections import RedisMixin, MongoMixin
 from katoo.utils.decorators import inject_decorators
 from katoo.utils.patterns import Singleton
 from twisted.application import service
-from twisted.internet import reactor
+from twisted.internet import reactor, defer
 from twisted.internet.error import ReactorNotRunning
 
 def newreactorstop():
     """Ignore ReactorNotRunning exception"""
+    def errorHandler(failure):
+        failure.trap(ReactorNotRunning)
+    
+    def stopServices():
+        KatooApp().stop()
+        d = defer.Deferred()
+        reactor.callLater(conf.TWISTED_SHUTDOWN, d.callback, None)
+        return d
+    
+    def stopReactor(*args):
+        KatooApp().oldreactorstop()
+    
     try:
-        return KatooApp().oldreactorstop()
+        if KatooApp().running:
+            d = stopServices()
+            d.addCallback(stopReactor)
+            d.addErrback(errorHandler)
+        else:
+            KatooApp().oldreactorstop()
     except ReactorNotRunning:
         pass
     
@@ -25,6 +42,7 @@ class KatooApp(Singleton):
         self.log = TwistedLogging(self.app)
         self.oldreactorstop = reactor.stop
         reactor.stop = newreactorstop
+        self.running=True
 
     def getService(self, name):
         try:
@@ -36,6 +54,7 @@ class KatooApp(Singleton):
         self.service.startService()
     
     def stop(self):
+        self.running=False
         self.service.stopService()
     
     def __iter__(self):

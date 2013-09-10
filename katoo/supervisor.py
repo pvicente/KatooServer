@@ -32,10 +32,11 @@ class Supervisor(service.Service):
         self.tasks.append(t)
     
     def stopService(self):
-        service.Service.stopService(self)
-        for task in self.tasks:
-            self.log.info('STOPPING_TASK %s', task)
-            task.stop()
+        if self.running:
+            service.Service.stopService(self)
+            for task in self.tasks:
+                self.log.info('STOPPING_TASK %s', task)
+                task.stop()
 
 class HerokuUnidlingSupervisor(Supervisor):
     name='HEROKU_UNIDLING_SUPERVISOR'

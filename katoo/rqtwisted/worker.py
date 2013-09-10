@@ -295,6 +295,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
             reactor.callLater(self.default_warmup+1, self.work)
 
     def stopService(self):
-        service.Service.stopService(self)
-        self._stopped = True
-        return self.register_death()
+        if self.running:
+            service.Service.stopService(self)
+            self._stopped = True
+            return self.register_death()
