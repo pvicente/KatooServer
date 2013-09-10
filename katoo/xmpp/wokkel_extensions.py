@@ -191,7 +191,7 @@ def new_onRosterSet(f):
                 self.parent.jid.userhostJID()):
             d = defer.fail(RosterPushIgnored())
         elif request.item is None:
-            log.warning('_onRosterSet iq malformed. %s', iq.toXml())
+            log.info('_onRosterSet iq malformed. %s', iq.toXml())
             d = defer.fail(RosterPushIgnored())
         elif request.item.remove:
             d = defer.maybeDeferred(self.removeReceived, request)
