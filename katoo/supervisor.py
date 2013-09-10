@@ -172,7 +172,9 @@ class GlobalSupervisor(Supervisor):
     
     @defer.inlineCallbacks
     def processDeathWorkers(self):
-        death_workers = yield Worker.getWorkers(Worker.redis_death_workers_keys)
+        #avoid process death workers when service is not running
+        death_workers = yield Worker.getWorkers(Worker.redis_death_workers_keys) if self.running else []
+        
         if death_workers:
             self.log.info('DEATH_WORKERS %s', [worker.get('name') for worker in death_workers])
         for worker in death_workers:
