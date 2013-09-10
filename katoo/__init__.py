@@ -23,15 +23,9 @@ def newreactorstop():
     def stopReactor(*args):
         KatooApp().oldreactorstop()
     
-    try:
-        if KatooApp().running:
-            d = stopServices()
-            d.addCallback(stopReactor)
-            d.addErrback(errorHandler)
-        else:
-            KatooApp().oldreactorstop()
-    except ReactorNotRunning:
-        pass
+    d = stopServices()
+    d.addCallback(stopReactor)
+    d.addErrback(errorHandler)
     
 class KatooApp(Singleton):
     def constructor(self):

@@ -73,7 +73,8 @@ class MultiProcess(service.Service):
             reactor.spawnProcess(MultiProcessProtocol(self), 'twistd', ['twistd', '-ny', self.command, '--pidfile=%s-%s.pid'%(self.command, i)], env=os.environ, childFDs=self.childFDs)
     
     def stopService(self):
-        service.Service.stopService(self)
-        self.log.info('Stopping Service')
-        self.send_signal('TERM')
+        if self.running:
+            service.Service.stopService(self)
+            self.log.info('Stopping Service')
+            self.send_signal('TERM')
     
