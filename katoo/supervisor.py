@@ -109,6 +109,7 @@ class GlobalSupervisor(Supervisor):
     def __init__(self):
         Supervisor.__init__(self)
         self.checkingMigrateUsers = False
+        self._checkworkerstasks=[self.processDeathWorkers, self.processBadAssignedWorkers, self.processOnMigrationUsers, self.checkRunningWorkers]
         self._globalmetrics=[RedisMetrics(), MongoMetrics()]
     
     def _attach_global_metrics(self):
@@ -255,10 +256,13 @@ class GlobalSupervisor(Supervisor):
         if not self.checkingMigrateUsers:
             try:
                 self.checkingMigrateUsers = True
-                yield self.checkRunningWorkers()
-                yield self.processOnMigrationUsers()
-                yield self.processDeathWorkers()
-                yield self.processBadAssignedWorkers()
+                for task in self._checkworkerstasks:
+                    if self.running:
+                        yield task()
+                    else:
+                        self.log.info('CheckWorkers task %s not launched. Supervisor not running', task)
+            except Exception as e:
+                self.log.err(e, 'Exception in checkWorkers task %s'%(task))
             finally:
                 self.checkingMigrateUsers = False
     
@@ -280,8 +284,10 @@ class GlobalSupervisor(Supervisor):
         if not self.checkingMigrateUsers:
             self.checkingMigrateUsers=True
             connected_users = yield GoogleUser.get_connected()
-            self.log.info('RECONNECTING_USERS: %s', len(connected_users))
-            for data in connected_users:
+            total_users = len(connected_users)
+            self.log.info('reconnectUsers reconnecting %s users', total_users)
+            for i in xrange(total_users):
+                data = connected_users[i]
                 try:
                     user = GoogleUser(**data)
                     last_worker = user.worker
@@ -290,6 +296,7 @@ class GlobalSupervisor(Supervisor):
                     
                     pending_jobs = yield self.getPendingJobs(user.userid, last_worker)
                     yield API(user.userid).relogin(user, pending_jobs)
+                    self.log.info('[%s] Reconnected %s/%s user(s)', user.userid, i+1, total_users)
                 except Exception as e:
                     self.log.err(e, '[%s] Exception while reconnecting'%(data['_userid']))
             self.checkingMigrateUsers=False
