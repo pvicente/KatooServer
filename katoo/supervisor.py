@@ -108,7 +108,7 @@ class GlobalSupervisor(Supervisor):
     
     def __init__(self):
         Supervisor.__init__(self)
-        self.checkingMigrateUsers = False
+        self.lock = defer.DeferredLock()
         self._checkworkerstasks=[self.processDeathWorkers, self.processBadAssignedWorkers, self.processOnMigrationUsers, self.checkRunningWorkers]
         self._globalmetrics=[RedisMetrics(), MongoMetrics()]
     
@@ -173,11 +173,6 @@ class GlobalSupervisor(Supervisor):
     
     @defer.inlineCallbacks
     def processDeathWorkers(self):
-        updated_state = False
-        if not self.checkingMigrateUsers:
-            self.checkingMigrateUsers=True
-            updated_state = True
-        
         #avoid process death workers when service is not running
         death_workers = yield Worker.getWorkers(Worker.redis_death_workers_keys) if self.running else []
         
@@ -212,9 +207,6 @@ class GlobalSupervisor(Supervisor):
             #Remove own queue of worker
             queue = Queue(name)
             yield queue.empty()
-        
-        if updated_state:
-            self.checkingMigrateUsers=False
     
     @defer.inlineCallbacks
     def processBadAssignedWorkers(self):
@@ -261,18 +253,14 @@ class GlobalSupervisor(Supervisor):
     
     @defer.inlineCallbacks
     def checkWorkers(self):
-        if not self.checkingMigrateUsers:
-            try:
-                self.checkingMigrateUsers = True
-                for task in self._checkworkerstasks:
-                    if self.running:
-                        yield task()
-                    else:
-                        self.log.info('CheckWorkers task %s not launched. Supervisor not running', task)
-            except Exception as e:
-                self.log.err(e, 'Exception in checkWorkers task %s'%(task))
-            finally:
-                self.checkingMigrateUsers = False
+        try:
+            for task in self._checkworkerstasks:
+                if self.running:
+                    yield task()
+                else:
+                    self.log.info('CheckWorkers task %s not launched. Supervisor not running', task)
+        except Exception as e:
+            self.log.err(e, 'Exception in checkWorkers task %s'%(task))
     
     @defer.inlineCallbacks
     def disconnectAwayUsers(self):
@@ -289,25 +277,22 @@ class GlobalSupervisor(Supervisor):
     
     @defer.inlineCallbacks
     def reconnectUsers(self):
-        if not self.checkingMigrateUsers:
-            self.checkingMigrateUsers=True
-            connected_users = yield GoogleUser.get_connected()
-            total_users = len(connected_users)
-            self.log.info('reconnectUsers reconnecting %s users', total_users)
-            for i in xrange(total_users):
-                data = connected_users[i]
-                try:
-                    user = GoogleUser(**data)
-                    last_worker = user.worker
-                    user.worker = user.userid
-                    yield user.save()
-                    
-                    pending_jobs = yield self.getPendingJobs(user.userid, last_worker)
-                    yield API(user.userid).relogin(user, pending_jobs)
-                    self.log.info('[%s] Reconnected %s/%s user(s)', user.userid, i+1, total_users)
-                except Exception as e:
-                    self.log.err(e, '[%s] Exception while reconnecting'%(data['_userid']))
-            self.checkingMigrateUsers=False
+        connected_users = yield GoogleUser.get_connected()
+        total_users = len(connected_users)
+        self.log.info('reconnectUsers reconnecting %s users', total_users)
+        for i in xrange(total_users):
+            data = connected_users[i]
+            try:
+                user = GoogleUser(**data)
+                last_worker = user.worker
+                user.worker = user.userid
+                yield user.save()
+                
+                pending_jobs = yield self.getPendingJobs(user.userid, last_worker)
+                yield API(user.userid).relogin(user, pending_jobs)
+                self.log.info('[%s] Reconnected %s/%s user(s)', user.userid, i+1, total_users)
+            except Exception as e:
+                self.log.err(e, '[%s] Exception while reconnecting'%(data['_userid']))
     
     def startService(self):
         Supervisor.startService(self)
@@ -317,12 +302,12 @@ class GlobalSupervisor(Supervisor):
         t.start(conf.TASK_DISCONNECT_SECONDS, now = False)
         
         if conf.TASK_RECONNECT_ALL_USERS:
-            reactor.callLater(conf.TWISTED_WARMUP, self.reconnectUsers)
+            reactor.callLater(conf.TWISTED_WARMUP, self.lock.run, self.reconnectUsers)
         else:
-            reactor.callLater(conf.TWISTED_WARMUP, self.processDeathWorkers)
+            reactor.callLater(conf.TWISTED_WARMUP, self.lock.run, self.processDeathWorkers)
         
         if conf.REDIS_WORKERS>0:
-            t = LoopingCall(self.checkWorkers)
+            t = LoopingCall(self.lock.run, self.checkWorkers)
             self.registerTask(t)
             t.start(conf.TASK_CHECK_WORKERS, now = False)
         
