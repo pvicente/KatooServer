@@ -25,6 +25,8 @@ import os
 
 application = KatooApp().app
 
+worker_queues = [conf.MACHINEID, conf.DIST_QUEUE_LOGIN, conf.DIST_QUEUE_RELOGIN, conf.DIST_QUEUE_PUSH]
+
 if conf.ADOPTED_STREAM is None:
     stream = reactor.listenTCP(port=conf.PORT, factory=app, backlog=conf.BACKLOG, interface=conf.LISTEN)
     os.environ['ADOPTED_STREAM']=str(stream.fileno())
@@ -38,6 +40,8 @@ if conf.ADOPTED_STREAM is None:
     if conf.MULTIPROCESS>0:
         m=MultiProcess(__file__, number=conf.MULTIPROCESS, fds=[stream.fileno()])
         m.setServiceParent(application)
+        #Global Supervisor only listen on queue login and not relogin to enqueue relogin tasks as fast as possible and perform new logins
+        worker_queues = [conf.MACHINEID, conf.DIST_QUEUE_LOGIN, conf.DIST_QUEUE_PUSH]
 else:
     reactor.adoptStreamPort(int(conf.ADOPTED_STREAM), AF_INET, app)
 
@@ -51,6 +55,6 @@ KatooAPNSService().service.setServiceParent(application)
 
 if conf.REDIS_WORKERS > 0:
     worker.LOGGING_OK_JOBS = conf.LOGGING_OK_JOBS
-    w=worker.Worker([conf.MACHINEID, conf.DIST_QUEUE_LOGIN, conf.DIST_QUEUE_RELOGIN, conf.DIST_QUEUE_PUSH], name=conf.MACHINEID, loops=conf.REDIS_WORKERS, default_result_ttl=conf.DIST_DEFAULT_TTL, default_warmup=conf.TWISTED_WARMUP)
+    w=worker.Worker(worker_queues, name=conf.MACHINEID, loops=conf.REDIS_WORKERS, default_result_ttl=conf.DIST_DEFAULT_TTL, default_warmup=conf.TWISTED_WARMUP)
     w.log = getLoggerAdapter(getLogger('WORKER', level='INFO'), id='WORKER')
     w.setServiceParent(application)
