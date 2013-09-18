@@ -44,8 +44,11 @@ class HerokuUnidlingSupervisor(Supervisor):
     
     @defer.inlineCallbacks
     def avoidHerokuUnidling(self, url):
-        self.log.info('AVOIDING HEROKU IDLING: %s', url)
-        yield cyclone.httpclient.fetch(url)
+        try:
+            self.log.info('AVOIDING HEROKU IDLING: %s', url)
+            yield cyclone.httpclient.fetch(url)
+        except Exception as e:
+            self.log.err(e, 'Exception in avoidHerokuUnidling')
     
     def startService(self):
         Supervisor.startService(self)
