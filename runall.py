@@ -40,8 +40,6 @@ if conf.ADOPTED_STREAM is None:
     if conf.MULTIPROCESS>0:
         m=MultiProcess(__file__, number=conf.MULTIPROCESS, fds=[stream.fileno()])
         m.setServiceParent(application)
-        #Global Supervisor only listen on queue login and not relogin to enqueue relogin tasks as fast as possible and perform new logins
-        worker_queues = [conf.MACHINEID, conf.DIST_QUEUE_LOGIN, conf.DIST_QUEUE_PUSH]
 else:
     reactor.adoptStreamPort(int(conf.ADOPTED_STREAM), AF_INET, app)
 
