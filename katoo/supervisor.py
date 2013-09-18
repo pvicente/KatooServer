@@ -207,6 +207,7 @@ class GlobalSupervisor(Supervisor):
             #Remove own queue of worker
             queue = Queue(name)
             yield queue.empty()
+            
     
     @defer.inlineCallbacks
     def processBadAssignedWorkers(self):
@@ -310,6 +311,8 @@ class GlobalSupervisor(Supervisor):
         
         if conf.TASK_RECONNECT_ALL_USERS:
             reactor.callLater(conf.TWISTED_WARMUP, self.reconnectUsers)
+        else:
+            reactor.callLater(conf.TWISTED_WARMUP, self.processDeathWorkers)
         
         if conf.REDIS_WORKERS>0:
             t = LoopingCall(self.checkWorkers)

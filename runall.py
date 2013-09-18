@@ -55,6 +55,6 @@ KatooAPNSService().service.setServiceParent(application)
 
 if conf.REDIS_WORKERS > 0:
     worker.LOGGING_OK_JOBS = conf.LOGGING_OK_JOBS
-    w=worker.Worker(worker_queues, name=conf.MACHINEID, loops=conf.REDIS_WORKERS, default_result_ttl=conf.DIST_DEFAULT_TTL, default_warmup=conf.TWISTED_WARMUP)
+    w=worker.Worker(worker_queues, name=conf.MACHINEID, loops=conf.REDIS_WORKERS, default_result_ttl=conf.DIST_DEFAULT_TTL, default_warmup=conf.WORKER_WARMUP)
     w.log = getLoggerAdapter(getLogger('WORKER', level='INFO'), id='WORKER')
     w.setServiceParent(application)
