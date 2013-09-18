@@ -173,6 +173,11 @@ class GlobalSupervisor(Supervisor):
     
     @defer.inlineCallbacks
     def processDeathWorkers(self):
+        updated_state = False
+        if not self.checkingMigrateUsers:
+            self.checkingMigrateUsers=True
+            updated_state = True
+        
         #avoid process death workers when service is not running
         death_workers = yield Worker.getWorkers(Worker.redis_death_workers_keys) if self.running else []
         
@@ -207,7 +212,9 @@ class GlobalSupervisor(Supervisor):
             #Remove own queue of worker
             queue = Queue(name)
             yield queue.empty()
-            
+        
+        if updated_state:
+            self.checkingMigrateUsers=False
     
     @defer.inlineCallbacks
     def processBadAssignedWorkers(self):
