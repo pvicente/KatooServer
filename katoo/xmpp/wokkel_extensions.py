@@ -6,6 +6,7 @@ Created on May 25, 2013
 from functools import wraps
 from katoo.utils.applog import getLogger, getLoggerAdapter
 from katoo.utils.decorators import inject_decorators
+from katoo.utils.time import Timer
 from twisted.internet import reactor, defer
 from twisted.words.protocols.jabber import error
 from twisted.words.protocols.jabber.sasl import SASLNoAcceptableMechanism, \
@@ -17,7 +18,7 @@ from wokkel.xmppim import RosterClientProtocol, RosterRequest, RosterPushIgnored
 from zope.interface import implements
 import lxmldomishparser
 import os
-import time
+from datetime import timedelta
 
 __all__ = ["ReauthXMPPClient"]
 
@@ -57,11 +58,11 @@ class ReauthXMPPClient(XMPPClient):
     def initializationFailed(self, reason):
         if not reason.check(SASLAuthError):
             return self.onAuthenticationError(reason)
-        current_time = time.time()
+        current_time = Timer().utcnow()
         if self._authFailureTime is None:
             self._authFailureTime = current_time
             return self.onAuthenticationRenewal(reason)
-        if current_time - self._authFailureTime > self.AUTH_TIMEOUT:
+        if (current_time - self._authFailureTime).seconds > self.AUTH_TIMEOUT:
             return self.onAuthenticationError(reason)
     
     def onAuthenticationRenewal(self, reason):
@@ -69,7 +70,8 @@ class ReauthXMPPClient(XMPPClient):
         Authentication failed: negotiate new authentication tokens with the server
         """
         #This method must be overrided and not called due to new reconnection will fail
-        self._authFailureTime -= self.AUTH_TIMEOUT
+        if not self._authFailureTime is None:
+            self._authFailureTime -= timedelta(seconds=self.AUTH_TIMEOUT)
     
     def onAuthenticationError(self, reason):
         """
@@ -80,7 +82,6 @@ class ReauthXMPPClient(XMPPClient):
         #and resetDelay will not work. Instead we wait 60 seconds to negotiate the new credentials
         self.log.err(reason, 'AUTH_ERROR_EVENT')
         
-        #TODO: send a push notification to client and save disconnected state in client
         self.stopService()
         return self.disownServiceParent()
     
