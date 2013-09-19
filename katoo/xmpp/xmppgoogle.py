@@ -125,7 +125,7 @@ class GoogleHandler(GenericXMPPHandler):
         self.user.save()
         
         #Send Available and getting roster
-        self.protocol.available(show=conf.XMPP_STATE, priority=conf.XMPP_PRIORITY, statuses={'en-US': conf.XMPP_MOOD})
+        self.protocol.available(show=conf.XMPP_STATE, priority=conf.XMPP_PRIORITY, statuses={'en-US': conf.XMPP_MOOD} if conf.XMPP_MOOD else None)
         d = self.protocol.getRoster()
         d.addCallback(self.protocol.onRosterReceived)
         
