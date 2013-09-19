@@ -42,5 +42,12 @@ class Timer(service.Service, Singleton):
             self.log.info('Stopped Timer')
         return service.Service.stopService(self)
     
+    @property
+    def time(self):
+        return self._time
+    
     def utcnow(self):
         return self._time
+    
+    def isoformat(self):
+        return "%sZ"%self._time.isoformat()
