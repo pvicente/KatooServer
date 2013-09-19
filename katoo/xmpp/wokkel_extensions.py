@@ -3,7 +3,9 @@ Created on May 25, 2013
 
 @author: pvicente
 '''
+from datetime import timedelta
 from functools import wraps
+from katoo import conf
 from katoo.utils.applog import getLogger, getLoggerAdapter
 from katoo.utils.decorators import inject_decorators
 from katoo.utils.time import Timer
@@ -18,20 +20,25 @@ from wokkel.xmppim import RosterClientProtocol, RosterRequest, RosterPushIgnored
 from zope.interface import implements
 import lxmldomishparser
 import os
-from datetime import timedelta
 
 __all__ = ["ReauthXMPPClient"]
 
 log = getLogger(__name__)
 
 class ReauthXMPPClient(XMPPClient):
-    AUTH_TIMEOUT=60
+    AUTH_TIMEOUT=conf.XMPP_AUTH_TIMEOUT
+    AUTH_RENEWAL_TIME=conf.XMPP_AUTH_RENEWAL_TIME
     
     def __init__(self, jid, password, host=None, port=5222, logid=None):
         XMPPClient.__init__(self, jid, password, host=host, port=port)
         self.log = getLoggerAdapter(log) if logid is None else getLoggerAdapter(log, id=logid)
         self.factory.addBootstrap(xmlstream.STREAM_ERROR_EVENT, self._onStreamError)
         self._authFailureTime = None
+        self._lastTimeAuth = Timer().utcnow()
+    
+    @property
+    def lastTimeAuth(self):
+        return self._lastTimeAuth
     
     def _onStreamError(self, reason):
         self.log.err(reason, 'STREAM_EROR_EVENT')
@@ -50,6 +57,7 @@ class ReauthXMPPClient(XMPPClient):
     
     def _authd(self, xs):
         self._authFailureTime = None
+        self._lastTimeAuth = Timer().utcnow()
         XMPPClient._authd(self, xs)
     
     def isAuthenticating(self):

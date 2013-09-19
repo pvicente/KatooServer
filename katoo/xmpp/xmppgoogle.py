@@ -212,6 +212,13 @@ class XMPPGoogle(ReauthXMPPClient, Observer):
         KatooApp().getService('XMPP_KEEPALIVE_SUPERVISOR').registerObserver(self)
     
     def notify(self):
+        #Check if it is mandatory to do AUTH_RENEWAL
+        current_time = Timer().utcnow()
+        if (current_time - self.lastTimeAuth).seconds >= self.AUTH_RENEWAL_TIME:
+            self.log.info('Launching AUTH_RENEWAL as periodic task')
+            self.onAuthenticationRenewal(reason=None)
+        
+        #Send Keep Alive
         return self.handler.protocol.send(' ')
     
     @property
@@ -242,6 +249,7 @@ class XMPPGoogle(ReauthXMPPClient, Observer):
             self.user.token = data['access_token']
             #Updating authenticator password with new credentials
             self.factory.authenticator.password = self.user.token
+            self._lastTimeAuth = Timer().utcnow()
             yield self.user.save()
         except Exception as ex:
             e = ex
