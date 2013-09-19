@@ -4,10 +4,11 @@ Created on Jun 4, 2013
 @author: pvicente
 '''
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 from katoo.metrics import IncrementMetric
 from katoo.txMongoModel.mongomodel.model import Model, Indexes, Sort
 from katoo.utils.connections import MongoMixin
+from katoo.utils.time import Timer
 from twisted.internet import defer
 from txmongo._pymongo.objectid import ObjectId
 import conf
@@ -48,7 +49,7 @@ class GoogleMessage(object):
         self.fromid = fromid
         self.msgid = msgid
         self.data = data
-        self.time = datetime.utcnow().isoformat()+'Z'
+        self.time = Timer().isoformat() 
         self.removeTime=None
     
     def save(self):
@@ -174,7 +175,7 @@ class GoogleUser(object):
     
     @classmethod
     def get_away(cls):
-        disconnected_time = datetime.utcnow() - timedelta(seconds=conf.XMPP_DISCONNECTION_TIME)
+        disconnected_time = Timer().utcnow() - timedelta(seconds=conf.XMPP_DISCONNECTION_TIME)
         return cls.model.find(spec={'_connected': True, '_away': True, '_lastTimeConnected': {"$lt": disconnected_time}})
     
     @classmethod
@@ -332,7 +333,7 @@ class GoogleUser(object):
         self._away = bool(value)
         if self._away:
             if self._lastTimeConnected is None:
-                self._lastTimeConnected = datetime.utcnow()
+                self._lastTimeConnected = Timer().utcnow()
         else:
             self._lastTimeConnected = None
     

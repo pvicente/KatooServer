@@ -8,15 +8,15 @@ from katoo.apns.api import API
 from katoo.data import GoogleMessage, GoogleRosterItem
 from katoo.metrics import IncrementMetric, Metric
 from katoo.utils.patterns import Observer
+from katoo.utils.time import Timer
 from twisted.internet import defer
 from twisted.words.protocols.jabber import jid
 from wokkel_extensions import ReauthXMPPClient
 from xmppprotocol import CompleteBotProtocol, GenericXMPPHandler
 import cyclone.httpclient
 import json
-from datetime import datetime
-import urllib
 import translate
+import urllib
 
 METRIC_SOURCE='XMPPGOOGLE'
 METRIC_UNIT='events'
@@ -96,7 +96,7 @@ class GoogleHandler(GenericXMPPHandler):
     @IncrementMetric(name='xmppgoogle_connection_lost', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onConnectionLost(self, reason):
         self.CONNECTIONS_METRIC.add(-1)
-        currTime = datetime.utcnow()
+        currTime = Timer().utcnow()
         connectedTime = 0 if self.connectionTime is None else (currTime - self.connectionTime).seconds
         lastTimeKeepAlive = (currTime - KatooApp().getService('XMPP_KEEPALIVE_SUPERVISOR').lastTime).seconds
         isAuthenticating = self.client.isAuthenticating()
@@ -117,7 +117,7 @@ class GoogleHandler(GenericXMPPHandler):
     
     @IncrementMetric(name='xmppgoogle_connection_authenticated', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onAuthenticated(self):
-        self.connectionTime = datetime.utcnow()
+        self.connectionTime = Timer().utcnow()
         self.log.info('CONNECTION_AUTHENTICATED %s', self.user.jid)
         
         #Set away state to be restored with right value when presences will be received

@@ -3,7 +3,7 @@ Created on Aug 25, 2013
 
 @author: pvicente
 '''
-from datetime import datetime, timedelta
+from datetime import timedelta
 from katoo import conf
 from katoo.data import GoogleMessage, GoogleRosterItem, GoogleUser
 from katoo.metrics import Metric
@@ -11,6 +11,7 @@ from katoo.rqtwisted.queue import Queue, FailedQueue
 from katoo.utils.applog import getLogger, getLoggerAdapter
 from katoo.utils.connections import RedisMixin
 from katoo.utils.patterns import Observer
+from katoo.utils.time import Timer
 from twisted.internet import defer
 
 
@@ -103,7 +104,7 @@ class MongoMetrics(Observer):
             query = self._user_queries.get(query_key, None)
             if query is None:
                 if query_key.find('running') == 0:
-                    timeago = datetime.utcnow() - timedelta(hours=int(query_key[-2:]))
+                    timeago = Timer().utcnow() - timedelta(hours=int(query_key[-2:]))
                     query = {'_connected': True, '_lastTimeConnected': {'$gte': timeago}}
             count = yield GoogleUser.model.count(query)
             self._user_metrics[query_key].add(count)
