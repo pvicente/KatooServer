@@ -3,7 +3,6 @@ Created on Jun 5, 2013
 
 @author: pvicente
 '''
-from datetime import datetime
 from katoo import KatooApp, conf
 from katoo.data import GoogleUser
 from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
@@ -11,6 +10,7 @@ from katoo.metrics import Metric
 from katoo.rqtwisted.job import Job, NoSuchJobError
 from katoo.rqtwisted.queue import Queue
 from katoo.system import DistributedAPI, SynchronousCall, AsynchronousCall
+from katoo.utils.time import Timer
 from katoo.xmpp.xmppgoogle import XMPPGoogle
 from twisted.internet import defer
 
@@ -44,7 +44,7 @@ class API(DistributedAPI):
         self.log.info('RELOGIN %s. Pending_Jobs: %s. Data: %s', xmppuser.jid, len_pending_jobs, xmppuser)
         yield self._shared_login(xmppuser)
         
-        xmppuser.onMigrationTime = datetime.utcnow()
+        xmppuser.onMigrationTime = Timer().utcnow()
         yield xmppuser.save()
         
         queue = Queue(conf.MACHINEID)

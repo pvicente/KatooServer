@@ -21,6 +21,7 @@ METRICS_REPORT_TIME = int(os.getenv('METRICS_REPORT_TIME', 60))
 METRICS_OUTPUT_LEN = int(os.getenv('METRICS_OUTPUT_LEN', 950))
 PRODUCTION=eval(str(os.getenv('PRODUCTION', False)))
 LXMLPARSER=eval(str(os.getenv('LXMLPARSER', False)))
+TIMER_INTERVAL=int(os.getenv('TIMER_INTERVAL', 1))
 
 
 #GOOGLE_APP_CREDENTIALS

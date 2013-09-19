@@ -5,7 +5,6 @@ Created on Jun 4, 2013
 '''
 
 from cyclone.escape import json_encode
-from datetime import datetime
 from katoo import conf
 from katoo.api import API
 from katoo.data import GoogleUser, GoogleMessage
@@ -13,6 +12,7 @@ from katoo.exceptions import XMPPUserAlreadyLogged, XMPPUserNotLogged
 from katoo.metrics import IncrementMetric, Metric
 from katoo.utils.applog import getLoggerAdapter, getLogger
 from katoo.utils.connections import RedisMixin
+from katoo.utils.time import Timer
 from twisted.internet import defer
 import cyclone.web
 import re
@@ -190,7 +190,7 @@ class GoogleMessagesHandler(MyRequestHandler):
         if user is None:
             raise cyclone.web.HTTPError(404)
         messages = yield GoogleMessage.getMessages(key)
-        self._response_json({'current_time': datetime.utcnow().isoformat()+'Z', 'success': True, 'messages': messages, 'len': len(messages), 'reason': 'ok', 'connected': user.connected})
+        self._response_json({'current_time': Timer().isoformat(), 'success': True, 'messages': messages, 'len': len(messages), 'reason': 'ok', 'connected': user.connected})
     
     @defer.inlineCallbacks
     def post(self, key):

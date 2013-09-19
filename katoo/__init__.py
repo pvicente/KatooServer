@@ -5,6 +5,7 @@ from katoo.utils.applog import TwistedLogging
 from katoo.utils.connections import RedisMixin, MongoMixin
 from katoo.utils.decorators import inject_decorators
 from katoo.utils.patterns import Singleton
+from katoo.utils.time import Timer
 from twisted.application import service
 from twisted.internet import reactor, defer
 from twisted.internet.error import ReactorNotRunning
@@ -37,6 +38,7 @@ class KatooApp(Singleton):
         self.oldreactorstop = reactor.stop
         reactor.stop = newreactorstop
         self.running=True
+        Timer().setServiceParent(self.app)
 
     def getService(self, name):
         try:
