@@ -9,7 +9,7 @@ from katoo.data import GoogleMessage, GoogleRosterItem
 from katoo.metrics import IncrementMetric, Metric
 from katoo.utils.patterns import Observer
 from katoo.utils.time import Timer
-from twisted.internet import defer
+from twisted.internet import defer, reactor
 from twisted.words.protocols.jabber import jid
 from wokkel_extensions import ReauthXMPPClient
 from xmppprotocol import CompleteBotProtocol, GenericXMPPHandler
@@ -195,6 +195,8 @@ class GoogleHandler(GenericXMPPHandler):
             self.log.err(e, 'ON_MESSAGE_RECEIVED_EXCEPTION')
     
 class XMPPGoogle(ReauthXMPPClient, Observer):
+    CHECK_AUTH_RENEWAL_METRIC=Metric(name='check_auth_renewal', value=None, unit=METRIC_UNIT, source=METRIC_SOURCE)
+    
     def __init__(self, user, app):
         ReauthXMPPClient.__init__(self, jid=jid.JID("%s/%s"%(user.jid,conf.XMPP_RESOURCE)), password=user.token, host="talk.google.com", port=5222, logid=user.userid)
         Observer.__init__(self)
@@ -216,7 +218,8 @@ class XMPPGoogle(ReauthXMPPClient, Observer):
         current_time = Timer().utcnow()
         if (current_time - self.lastTimeAuth).seconds >= self.AUTH_RENEWAL_TIME:
             self.log.info('Launching AUTH_RENEWAL as periodic task')
-            self.onAuthenticationRenewal(reason=None)
+            self.CHECK_AUTH_RENEWAL_METRIC.add(1)
+            reactor.callLater(1, self.onAuthenticationRenewal, reason=None)
         
         #Send Keep Alive
         return self.handler.protocol.send(' ')
@@ -292,7 +295,6 @@ class XMPPGoogle(ReauthXMPPClient, Observer):
 
 if __name__ == '__main__':
     import os
-    from twisted.internet import reactor
     from katoo.data import GoogleUser
     from wokkel_extensions import XMPPClient
     from katoo.utils.applog import getLogger, getLoggerAdapter
