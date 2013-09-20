@@ -30,11 +30,11 @@ class DataModel(ModelMixin):
         ModelMixin.__init__(self, collectionName, mongourl=mongourl, indexes=indexes)
 
 class GoogleMessage(object):
-    model = DataModel(collectionName='googlemessages', indexes=Indexes(['userid', 'time',  dict(fields='removeTime', expireAfterSeconds=conf.XMPP_REMOVE_TIME)]))
+    model = DataModel(collectionName='googlemessages', indexes=Indexes(['userid', ('time', 'msgid'),  dict(fields='removeTime', expireAfterSeconds=conf.XMPP_REMOVE_TIME)]))
     
     @classmethod
     def getMessages(cls, userid):
-        return cls.model.find(spec={'userid':userid}, fields={'_id':0, 'time':1, 'fromid':1, 'msgid':1, 'data':1}, mongofilter=Sort.getFilter(['time']))
+        return cls.model.find(spec={'userid':userid}, fields={'_id':0, 'time':1, 'fromid':1, 'msgid':1, 'data':1}, mongofilter=Sort.getFilter(['time', 'msgid']))
     
     @classmethod
     def flushMessages(cls, userid):
