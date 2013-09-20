@@ -9,7 +9,7 @@ from katoo.data import GoogleMessage, GoogleRosterItem
 from katoo.metrics import IncrementMetric, Metric
 from katoo.utils.patterns import Observer
 from katoo.utils.time import Timer
-from twisted.internet import defer
+from twisted.internet import defer, reactor
 from twisted.words.protocols.jabber import jid
 from wokkel_extensions import ReauthXMPPClient
 from xmppprotocol import CompleteBotProtocol, GenericXMPPHandler
@@ -87,13 +87,13 @@ class GoogleHandler(GenericXMPPHandler):
     def isOwnBareJid(self, jid):
         return self.client.jid.user == jid.user and self.client.jid.host == jid.host
     
-    @IncrementMetric(name='xmppgoogle_connection_established', unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @IncrementMetric(name='connection_established', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onConnectionEstablished(self):
         self.CONNECTIONS_METRIC.add(1)
         self.connectionTime = None
         self.log.info('CONNECTION_ESTABLISHED %s', self.user.jid)
     
-    @IncrementMetric(name='xmppgoogle_connection_lost', unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @IncrementMetric(name='connection_lost', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onConnectionLost(self, reason):
         self.CONNECTIONS_METRIC.add(-1)
         currTime = Timer().utcnow()
@@ -115,7 +115,7 @@ class GoogleHandler(GenericXMPPHandler):
             else:
                 self.client.retries = 0
     
-    @IncrementMetric(name='xmppgoogle_connection_authenticated', unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @IncrementMetric(name='connection_authenticated', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onAuthenticated(self):
         self.connectionTime = Timer().utcnow()
         self.log.info('CONNECTION_AUTHENTICATED %s', self.user.jid)
@@ -130,7 +130,7 @@ class GoogleHandler(GenericXMPPHandler):
         d.addCallback(self.protocol.onRosterReceived)
         
     
-    @IncrementMetric(name='xmppgoogle_presence_available', unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @IncrementMetric(name='presence_available', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onAvailableReceived(self, jid):
         if self.isOwnBareJid(jid) and jid.resource == self.user.resource:
             self.log.info('APP_GO_ONLINE %s',self.user.jid)
@@ -138,7 +138,7 @@ class GoogleHandler(GenericXMPPHandler):
             return self.user.save()
         self.log.debug('XMPP_GO_ONLINE %s <- %s@%s/%r', self.user.jid, jid.user, jid.host, jid.resource)
     
-    @IncrementMetric(name='xmppgoogle_presence_unavailable', unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @IncrementMetric(name='presence_unavailable', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onUnavailableReceived(self, jid):
         if self.isOwnBareJid(jid) and jid.resource == self.user.resource:
             self.log.info('APP_GO_AWAY %s', self.user.jid)
@@ -146,7 +146,7 @@ class GoogleHandler(GenericXMPPHandler):
             return self.user.save()
         self.log.debug('XMPP_GO_OFFLINE %s <- %s@%s/%r', self.user.jid, jid.user, jid.host, jid.resource)
     
-    @IncrementMetric(name='xmppgoogle_roster_received', unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @IncrementMetric(name='roster_received', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def onRosterReceived(self, roster):
         yield self.roster.processRoster(roster)
@@ -157,19 +157,19 @@ class GoogleHandler(GenericXMPPHandler):
         
         self.log.info('ROSTER_RECEIVED. PROCESSED ROSTER %s', self.user.jid)
     
-    @IncrementMetric(name='xmppgoogle_roster_set', unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @IncrementMetric(name='roster_set', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onRosterSet(self, item):
         self.log.info('onRosterSet to %s <- item %s', self.user.jid, item)
         fromjid, name = self.roster.getName(item)
         if name:
             self.roster.set(fromjid, name=name)
     
-    @IncrementMetric(name='xmppgoogle_roster_remove', unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @IncrementMetric(name='roster_remove', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onRosterRemove(self, item):
         #We don't remove roster items
         self.log.info('onRosterRemove to %s <- item %s', self.user.jid, item)
     
-    @IncrementMetric(name='xmppgoogle_message_received', unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @IncrementMetric(name='message_received', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def onMessageReceived(self, fromjid, msgid, body):
         self.log.debug("MESSAGE_RECEIVED to %s. msgid(%s) from(%s): %r", self.user.jid, msgid, fromjid, body)
@@ -195,6 +195,8 @@ class GoogleHandler(GenericXMPPHandler):
             self.log.err(e, 'ON_MESSAGE_RECEIVED_EXCEPTION')
     
 class XMPPGoogle(ReauthXMPPClient, Observer):
+    CHECK_AUTH_RENEWAL_METRIC=Metric(name='check_auth_renewal', value=None, unit=METRIC_UNIT, source=METRIC_SOURCE)
+    
     def __init__(self, user, app):
         ReauthXMPPClient.__init__(self, jid=jid.JID("%s/%s"%(user.jid,conf.XMPP_RESOURCE)), password=user.token, host="talk.google.com", port=5222, logid=user.userid)
         Observer.__init__(self)
@@ -212,6 +214,14 @@ class XMPPGoogle(ReauthXMPPClient, Observer):
         KatooApp().getService('XMPP_KEEPALIVE_SUPERVISOR').registerObserver(self)
     
     def notify(self):
+        #Check if it is mandatory to do AUTH_RENEWAL
+        current_time = Timer().utcnow()
+        if (current_time - self.lastTimeAuth).seconds >= self.AUTH_RENEWAL_TIME:
+            self.log.info('Launching AUTH_RENEWAL as periodic task')
+            self.CHECK_AUTH_RENEWAL_METRIC.add(1)
+            reactor.callLater(1, self.onAuthenticationRenewal, reason=None)
+        
+        #Send Keep Alive
         return self.handler.protocol.send(' ')
     
     @property
@@ -222,11 +232,11 @@ class XMPPGoogle(ReauthXMPPClient, Observer):
     def roster(self):
         return self.handler.roster
     
-    @IncrementMetric(name='xmppgoogle_error_stream', unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @IncrementMetric(name='error_stream', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def _onStreamError(self, reason):
         self.log.err(reason, 'STREAM_EROR_EVENT %s'%(self.user.jid))
     
-    @IncrementMetric(name='xmppgoogle_authentication_renewal', unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @IncrementMetric(name='authentication_renewal', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def onAuthenticationRenewal(self, reason):
         self.log.info('AUTH_RENEWAL_EVENT %s', self.user.jid)
@@ -242,6 +252,7 @@ class XMPPGoogle(ReauthXMPPClient, Observer):
             self.user.token = data['access_token']
             #Updating authenticator password with new credentials
             self.factory.authenticator.password = self.user.token
+            self._lastTimeAuth = Timer().utcnow()
             yield self.user.save()
         except Exception as ex:
             e = ex
@@ -250,21 +261,21 @@ class XMPPGoogle(ReauthXMPPClient, Observer):
             #Calling to super to perform default behaviour (decrement counter to stop connection in the next retry if not success)
             ReauthXMPPClient.onAuthenticationRenewal(self, e)
     
-    @IncrementMetric(name='xmppgoogle_error_authentication', unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @IncrementMetric(name='error_authentication', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onAuthenticationError(self, reason):
         self.log.err(reason, 'AUTH_ERROR_EVENT %s'%(self.user.jid))
         if self.user.pushtoken:
             API(self.user.userid).sendpush(message=translate.TRANSLATORS[self.user.lang]._('authfailed'), token=self.user.pushtoken, badgenumber=self.user.badgenumber, sound='')
         return self.disconnect()
     
-    @IncrementMetric(name='xmppgoogle_error_maxretries', unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @IncrementMetric(name='error_maxretries', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onMaxRetries(self):
         self.log.error('CONNECTION_MAX_RETRIES %s', self.user.jid)
         if self.user.pushtoken:
             API(self.user.userid).sendpush(message=translate.TRANSLATORS[self.user.lang]._('maxretries'), token=self.user.pushtoken, badgenumber=self.user.badgenumber, sound='')
         return self.disconnect()
     
-    @IncrementMetric(name='xmppgoogle_disconnect', unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @IncrementMetric(name='disconnect', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def disconnect(self, change_state=True):
         self.log.info('DISCONNECTED %s', self.user.jid)
         #Unregister in XMPP_KEEPALIVE_SERVICE
@@ -284,7 +295,6 @@ class XMPPGoogle(ReauthXMPPClient, Observer):
 
 if __name__ == '__main__':
     import os
-    from twisted.internet import reactor
     from katoo.data import GoogleUser
     from wokkel_extensions import XMPPClient
     from katoo.utils.applog import getLogger, getLoggerAdapter

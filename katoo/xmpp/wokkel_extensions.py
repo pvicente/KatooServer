@@ -3,9 +3,12 @@ Created on May 25, 2013
 
 @author: pvicente
 '''
+from datetime import timedelta
 from functools import wraps
+from katoo import conf
 from katoo.utils.applog import getLogger, getLoggerAdapter
 from katoo.utils.decorators import inject_decorators
+from katoo.utils.time import Timer
 from twisted.internet import reactor, defer
 from twisted.words.protocols.jabber import error
 from twisted.words.protocols.jabber.sasl import SASLNoAcceptableMechanism, \
@@ -17,20 +20,25 @@ from wokkel.xmppim import RosterClientProtocol, RosterRequest, RosterPushIgnored
 from zope.interface import implements
 import lxmldomishparser
 import os
-import time
 
 __all__ = ["ReauthXMPPClient"]
 
 log = getLogger(__name__)
 
 class ReauthXMPPClient(XMPPClient):
-    AUTH_TIMEOUT=60
+    AUTH_TIMEOUT=conf.XMPP_AUTH_TIMEOUT
+    AUTH_RENEWAL_TIME=conf.XMPP_AUTH_RENEWAL_TIME
     
     def __init__(self, jid, password, host=None, port=5222, logid=None):
         XMPPClient.__init__(self, jid, password, host=host, port=port)
         self.log = getLoggerAdapter(log) if logid is None else getLoggerAdapter(log, id=logid)
         self.factory.addBootstrap(xmlstream.STREAM_ERROR_EVENT, self._onStreamError)
         self._authFailureTime = None
+        self._lastTimeAuth = Timer().utcnow()
+    
+    @property
+    def lastTimeAuth(self):
+        return self._lastTimeAuth
     
     def _onStreamError(self, reason):
         self.log.err(reason, 'STREAM_EROR_EVENT')
@@ -49,6 +57,7 @@ class ReauthXMPPClient(XMPPClient):
     
     def _authd(self, xs):
         self._authFailureTime = None
+        self._lastTimeAuth = Timer().utcnow()
         XMPPClient._authd(self, xs)
     
     def isAuthenticating(self):
@@ -57,11 +66,11 @@ class ReauthXMPPClient(XMPPClient):
     def initializationFailed(self, reason):
         if not reason.check(SASLAuthError):
             return self.onAuthenticationError(reason)
-        current_time = time.time()
+        current_time = Timer().utcnow()
         if self._authFailureTime is None:
             self._authFailureTime = current_time
             return self.onAuthenticationRenewal(reason)
-        if current_time - self._authFailureTime > self.AUTH_TIMEOUT:
+        if (current_time - self._authFailureTime).seconds > self.AUTH_TIMEOUT:
             return self.onAuthenticationError(reason)
     
     def onAuthenticationRenewal(self, reason):
@@ -69,7 +78,8 @@ class ReauthXMPPClient(XMPPClient):
         Authentication failed: negotiate new authentication tokens with the server
         """
         #This method must be overrided and not called due to new reconnection will fail
-        self._authFailureTime -= self.AUTH_TIMEOUT
+        if not self._authFailureTime is None:
+            self._authFailureTime -= timedelta(seconds=self.AUTH_TIMEOUT)
     
     def onAuthenticationError(self, reason):
         """
@@ -80,7 +90,6 @@ class ReauthXMPPClient(XMPPClient):
         #and resetDelay will not work. Instead we wait 60 seconds to negotiate the new credentials
         self.log.err(reason, 'AUTH_ERROR_EVENT')
         
-        #TODO: send a push notification to client and save disconnected state in client
         self.stopService()
         return self.disownServiceParent()
     
