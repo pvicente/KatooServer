@@ -47,7 +47,7 @@ class update_arguments(arguments):
                       ('pushtoken', DefaultArgument), ('badgenumber', DefaultArgument), ('pushsound',DefaultArgument), ('favoritesound', DefaultArgument), ('lang', DefaultArgument)])
 
 class contact_arguments(arguments):
-    ARGUMENTS = dict([('jid', RequiredArgument), ('contactName', DefaultArgument), ('favorite', DefaultArgument)])
+    ARGUMENTS = dict([('jid', RequiredArgument), ('contactName', DefaultArgument), ('favorite', DefaultArgument), ('snoozePushTime', DefaultArgument)])
 
 
 class CheckUserAgent(object):

@@ -81,12 +81,13 @@ class GoogleRosterItem(object):
         d.addCallback(lambda result: None if not result else cls(**result))
         return d
     
-    def __init__(self, _userid, _jid, _name=None, _contactName=None, _favorite=False, _id=None):
+    def __init__(self, _userid, _jid, _name=None, _contactName=None, _favorite=False, _snoozePushTime=None, _id=None):
         self._userid = _userid
         self._jid = _jid
         self._name = _name
         self._contactName = _contactName
         self._favorite = _favorite
+        self._snoozePushTime = _snoozePushTime
         if isinstance(_id, ObjectId):
             self._id = _id
     
@@ -142,6 +143,21 @@ class GoogleRosterItem(object):
     @favorite.setter
     def favorite(self, value):
         self._favorite = eval(str(value))
+    
+    @property
+    def snoozePushTime(self):
+        return False if self._snoozePushTime is None else Timer().utcnow() <= self._snoozePushTime
+    
+    @snoozePushTime.setter
+    def snoozePushTime(self, value):
+        if value:
+            seconds = int(value)
+            if seconds:
+                self._snoozePushTime = Timer().utcnow() + timedelta(seconds=seconds)
+            else:
+                self._snoozePushTime = Timer().utcnow() + timedelta(days=365)
+        else:
+            self._snoozePushTime = None
     
 class GoogleUser(object):
     model = DataModel(collectionName='googleusers', indexes=Indexes([dict(fields='_userid', unique=True), '_pushtoken', ('_userid, _jid'), ('_connected','_away', '_lastTimeConnected'),
