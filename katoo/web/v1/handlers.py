@@ -51,23 +51,57 @@ class contact_arguments(arguments):
 
 
 class CheckUserAgent(object):
-    RE = re.compile('^{0}\/(\d.\d.\d)'.format(conf.USER_AGENT))
+    RE = re.compile('(\S+)\/(\S+)\s\((.+)\)'.format(conf.USER_AGENT))
+    
+    def _check_user_agent(self):
+        self._match = self.RE.findall(self._user_agent)
+        if self._match:
+            self._agent, self._version, system = self._match[0]
+            system = system.split(';')
+            self._isApp = self._agent == conf.USER_AGENT
+            if self._isApp:
+                self._hwmodel, self._os = system[0], "" if len(system)==0 else system[1].strip()
+            else:
+                self._hwmodel = system[0]
+        
+        if conf.USER_AGENT_CHECK:
+            if self._agent != conf.USER_AGENT or not self._version in conf.USER_AGENT_WL or self._version in conf.USER_AGENT_BL:
+                self._pass = False
     
     def __init__(self, user_agent):
         self._pass = True
-        self._match = ""
         self._user_agent = user_agent
-        if conf.USER_AGENT_CHECK:
-            self._match = self.RE.findall(self._user_agent)
-            print self._match
-            if not self._match or not self._match[0][1] in conf.USER_AGENT_WL or self._match[0][1] in conf.USER_AGENT_BL:
-                self._pass = False
+        self._match = ""
+        self._agent = ""
+        self._version = ""
+        self._hwmodel = ""
+        self._os = ""
+        self._isApp = False
+        self._iosversion = ""
+        self._check_user_agent()
+    
+    @property
+    def isApp(self):
+        return self._isApp
+    
+    @property
+    def version(self):
+        return self._version
+    
+    @property
+    def iosVersion(self):
+        if not self._iosversion and self.isApp:
+            ios = self._os.split()
+            if ios[0] == 'iOS':
+                self._iosversion = ios[-1]
+        
+        return self._iosversion
     
     def __nonzero__(self):
         return self._pass
     
     def __str__(self):
-        return self._user_agent
+        return "agent: %s version: %s hw: %s os: %s"%(self._agent, self._version, self._hwmodel, self._os)
 
 class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
     METRICS={}
