@@ -113,12 +113,12 @@ class GlobalSupervisor(Supervisor):
         Supervisor.__init__(self)
         self.lock = defer.DeferredLock()
         self._checkworkerstasks=[self.processDeathWorkers, self.processBadAssignedWorkers, self.processOnMigrationUsers, self.checkRunningWorkers]
-        self._globalmetrics=[RedisMetrics(), MongoMetrics()]
+        self._globalmetrics=[RedisMetrics, MongoMetrics]
     
     def _attach_global_metrics(self):
         service = KatooApp().getService(MetricsSupervisor.name)
         for metric in self._globalmetrics:
-            service.registerObserver(metric)
+            service.registerObserver(metric())
     
     @defer.inlineCallbacks
     def checkRunningWorkers(self):

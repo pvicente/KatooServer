@@ -171,7 +171,7 @@ class GoogleUser(object):
     
     @classmethod
     def get_assigned_workers(cls):
-        return cls.model.distinct(key='_worker', spec={'_connected': True, '_onReloging': False})
+        return cls.get_distinct(key='_worker', spec={'_connected': True, '_onReloging': False})
     
     @classmethod
     def get_away(cls):
@@ -182,6 +182,12 @@ class GoogleUser(object):
     def get_onMigration(cls):
         return cls.model.find(spec={'_connected': True, '_onMigrationTime': {'$ne': ''}})
     
+    @classmethod
+    def get_distinct(cls, key, spec={'_connected': True}):
+        if spec:
+            return cls.model.distinct(key=key, spec=spec)
+        else:
+            return cls.model.distinct(key=key)
     
     def __init__(self,
                  _userid, 
