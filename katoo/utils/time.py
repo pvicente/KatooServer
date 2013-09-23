@@ -5,11 +5,12 @@ Created on Jul 5, 2013
 '''
 from datetime import datetime
 from katoo import conf
+from katoo.metrics import Metric
+from katoo.utils.applog import getLoggerAdapter, getLogger
 from patterns import Singleton
 from twisted.application import service
 from twisted.internet import defer, reactor
 from twisted.internet.task import LoopingCall
-from katoo.utils.applog import getLoggerAdapter, getLogger
 
 def sleep(secs):
     d = defer.Deferred()
@@ -17,6 +18,8 @@ def sleep(secs):
     return d
 
 class Timer(service.Service, Singleton):
+    TIMER_ACCURATE_WARNING_METRIC= Metric(name='check_auth_renewal', value=None, unit='events', source='TIMER', reset=False)
+    
     def constructor(self):
         self._time = datetime.utcnow()
         self.log = getLoggerAdapter(getLogger(__name__, "INFO"), id='TIMER')
@@ -24,11 +27,11 @@ class Timer(service.Service, Singleton):
         self._maxinterval = self._interval*3
     
     def _updateTime(self):
-        last_time = self._time
-        self._time = datetime.utcnow()
-        elapsed = self._time - last_time
-        if elapsed.seconds > self._maxinterval:
-            self.log.warning('Timer not too much accurate. Elapsed %s seconds without update', elapsed.seconds)
+        last_time, self._time = self._time, datetime.utcnow()
+        elapsed_seconds = (self._time - last_time).seconds
+        if elapsed_seconds > self._maxinterval:
+            self.TIMER_ACCURATE_WARNING_METRIC.add(1)
+            self.log.warning('Timer not too much accurate. Elapsed %s seconds without update', elapsed_seconds)
     
     def startService(self):
         self.log.info('Started Timer')
