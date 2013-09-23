@@ -73,11 +73,11 @@ class CheckUserAgent(object):
         self._user_agent = user_agent
         self._match = ""
         self._agent = ""
-        self._version = ""
+        self._version = "UNKNOWN"
         self._hwmodel = ""
         self._os = ""
         self._isApp = False
-        self._iosversion = ""
+        self._iosversion = "UNKNOWN"
         self._check_user_agent()
     
     @property
