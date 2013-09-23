@@ -40,6 +40,7 @@ USER_AGENT=os.getenv('USER_AGENT', 'Katoo')
 USER_AGENT_CHECK=eval(str(os.getenv('USER_AGENT_CHECK', False)))
 USER_AGENT_WL=frozenset(eval(os.getenv('USER_AGENT_WL','[]')))
 USER_AGENT_BL=frozenset(eval(os.getenv('USER_AGENT_BL', '[]')))
+DEFAULT_VERSION='UNKNOWN'
 
 ##REDIS_CONNECTION_MANAGEMENT
 REDIS_WORKERS=int(os.getenv('REDIS_WORKERS', 1))

@@ -73,11 +73,11 @@ class CheckUserAgent(object):
         self._user_agent = user_agent
         self._match = ""
         self._agent = ""
-        self._version = "UNKNOWN"
-        self._hwmodel = ""
+        self._version = conf.DEFAULT_VERSION
+        self._hwmodel = conf.DEFAULT_VERSION
         self._os = ""
         self._isApp = False
-        self._iosversion = "UNKNOWN"
+        self._iosversion = conf.DEFAULT_VERSION
         self._check_user_agent()
     
     @property
@@ -89,8 +89,12 @@ class CheckUserAgent(object):
         return self._version
     
     @property
+    def hwmodel(self):
+        return self._hwmodel
+    
+    @property
     def iosVersion(self):
-        if not self._iosversion and self.isApp:
+        if self._iosversion == conf.DEFAULT_VERSION and self.isApp:
             ios = self._os.split()
             if ios[0] == 'iOS':
                 self._iosversion = ios[-1]
@@ -122,8 +126,8 @@ class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
         self.metric = metric
         self.key = key
         self.args = '' if args_class is None else args_class(self).args
-        agent = CheckUserAgent(self.request.headers.get('User-Agent', ''))
-        if not bool(agent):
+        self.user_agent = CheckUserAgent(self.request.headers.get('User-Agent', ''))
+        if not bool(self.user_agent):
             raise cyclone.web.HTTPError(403)
 
 class GoogleHandler(MyRequestHandler):
@@ -177,7 +181,8 @@ class GoogleHandler(MyRequestHandler):
         try:
             response_data = {'success': False, 'reason': 'Already logged'}
             if user is None or not user.connected:
-                user = GoogleUser(_userid=key, **self.args)
+                user = GoogleUser(_userid=key, _version=self.user_agent.version, _iosversion = self.user_agent.iosVersion, _hwmodel= self.user_agent.hwmodel, 
+                                  **self.args)
                 yield API(key).login(user)
                 response_data = {'success': True, 'reason': 'ok'}
         except XMPPUserAlreadyLogged:
@@ -193,7 +198,8 @@ class GoogleHandler(MyRequestHandler):
         if user is None or not user.connected:
             raise cyclone.web.HTTPError(404)
         try:
-            yield API(key, queue=user.worker).update(key, **self.args)
+            yield API(key, queue=user.worker).update(key, _version=self.user_agent.version, _iosversion = self.user_agent.iosVersion, _hwmodel= self.user_agent.hwmodel, 
+                                                     **self.args)
             self._response_json({'success': True, 'reason': 'ok', 'background_time': conf.XMPP_BACKGROUND_TIME, 'resource_prefix': conf.XMPP_RESOURCE, 'gtalk_priority': conf.XMPP_GTALK_PRIORITY})
         except XMPPUserNotLogged as e:
             raise cyclone.web.HTTPError(500, str(e))

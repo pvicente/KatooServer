@@ -200,7 +200,11 @@ class GoogleUser(object):
                  _lastTimeConnected=None,
                  _worker=conf.MACHINEID,
                  _onMigrationTime='',
-                 _onReloging=False):
+                 _onReloging=False,
+                 _version=conf.DEFAULT_VERSION,
+                 _iosversion=conf.DEFAULT_VERSION,
+                 _hwmodel=conf.DEFAULT_VERSION
+                 ):
         self._userid = unicode(_userid)
         self._jid = unicode(_jid)
         self._token = unicode(_token)
@@ -217,6 +221,9 @@ class GoogleUser(object):
         self._worker=_worker
         self._onMigrationTime=_onMigrationTime
         self._onReloging = eval(str(_onReloging))
+        self._version = _version
+        self._iosversion = _iosversion
+        self._hwmodel = _hwmodel
         if isinstance(_id, ObjectId):
             self._id = _id
     
