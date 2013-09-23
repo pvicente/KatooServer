@@ -108,6 +108,7 @@ class XMPPKeepAliveSupervisor(Supervisor, Subject):
 class GlobalSupervisor(Supervisor):
     name = 'GLOBAL_SUPERVISOR'
     log = getLoggerAdapter(log, id=name)
+    DISCONNECT_AWAY_METRIC = Metric(name='away_user_disconnected', value=None, unit='events', source='XMPPGOOGLE')
     
     def __init__(self):
         Supervisor.__init__(self)
@@ -275,6 +276,7 @@ class GlobalSupervisor(Supervisor):
                 user = GoogleUser(**data)
                 API(user.userid, queue=user.worker).disconnect(user.userid)
                 APNSAPI(user.userid).sendpush(message=translate.TRANSLATORS[user.lang]._('disconnected'), token=user.pushtoken, badgenumber=user.badgenumber, sound='')
+                self.DISCONNECT_AWAY_METRIC.add(1)
             except Exception as e:
                 self.log.err(e, '[%s] Exception disconnecting user'%(data['_userid']))
     
