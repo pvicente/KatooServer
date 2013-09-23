@@ -51,6 +51,11 @@ class MongoMetrics(Observer):
                 'totalIndexSize': Metric(name='%s.index_size'%(collectionName), value=None, unit=conf.MONGO_STORAGE_UNIT, source='MONGO', scale=conf.MONGO_STORAGE_UNIT_SCALE)
                 }
     
+    @defer.inlineCallbacks
+    def _init_metrics_versions(self, name, key):
+        versions = yield GoogleUser.get_distinct(key, spec={'_connected': True})
+        self._versions[key] = dict([(version, Metric(name='%s.%s'%(name,version), value=None, unit='versions', source='MONGO')) for version in versions])
+    
     def __init__(self):
         self._models = [GoogleMessage.model, GoogleRosterItem.model, GoogleUser.model]
         self._metrics = dict([(model.collection, self._create_metrics(model.collection)) for model in self._models])
@@ -85,6 +90,9 @@ class MongoMetrics(Observer):
                               'runningago01': None
                               }
         
+        self._versions  = {}
+        for name, key in [('katoo', '_version'), ('ios', '_iosversion'), ('hwmodel', '_hwmodel')]:
+            self._init_metrics_versions(name, key)
     
     @defer.inlineCallbacks
     def notify(self):
@@ -109,5 +117,8 @@ class MongoMetrics(Observer):
             count = yield GoogleUser.model.count(query)
             self._user_metrics[query_key].add(count)
         
-    
+        for key_name, data in self._versions.iteritems():
+            for key, metric in data.iteritems():
+                count = yield GoogleUser.model.count(spec={key_name: key, '_connected': True})
+                metric.add(count)
     

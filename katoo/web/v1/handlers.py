@@ -51,23 +51,61 @@ class contact_arguments(arguments):
 
 
 class CheckUserAgent(object):
-    RE = re.compile('^{0}\/(\d.\d.\d)'.format(conf.USER_AGENT))
+    RE = re.compile('(\S+)\/(\S+)\s\((.+)\)'.format(conf.USER_AGENT))
+    
+    def _check_user_agent(self):
+        self._match = self.RE.findall(self._user_agent)
+        if self._match:
+            self._agent, self._version, system = self._match[0]
+            system = system.split(';')
+            self._isApp = self._agent == conf.USER_AGENT
+            if self._isApp:
+                self._hwmodel, self._os = system[0], "" if len(system)==0 else system[1].strip()
+            else:
+                self._hwmodel = system[0]
+        
+        if conf.USER_AGENT_CHECK:
+            if self._agent != conf.USER_AGENT or not self._version in conf.USER_AGENT_WL or self._version in conf.USER_AGENT_BL:
+                self._pass = False
     
     def __init__(self, user_agent):
         self._pass = True
-        self._match = ""
         self._user_agent = user_agent
-        if conf.USER_AGENT_CHECK:
-            self._match = self.RE.findall(self._user_agent)
-            print self._match
-            if not self._match or not self._match[0][1] in conf.USER_AGENT_WL or self._match[0][1] in conf.USER_AGENT_BL:
-                self._pass = False
+        self._match = ""
+        self._agent = ""
+        self._version = conf.DEFAULT_VERSION
+        self._hwmodel = conf.DEFAULT_VERSION
+        self._os = ""
+        self._isApp = False
+        self._iosversion = conf.DEFAULT_VERSION
+        self._check_user_agent()
+    
+    @property
+    def isApp(self):
+        return self._isApp
+    
+    @property
+    def version(self):
+        return self._version
+    
+    @property
+    def hwmodel(self):
+        return self._hwmodel
+    
+    @property
+    def iosVersion(self):
+        if self._iosversion == conf.DEFAULT_VERSION and self.isApp:
+            ios = self._os.split()
+            if ios[0] == 'iOS':
+                self._iosversion = ios[-1]
+        
+        return self._iosversion
     
     def __nonzero__(self):
         return self._pass
     
     def __str__(self):
-        return self._user_agent
+        return "agent: %s version: %s hw: %s os: %s"%(self._agent, self._version, self._hwmodel, self._os)
 
 class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
     METRICS={}
@@ -88,8 +126,8 @@ class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
         self.metric = metric
         self.key = key
         self.args = '' if args_class is None else args_class(self).args
-        agent = CheckUserAgent(self.request.headers.get('User-Agent', ''))
-        if not bool(agent):
+        self.user_agent = CheckUserAgent(self.request.headers.get('User-Agent', ''))
+        if not bool(self.user_agent):
             raise cyclone.web.HTTPError(403)
 
 class GoogleHandler(MyRequestHandler):
@@ -143,7 +181,8 @@ class GoogleHandler(MyRequestHandler):
         try:
             response_data = {'success': False, 'reason': 'Already logged'}
             if user is None or not user.connected:
-                user = GoogleUser(_userid=key, **self.args)
+                user = GoogleUser(_userid=key, _version=self.user_agent.version, _iosversion = self.user_agent.iosVersion, _hwmodel= self.user_agent.hwmodel, 
+                                  **self.args)
                 yield API(key).login(user)
                 response_data = {'success': True, 'reason': 'ok'}
         except XMPPUserAlreadyLogged:
@@ -159,7 +198,8 @@ class GoogleHandler(MyRequestHandler):
         if user is None or not user.connected:
             raise cyclone.web.HTTPError(404)
         try:
-            yield API(key, queue=user.worker).update(key, **self.args)
+            yield API(key, queue=user.worker).update(key, _version=self.user_agent.version, _iosversion = self.user_agent.iosVersion, _hwmodel= self.user_agent.hwmodel, 
+                                                     **self.args)
             self._response_json({'success': True, 'reason': 'ok', 'background_time': conf.XMPP_BACKGROUND_TIME, 'resource_prefix': conf.XMPP_RESOURCE, 'gtalk_priority': conf.XMPP_GTALK_PRIORITY})
         except XMPPUserNotLogged as e:
             raise cyclone.web.HTTPError(500, str(e))
