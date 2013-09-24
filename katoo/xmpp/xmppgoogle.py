@@ -87,6 +87,17 @@ class GoogleHandler(GenericXMPPHandler):
     def isOwnBareJid(self, jid):
         return self.client.jid.user == jid.user and self.client.jid.host == jid.host
     
+    @defer.inlineCallbacks
+    def getContact(self, jid, barejid=None):
+        barejid = jid.userhost() if barejid is None else barejid
+        roster_item = yield self.roster.get(barejid)
+        if roster_item is None:
+            roster_item = GoogleRosterItem(_userid=self.user.userid, _jid=barejid)
+            roster_item.name = jid.user
+            #Set in roster to retrieve later
+            yield self.roster.set(jid, name=roster_item.name)
+        defer.returnValue(roster_item)
+    
     @IncrementMetric(name='connection_established', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onConnectionEstablished(self):
         self.CONNECTIONS_METRIC.add(1)
@@ -131,12 +142,26 @@ class GoogleHandler(GenericXMPPHandler):
         
     
     @IncrementMetric(name='presence_available', unit=METRIC_UNIT, source=METRIC_SOURCE)
-    def onAvailableReceived(self, jid):
+    @defer.inlineCallbacks
+    def onAvailableReceived(self, jid, state):
         if self.isOwnBareJid(jid) and jid.resource == self.user.resource:
             self.log.info('APP_GO_ONLINE %s',self.user.jid)
             self.user.away = False
-            return self.user.save()
-        self.log.debug('XMPP_GO_ONLINE %s <- %s@%s/%r', self.user.jid, jid.user, jid.host, jid.resource)
+            yield self.user.save()
+        else:
+            self.log.debug('XMPP_GO_ONLINE %s <- %s@%s/%r State: %r', self.user.jid, jid.user, jid.host, jid.resource, state)
+            if (state is None or state == 'chat') and self.user.haveAvailablePresenceContacts() and self.user.pushtoken and self.connectionTime and (Timer().utcnow()-self.connectionTime).seconds > 60:
+                #Connection has not been re-established and presence is ok
+                barejid = jid.userhost()
+                if self.user.isContactInAvailablePresence(barejid):
+                    roster_item = yield self.getContact(jid, barejid)
+                    message = u'{0}{1} {2}'.format(roster_item.favoriteEmoji, roster_item.contactName, translate.TRANSLATORS[self.user.lang]._('available'))
+                    API(self.user.userid).sendpush(message=message, token=self.user.pushtoken, badgenumber=self.user.badgenumber, 
+                                                   sound=self.user.favoritesound if roster_item.favorite else self.user.pushsound, jid=barejid, ignore=False)
+                    if not roster_item.notifyWhenAvailable:
+                        #Remove from AvailablePreseneces in user. Data in contact can be alive
+                        self.user.removeAvailablePresenceContact(barejid)
+                        yield self.user.save()
     
     @IncrementMetric(name='presence_unavailable', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onUnavailableReceived(self, jid):
@@ -178,20 +203,14 @@ class GoogleHandler(GenericXMPPHandler):
         try:
             yield message.save()
             if self.user.pushtoken and self.user.away:
-                roster_item = yield self.roster.get(barefromjid)
-                if roster_item is None:
-                    roster_item = GoogleRosterItem(_userid=self.user.userid, _jid=barefromjid)
-                    roster_item.name = fromjid.user
-                    #Set in roster to retrieve later
-                    yield self.roster.set(fromjid, name=roster_item.name)
-                
+                roster_item = yield self.getContact(fromjid, barefromjid)
                 self.user.badgenumber += 1
                 self.log.debug('SENDING_PUSH %s. RosterItem: %s, User data: %s', self.user.jid, roster_item, self.user)
                 if roster_item.snoozePushTime:
                     yield API(self.user.userid).sendpush(message='', token=self.user.pushtoken, badgenumber=self.user.badgenumber)
                 else:
                     yield API(self.user.userid).sendchatmessage(msg=body, token=self.user.pushtoken, badgenumber=self.user.badgenumber, jid=roster_item.jid, fullname=roster_item.contactName, 
-                                                            sound=self.user.favoritesound if roster_item.favorite else self.user.pushsound, favorite=roster_item.favorite, lang=self.user.lang)
+                                                            sound=self.user.favoritesound if roster_item.favorite else self.user.pushsound, favorite_emoji=roster_item.favoriteEmoji, lang=self.user.lang)
                 self.log.debug('PUSH SENT %s', self.user.jid)
                 yield self.user.save()
         except Exception as e:

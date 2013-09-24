@@ -62,16 +62,16 @@ class API(DistributedAPI):
     
     @Metric(name='sendchatmessage', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
     @AsynchronousCall(conf.DIST_QUEUE_PUSH)
-    def sendchatmessage(self, msg, token, sound, badgenumber, jid, fullname, favorite, lang):
-        message = u'{0}{1}: {2}'.format(u'\ue32f' if favorite else '', fullname, PushParser.parse_message(msg, lang))
+    def sendchatmessage(self, msg, token, sound, badgenumber, jid, fullname, favorite_emoji, lang):
+        message = u'{0}{1}: {2}'.format(favorite_emoji, fullname, PushParser.parse_message(msg, lang))
         self.log.debug('SEND_CHAT_MESSAGE jid: %r fullname: %r badgenumber: %r sound: %r token: %r . %r. Raw msg: %r', jid, fullname, badgenumber, sound, token, message, msg)
         return self._sendapn(token=token , msg=message, sound=sound, badgenumber=badgenumber, jid=jid)
     
     @Metric(name='sendpush', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
     @AsynchronousCall(conf.DIST_QUEUE_PUSH)
-    def sendpush(self, message, token, badgenumber, sound=''):
-        self.log.debug('SEND_PUSH: %s token: %s, badgenumber: %s, sound: %s', message, token, badgenumber, sound)
-        return self._sendapn(token, message, sound, badgenumber)
+    def sendpush(self, message, token, badgenumber, sound='', **kwargs):
+        self.log.debug('SEND_PUSH: %s token: %s, badgenumber: %s, sound: %s kwargs: %s', message, token, badgenumber, sound, kwargs)
+        return self._sendapn(token, message, sound, badgenumber, **kwargs)
     
 
 if __name__ == '__main__':

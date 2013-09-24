@@ -111,6 +111,14 @@ class API(DistributedAPI):
             raise XMPPUserNotLogged('User %s is not running in current worker'%(userid))
         roster = running_client.roster
         yield roster.set(jid, **kwargs)
+        
+        xmppuser = running_client.user
+        seconds = kwargs.get('notifyWhenAvailable', '')
+        if seconds:
+            xmppuser.addAvailablePresenceContact(jid)
+        else:
+            xmppuser.removeAvailablePresenceContact(jid)
+        yield xmppuser.save()
     
     @Metric(name='logout', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
     @AsynchronousCall(queue=None) #Queue is assigned at runtime
