@@ -53,7 +53,7 @@ class GenericXMPPHandler(object):
     def onConnectionLost(self, reason):
         pass
     
-    def onAvailableReceived(self, jid):
+    def onAvailableReceived(self, jid, state):
         pass
     
     def onUnavailableReceived(self, jid):
@@ -109,7 +109,7 @@ class CompleteBotProtocol(MessageProtocol, RosterClientProtocol, PresenceClientP
         @param priority: priority level of the resource.
         @type priority: C{int}
         """
-        self._xmpphandler.onAvailableReceived(entity)
+        self._xmpphandler.onAvailableReceived(entity, show)
    
     def unavailableReceived(self, entity, statuses=None):
         """

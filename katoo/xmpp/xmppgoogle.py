@@ -143,14 +143,14 @@ class GoogleHandler(GenericXMPPHandler):
     
     @IncrementMetric(name='presence_available', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
-    def onAvailableReceived(self, jid):
+    def onAvailableReceived(self, jid, state):
         if self.isOwnBareJid(jid) and jid.resource == self.user.resource:
             self.log.info('APP_GO_ONLINE %s',self.user.jid)
             self.user.away = False
             yield self.user.save()
         else:
-            self.log.debug('XMPP_GO_ONLINE %s <- %s@%s/%r', self.user.jid, jid.user, jid.host, jid.resource)
-            if self.user.haveAvailablePresenceContacts() and self.user.pushtoken and self.connectionTime and (Timer().utcnow()-self.connectionTime).seconds > 60:
+            self.log.debug('XMPP_GO_ONLINE %s <- %s@%s/%r State: %r', self.user.jid, jid.user, jid.host, jid.resource, state)
+            if (state is None or state == 'chat') and self.user.haveAvailablePresenceContacts() and self.user.pushtoken and self.connectionTime and (Timer().utcnow()-self.connectionTime).seconds > 60:
                 #Connection has not been re-established and presence is ok
                 barejid = jid.userhost()
                 if self.user.isContactInAvailablePresence(barejid):
