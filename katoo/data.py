@@ -81,13 +81,14 @@ class GoogleRosterItem(object):
         d.addCallback(lambda result: None if not result else cls(**result))
         return d
     
-    def __init__(self, _userid, _jid, _name=None, _contactName=None, _favorite=False, _snoozePushTime=None, _id=None):
+    def __init__(self, _userid, _jid, _name=None, _contactName=None, _favorite=False, _snoozePushTime=None, _notifyWhenAvailable=None, _id=None):
         self._userid = _userid
         self._jid = _jid
         self._name = _name
         self._contactName = _contactName
         self._favorite = _favorite
         self._snoozePushTime = _snoozePushTime
+        self._notifyWhenAvailable = _notifyWhenAvailable
         if isinstance(_id, ObjectId):
             self._id = _id
     
@@ -156,12 +157,21 @@ class GoogleRosterItem(object):
     def snoozePushTime(self, value):
         if value:
             seconds = int(value)
-            if seconds:
-                self._snoozePushTime = Timer().utcnow() + timedelta(seconds=seconds)
-            else:
-                self._snoozePushTime = Timer().utcnow() + timedelta(days=365)
+            self._snoozePushTime = Timer().utcnow()+timedelta(seconds=seconds) if seconds else Timer().utcnow() + timedelta(days=365)
         else:
             self._snoozePushTime = None
+    
+    @property
+    def notifyWhenAvailable(self):
+        return False if self._notifyWhenAvailable is None else Timer().utcnow() <= self._notifyWhenAvailable
+    
+    @notifyWhenAvailable.setter
+    def notifyWhenAvailable(self, value):
+        if value:
+            seconds = int(value)
+            self._notifyWhenAvailable = Timer().utcnow() + timedelta(seconds=seconds)
+        else:
+            self._notifyWhenAvailable = None
     
 class GoogleUser(object):
     model = DataModel(collectionName='googleusers', indexes=Indexes([dict(fields='_userid', unique=True), '_pushtoken', ('_userid, _jid'), ('_connected','_away', '_lastTimeConnected'),
@@ -227,7 +237,7 @@ class GoogleUser(object):
                  _worker=conf.MACHINEID,
                  _onMigrationTime='',
                  _onReloging=False,
-                 _presenceContacts = {},
+                 _availablePresenceContacts = {},
                  _version=conf.DEFAULT_VERSION,
                  _iosversion=conf.DEFAULT_VERSION,
                  _hwmodel=conf.DEFAULT_VERSION
@@ -248,7 +258,7 @@ class GoogleUser(object):
         self._worker=_worker
         self._onMigrationTime=_onMigrationTime
         self._onReloging = eval(str(_onReloging))
-        self._presenceContacts = _presenceContacts
+        self._availablePresenceContacts = _availablePresenceContacts
         self._version = _version
         self._iosversion = _iosversion
         self._hwmodel = _hwmodel
@@ -397,17 +407,17 @@ class GoogleUser(object):
     def onReloging(self):
         return self._onReloging
     
-    def addPresenceContact(self, jid, **kwargs):
-        self._presenceContacts[jid] = kwargs
+    def addAvailablePresenceContact(self, jid):
+        self._availablePresenceContacts[jid] = None
     
-    def removePresenceContact(self, jid):
-        self._presenceContacts.pop(jid, None)
+    def removeAvailablePresenceContact(self, jid):
+        self._availablePresenceContacts.pop(jid, None)
     
-    def isContactInPresence(self, jid):
-        return jid in self._presenceContacts
+    def isContactInAvailablePresence(self, jid):
+        return jid in self._availablePresenceContacts
     
-    def havePresenceContacts(self):
-        return bool(self._presenceContacts)
+    def haveAvailablePresenceContacts(self):
+        return bool(self._availablePresenceContacts)
     
 if __name__ == '__main__':
     from twisted.internet import reactor

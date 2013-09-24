@@ -150,16 +150,18 @@ class GoogleHandler(GenericXMPPHandler):
             yield self.user.save()
         else:
             self.log.debug('XMPP_GO_ONLINE %s <- %s@%s/%r', self.user.jid, jid.user, jid.host, jid.resource)
-            if self.user.havePresenceContacts() and self.user.pushtoken and self.connectionTime and (Timer().utcnow()-self.connectionTime).seconds > 60:
+            if self.user.haveAvailablePresenceContacts() and self.user.pushtoken and self.connectionTime and (Timer().utcnow()-self.connectionTime).seconds > 60:
                 #Connection has not been re-established and presence is ok
                 barejid = jid.userhost()
-                if self.user.isContactInPresence(barejid):
+                if self.user.isContactInAvailablePresence(barejid):
                     roster_item = yield self.getContact(jid, barejid)
                     message = '{0}{1} {2}'.format(roster_item.favoriteEmoji, roster_item.contactName, translate.TRANSLATORS[self.user.lang]._('available'))
                     API(self.user.userid).sendpush(message=message, token=self.user.pushtoken, badgenumber=self.user.badgenumber, 
                                                    sound=self.user.favoritesound if roster_item.favorite else self.user.pushsound, jid=barejid, ignore=False)
-                    self.user.removePresenceContact(barejid)
-                    yield self.user.save()
+                    if not roster_item.notifyWhenAvailable:
+                        #Remove from AvailablePreseneces in user. Data in contact can be alive
+                        self.user.removeAvailablePresenceContact(barejid)
+                        yield self.user.save()
     
     @IncrementMetric(name='presence_unavailable', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onUnavailableReceived(self, jid):

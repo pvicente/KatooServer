@@ -47,10 +47,7 @@ class update_arguments(arguments):
                       ('pushtoken', DefaultArgument), ('badgenumber', DefaultArgument), ('pushsound',DefaultArgument), ('favoritesound', DefaultArgument), ('lang', DefaultArgument)])
 
 class contact_arguments(arguments):
-    ARGUMENTS = dict([('jid', RequiredArgument), ('contactName', DefaultArgument), ('favorite', DefaultArgument), ('snoozePushTime', DefaultArgument)])
-
-class presence_arguments(arguments):
-    ARGUMENTS = dict([('jid', RequiredArgument), ('nextTimeAvailable', DefaultArgument)])
+    ARGUMENTS = dict([('jid', RequiredArgument), ('contactName', DefaultArgument), ('favorite', DefaultArgument), ('snoozePushTime', DefaultArgument), ('notifyWhenAvailable', DefaultArgument)])
 
 class CheckUserAgent(object):
     RE = re.compile('(\S+)\/(\S+)\s\((.+)\)'.format(conf.USER_AGENT))
@@ -294,35 +291,3 @@ class GoogleContactsHandler(MyRequestHandler):
         self.constructor(key)
         raise cyclone.web.HTTPError(404)
     
-class GooglePresenceHandler(MyRequestHandler):
-    METRICS={'put':    Metric(name='time_put_google_presence', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, sampling=True)}
-    
-    @defer.inlineCallbacks
-    def get(self, key):
-        self.constructor(key)
-        raise cyclone.web.HTTPError(404)
-    
-    @defer.inlineCallbacks
-    def post(self, key):
-        self.constructor(key)
-        raise cyclone.web.HTTPError(404)
-    
-    @IncrementMetric(name='put_google_presence', unit=METRIC_UNIT, source=METRIC_SOURCE)
-    @defer.inlineCallbacks
-    def put(self, key):
-        self.constructor(key, presence_arguments, metric=self.METRICS['put'])
-        user = yield GoogleUser.load(key)
-        if user is None or not user.connected:
-            raise cyclone.web.HTTPError(404)
-        
-        jid = self.args.pop('jid')
-        try:
-            yield API(key, queue=user.worker).update_presence(user.userid, jid, **self.args)
-        except XMPPUserNotLogged as e:
-            raise cyclone.web.HTTPError(500, str(e))
-        self._response_json({'success': True, 'reason': 'ok'})
-    
-    @defer.inlineCallbacks
-    def delete(self, key):
-        self.constructor(key)
-        raise cyclone.web.HTTPError(404)
