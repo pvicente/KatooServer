@@ -13,6 +13,7 @@ class BaseHandlerNoLog(cyclone.web.Application, RedisMixin):
             handlers = [
                 (r"/1/google/messages/(.+)", v1.handlers.GoogleMessagesHandler),
                 (r"/1/google/contacts/(.+)", v1.handlers.GoogleContactsHandler),
+                (r"/1/google/presence/(.+)", v1.handlers.GooglePresenceHandler),
                 (r"/1/google/(.+)", v1.handlers.GoogleHandler)
             ]
             settings = dict(

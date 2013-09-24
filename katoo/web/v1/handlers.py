@@ -292,3 +292,35 @@ class GoogleContactsHandler(MyRequestHandler):
         self.constructor(key)
         raise cyclone.web.HTTPError(404)
     
+class GooglePresenceHandler(MyRequestHandler):
+    METRICS={'put':    Metric(name='time_put_google_presence', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, sampling=True)}
+    
+    @defer.inlineCallbacks
+    def get(self, key):
+        self.constructor(key)
+        raise cyclone.web.HTTPError(404)
+    
+    @defer.inlineCallbacks
+    def post(self, key):
+        self.constructor(key)
+        raise cyclone.web.HTTPError(404)
+    
+    @IncrementMetric(name='put_google_presence', unit=METRIC_UNIT, source=METRIC_SOURCE)
+    @defer.inlineCallbacks
+    def put(self, key):
+        self.constructor(key, contact_arguments, metric=self.METRICS['put'])
+        user = yield GoogleUser.load(key)
+        if user is None or not user.connected:
+            raise cyclone.web.HTTPError(404)
+        
+        jid = self.args.pop('jid')
+        try:
+            yield API(key, queue=user.worker).update_contact(user.userid, jid, **self.args)
+        except XMPPUserNotLogged as e:
+            raise cyclone.web.HTTPError(500, str(e))
+        self._response_json({'success': True, 'reason': 'ok'})
+    
+    @defer.inlineCallbacks
+    def delete(self, key):
+        self.constructor(key)
+        raise cyclone.web.HTTPError(404)
