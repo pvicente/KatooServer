@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2013-08-30 01:06+0200\n"
-"PO-Revision-Date: 2013-08-30 01:08+0100\n"
+"POT-Creation-Date: 2013-09-24 18:34+0200\n"
+"PO-Revision-Date: 2013-09-24 18:54+0100\n"
 "Last-Translator: Pedro <pedrovfer@gmail.com>\n"
 "Language-Team: en <LL@li.org>\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
@@ -18,7 +18,8 @@ msgstr ""
 "Generated-By: Babel 1.3\n"
 "X-Generator: Poedit 1.5.7\n"
 
-#: /Users/pvicente/Documents/workspace/KatooServer/katoo/supervisor.py:223
+#: /Users/pvicente/Documents/workspace/KatooServer/katoo/supervisor.py:278
+#: /Users/pvicente/Documents/workspace/KatooServer/katoo/apns/api.py:89
 msgid "disconnected"
 msgstr "Disconnected due to inactivity"
 
@@ -34,10 +35,14 @@ msgstr "Video received"
 msgid "location"
 msgstr "Location received"
 
-#: /Users/pvicente/Documents/workspace/KatooServer/katoo/xmpp/xmppgoogle.py:247
+#: /Users/pvicente/Documents/workspace/KatooServer/katoo/xmpp/xmppgoogle.py:158
+msgid "available"
+msgstr "is available"
+
+#: /Users/pvicente/Documents/workspace/KatooServer/katoo/xmpp/xmppgoogle.py:290
 msgid "authfailed"
 msgstr "Disconnected. Authentication error"
 
-#: /Users/pvicente/Documents/workspace/KatooServer/katoo/xmpp/xmppgoogle.py:254
+#: /Users/pvicente/Documents/workspace/KatooServer/katoo/xmpp/xmppgoogle.py:297
 msgid "maxretries"
 msgstr "Disconnected. Connection problem"

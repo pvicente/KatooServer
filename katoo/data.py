@@ -147,7 +147,7 @@ class GoogleRosterItem(object):
     
     @property
     def favoriteEmoji(self):
-        return '\ue32f' if self._favorite else ''
+        return u'\ue32f' if self._favorite else ''
     
     @property
     def snoozePushTime(self):
