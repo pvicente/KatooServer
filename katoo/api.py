@@ -114,14 +114,17 @@ class API(DistributedAPI):
     
     @Metric(name='update_presence', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
     @AsynchronousCall(queue=None) #Queue is assigned at run time
-    @defer.inlineCallbacks
     def update_presence(self, userid, jid, **kwargs):
         self.log.info('UPDATE PRESENCE %s. Data: %s', jid, kwargs)
         running_client = KatooApp().getService(userid)
         if running_client is None:
             raise XMPPUserNotLogged('User %s is not running in current worker'%(userid))
-        roster = running_client.roster
-        yield roster.set(jid, **kwargs)
+        xmppuser = running_client.user
+        if kwargs.get('nextTimeAvailable') is None:
+            xmppuser.removePresenceContact(jid)
+        else:
+            xmppuser.addPresenceContact(jid, **kwargs)
+        return xmppuser.save()
     
     @Metric(name='logout', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
     @AsynchronousCall(queue=None) #Queue is assigned at runtime

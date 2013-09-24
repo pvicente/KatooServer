@@ -145,6 +145,10 @@ class GoogleRosterItem(object):
         self._favorite = eval(str(value))
     
     @property
+    def favoriteEmoji(self):
+        return '\ue32f' if self._favorite else ''
+    
+    @property
     def snoozePushTime(self):
         return False if self._snoozePushTime is None else Timer().utcnow() <= self._snoozePushTime
     
@@ -223,6 +227,7 @@ class GoogleUser(object):
                  _worker=conf.MACHINEID,
                  _onMigrationTime='',
                  _onReloging=False,
+                 _presenceContacts = {},
                  _version=conf.DEFAULT_VERSION,
                  _iosversion=conf.DEFAULT_VERSION,
                  _hwmodel=conf.DEFAULT_VERSION
@@ -243,6 +248,7 @@ class GoogleUser(object):
         self._worker=_worker
         self._onMigrationTime=_onMigrationTime
         self._onReloging = eval(str(_onReloging))
+        self._presenceContacts = _presenceContacts
         self._version = _version
         self._iosversion = _iosversion
         self._hwmodel = _hwmodel
@@ -390,6 +396,18 @@ class GoogleUser(object):
     @property
     def onReloging(self):
         return self._onReloging
+    
+    def addPresenceContact(self, jid, **kwargs):
+        self._presenceContacts[jid] = kwargs
+    
+    def removePresenceContact(self, jid):
+        self._presenceContacts.pop(jid, None)
+    
+    def isContactInPresence(self, jid):
+        return jid in self._presenceContacts
+    
+    def havePresenceContacts(self):
+        return bool(self._presenceContacts)
     
 if __name__ == '__main__':
     from twisted.internet import reactor
