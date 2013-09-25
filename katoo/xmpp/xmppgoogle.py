@@ -185,7 +185,7 @@ class GoogleHandler(GenericXMPPHandler):
     
     @IncrementMetric(name='roster_set', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onRosterSet(self, item):
-        self.log.info('onRosterSet to %s <- item %s', self.user.jid, item)
+        self.log.debug('onRosterSet to %s <- item %s', self.user.jid, item)
         fromjid, name = self.roster.getName(item)
         if name:
             self.roster.set(fromjid, name=name)
@@ -193,7 +193,7 @@ class GoogleHandler(GenericXMPPHandler):
     @IncrementMetric(name='roster_remove', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onRosterRemove(self, item):
         #We don't remove roster items
-        self.log.info('onRosterRemove to %s <- item %s', self.user.jid, item)
+        self.log.debug('onRosterRemove to %s <- item %s', self.user.jid, item)
     
     @IncrementMetric(name='message_received', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
