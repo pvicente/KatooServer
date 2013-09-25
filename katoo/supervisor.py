@@ -275,7 +275,7 @@ class GlobalSupervisor(Supervisor):
             try:
                 user = GoogleUser(**data)
                 API(user.userid, queue=user.worker).disconnect(user.userid)
-                APNSAPI(user.userid).sendpush(message=translate.TRANSLATORS[user.lang]._('disconnected'), token=user.pushtoken, badgenumber=user.badgenumber, sound='')
+                APNSAPI(user.userid).sendpush(message=u'{0} {1}'.format(u'\ue252', translate.TRANSLATORS[user.lang]._('disconnected')), token=user.pushtoken, badgenumber=user.badgenumber, sound='')
                 self.DISCONNECT_AWAY_METRIC.add(1)
             except Exception as e:
                 self.log.err(e, '[%s] Exception disconnecting user'%(data['_userid']))
