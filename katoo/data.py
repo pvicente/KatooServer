@@ -86,7 +86,7 @@ class GoogleRosterItem(object):
         self._jid = _jid
         self._name = _name
         self._contactName = _contactName
-        self._favorite = _favorite
+        self._favorite = bool(_favorite)
         self._snoozePushTime = _snoozePushTime
         self._notifyWhenAvailable = _notifyWhenAvailable
         if isinstance(_id, ObjectId):
@@ -122,7 +122,7 @@ class GoogleRosterItem(object):
     
     @name.setter
     def name(self, value):
-        self._name = ' '.join(value.split()[:2])
+        self._name = u' '.join(value.split()[:2])
         if self.contactName is None:
             self.contactName = self._name
     
@@ -133,7 +133,7 @@ class GoogleRosterItem(object):
     @contactName.setter
     def contactName(self, value):
         if value:
-            self._contactName = ' '.join(value.split()[:2])
+            self._contactName = u' '.join(value.split()[:2])
         else:
             self._contactName = self.name
     
@@ -143,7 +143,7 @@ class GoogleRosterItem(object):
     
     @favorite.setter
     def favorite(self, value):
-        self._favorite = eval(str(value))
+        self._favorite = bool(value)
     
     @property
     def favoriteEmoji(self):
@@ -252,12 +252,12 @@ class GoogleUser(object):
         self._pushsound = unicode(_pushsound)
         self._favoritesound = unicode(_favoritesound)
         self._lang = unicode(_lang)
-        self._connected = eval(str(_connected))
-        self._away = eval(str(_away))
+        self._connected = bool(_connected)
+        self._away = bool(_away)
         self._lastTimeConnected=_lastTimeConnected
         self._worker=_worker
         self._onMigrationTime=_onMigrationTime
-        self._onReloging = eval(str(_onReloging))
+        self._onReloging = bool(_onReloging)
         self._availablePresenceContacts = _availablePresenceContacts
         self._version = _version
         self._iosversion = _iosversion
