@@ -157,7 +157,7 @@ class GoogleHandler(GenericXMPPHandler):
                     roster_item = yield self.getContact(jid, barejid)
                     message = u'{0}{1} {2}'.format(roster_item.favoriteEmoji, roster_item.contactName, translate.TRANSLATORS[self.user.lang]._('available'))
                     API(self.user.userid).sendpush(message=message, token=self.user.pushtoken, badgenumber=self.user.badgenumber, 
-                                                   sound=self.user.favoritesound if roster_item.favorite else self.user.pushsound, jid=barejid, ignore=False)
+                                                   sound=self.user.favoritesound if roster_item.favorite else self.user.pushsound, jid=barejid, ignore=False, type='available')
                     if not roster_item.notifyWhenAvailable:
                         #Remove from AvailablePreseneces in user. Data in contact can be alive
                         self.user.removeAvailablePresenceContact(barejid)
