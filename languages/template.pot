@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2013-09-24 18:34+0200\n"
+"POT-Creation-Date: 2013-09-25 12:13+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -36,13 +36,5 @@ msgstr ""
 
 #: /Users/pvicente/Documents/workspace/KatooServer/katoo/xmpp/xmppgoogle.py:158
 msgid "available"
-msgstr ""
-
-#: /Users/pvicente/Documents/workspace/KatooServer/katoo/xmpp/xmppgoogle.py:290
-msgid "authfailed"
-msgstr ""
-
-#: /Users/pvicente/Documents/workspace/KatooServer/katoo/xmpp/xmppgoogle.py:297
-msgid "maxretries"
 msgstr ""
 

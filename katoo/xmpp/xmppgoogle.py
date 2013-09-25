@@ -286,15 +286,11 @@ class XMPPGoogle(ReauthXMPPClient, Observer):
     @IncrementMetric(name='error_authentication', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onAuthenticationError(self, reason):
         self.log.err(reason, 'AUTH_ERROR_EVENT %s'%(self.user.jid))
-        if self.user.pushtoken:
-            API(self.user.userid).sendpush(message=translate.TRANSLATORS[self.user.lang]._('authfailed'), token=self.user.pushtoken, badgenumber=self.user.badgenumber, sound='')
         return self.disconnect()
     
     @IncrementMetric(name='error_maxretries', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onMaxRetries(self):
         self.log.error('CONNECTION_MAX_RETRIES %s', self.user.jid)
-        if self.user.pushtoken:
-            API(self.user.userid).sendpush(message=translate.TRANSLATORS[self.user.lang]._('maxretries'), token=self.user.pushtoken, badgenumber=self.user.badgenumber, sound='')
         return self.disconnect()
     
     @IncrementMetric(name='disconnect', unit=METRIC_UNIT, source=METRIC_SOURCE)
