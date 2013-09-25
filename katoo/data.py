@@ -417,7 +417,7 @@ class GoogleUser(object):
         return jid in self._availablePresenceContacts
     
     def haveAvailablePresenceContacts(self):
-        return bool(self._availablePresenceContacts)
+        return True if self._availablePresenceContacts else False
     
 if __name__ == '__main__':
     from twisted.internet import reactor
