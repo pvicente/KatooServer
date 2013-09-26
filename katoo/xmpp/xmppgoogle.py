@@ -156,8 +156,7 @@ class GoogleHandler(GenericXMPPHandler):
                 if self.user.isContactInAvailablePresence(barejid):
                     roster_item = yield self.getContact(jid, barejid)
                     message = u'{0}{1} {2}'.format(u'\U0001f514', roster_item.contactName, translate.TRANSLATORS[self.user.lang]._('available'))
-                    API(self.user.userid).sendpush(message=message, token=self.user.pushtoken, badgenumber=self.user.badgenumber, 
-                                                   sound=self.user.favoritesound if roster_item.favorite else self.user.pushsound, jid=barejid, ignore=False, type='available')
+                    API(self.user.userid).sendpush(message=message, token=self.user.pushtoken, badgenumber=self.user.badgenumber, sound='katoo.aif', jid=barejid, ignore=False, type='available')
                     if not roster_item.notifyWhenAvailable:
                         self.user.removeAvailablePresenceContact(barejid)
                         yield self.user.save()
