@@ -44,12 +44,14 @@ class API(DistributedAPI):
         self.log.info('RELOGIN %s. Pending_Jobs: %s. Data: %s', xmppuser.jid, len_pending_jobs, xmppuser)
         try:
             yield self._shared_login(xmppuser)
+            running_client = KatooApp().getService(xmppuser.userid)
+            self.log.info('RELOGIN %s. Running xmppclient: %s', xmppuser.jid, running_client)
         except XMPPUserAlreadyLogged:
             #If user is already logged xmppuser data is valid and we take it as xmppuser
             running_client = KatooApp().getService(xmppuser.userid)
             xmppuser = running_client.user
             xmppuser.worker = xmppuser.userid
-            self.log.warning('RELOGIN %s. User Already logged taking user to perform RELOGIN process. Data: %s', xmppuser.jid, xmppuser)
+            self.log.warning('RELOGIN %s. User Already logged taking user to perform RELOGIN process. Running xmppclient: %s', xmppuser.jid, running_client)
         
         try:
             xmppuser.onMigrationTime = Timer().utcnow()
