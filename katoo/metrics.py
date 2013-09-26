@@ -21,8 +21,7 @@ log.setLevel(logging.INFO)
 
 class Accumulator(object):
     def __init__(self, source, name, unit, scale):
-        self._name = '%s.%s'%(source,name)
-        self._name.replace(' ', '_')
+        self._name = ('%s.%s'%(source,name)).replace(' ', '_')
         self._source = source
         self._unit = unit
         self._scale = scale*1.0
