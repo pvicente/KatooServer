@@ -42,53 +42,60 @@ class API(DistributedAPI):
     def relogin(self, xmppuser, pending_jobs):
         len_pending_jobs = len(pending_jobs)
         self.log.info('RELOGIN %s. Pending_Jobs: %s. Data: %s', xmppuser.jid, len_pending_jobs, xmppuser)
-        yield self._shared_login(xmppuser)
+        try:
+            yield self._shared_login(xmppuser)
+        except XMPPUserAlreadyLogged:
+            #If user is already logged xmppuser data is valid and we take it as xmppuser
+            running_client = KatooApp().getService(xmppuser.userid)
+            xmppuser = running_client.user
+            xmppuser.worker = xmppuser.userid
+            self.log.warning('RELOGIN %s. User Already logged taking user to perform RELOGIN process. Data: %s', xmppuser.jid, xmppuser)
         
-        xmppuser.onMigrationTime = Timer().utcnow()
-        yield xmppuser.save()
-        
-        queue = Queue(conf.MACHINEID)
-        
-        self.log.info('perform relogin %s. Enqueuing pending jobs %s before migration was launched. Data %s', xmppuser.jid, len_pending_jobs, xmppuser)
-        #Enqueue pending jobs before migration was launched
-        for job_id in pending_jobs:
-            try:
-                job = yield Job.fetch(job_id, queue.connection)
-                yield queue.enqueue_job(job)
-            except NoSuchJobError:
-                pass
-        self.log.info('perform relogin %s. Finished enqueuing pending jobs before migration was launched.', xmppuser.jid)
-        
-        self.log.info('perform relogin %s. Enqueing pending jobs after migration was launched.', xmppuser.jid)
-        #Enqueue pending jobs after migration was launched
-        migration_queue = Queue(xmppuser.userid)
-        migration_job_ids = yield migration_queue.job_ids
-        yield migration_queue.empty()
-        
-        while migration_job_ids:
-            job_id = migration_job_ids.pop(0)
-            try:
-                job = yield Job.fetch(job_id, migration_queue.connection)
-                #Enqueue job in current worker queue
-                yield queue.enqueue_job(job)
-            except NoSuchJobError:
-                pass
+        try:
+            xmppuser.onMigrationTime = Timer().utcnow()
+            yield xmppuser.save()
             
-            if not migration_job_ids:
-                xmppuser.worker=conf.MACHINEID
-                xmppuser.onMigrationTime=''
-                yield xmppuser.save()
-                migration_job_ids = yield migration_queue.job_ids
-                yield migration_queue.empty()
-        
-        self.log.info('perform relogin %s. Finished enqueing jobs after migration was launched. Data %s', xmppuser.jid, xmppuser)
-        
-        if xmppuser.worker != conf.MACHINEID:
-            xmppuser.worker=conf.MACHINEID
+            queue = Queue(conf.MACHINEID)
+            
+            self.log.info('perform relogin %s. Enqueuing pending jobs %s before migration was launched. Data %s', xmppuser.jid, len_pending_jobs, xmppuser)
+            #Enqueue pending jobs before migration was launched
+            for job_id in pending_jobs:
+                try:
+                    job = yield Job.fetch(job_id, queue.connection)
+                    yield queue.enqueue_job(job)
+                except NoSuchJobError:
+                    pass
+            self.log.info('perform relogin %s. Finished enqueuing pending jobs before migration was launched.', xmppuser.jid)
+            
+            self.log.info('perform relogin %s. Enqueing pending jobs after migration was launched.', xmppuser.jid)
+            #Enqueue pending jobs after migration was launched
+            migration_queue = Queue(xmppuser.userid)
+            migration_job_ids = yield migration_queue.job_ids
+            yield migration_queue.empty()
+            
+            while migration_job_ids:
+                job_id = migration_job_ids.pop(0)
+                try:
+                    job = yield Job.fetch(job_id, migration_queue.connection)
+                    #Enqueue job in current worker queue
+                    yield queue.enqueue_job(job)
+                except NoSuchJobError:
+                    pass
+                
+                if not migration_job_ids:
+                    xmppuser.worker=conf.MACHINEID
+                    xmppuser.onMigrationTime=''
+                    yield xmppuser.save()
+                    
+                    migration_job_ids = yield migration_queue.job_ids
+                    yield migration_queue.empty()
+            
+        finally:
+            xmppuser.worker = conf.MACHINEID
             xmppuser.onMigrationTime=''
             yield xmppuser.save()
-        
-        self.log.info('RELOGIN %s. Finished. Data %s', xmppuser.jid, xmppuser)
+            self.log.info('RELOGIN %s. Finished. Data %s', xmppuser.jid, xmppuser)
+    
     
     @Metric(name='update', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)
     @AsynchronousCall(queue=None) #Queue is assigned at runtime
