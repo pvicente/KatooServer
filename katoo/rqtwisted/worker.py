@@ -29,8 +29,8 @@ TWISTED_WARMUP = 5
 
 LOGGING_OK_JOBS = True
 BASE_INCREMENT_CYCLES=25
-NOJOB_INCREMET_CYCLES=200
-TOP_CYCLES=400
+NOJOB_INCREMET_CYCLES=50
+TOP_CYCLES=100
 
 green = make_colorizer('darkgreen')
 yellow = make_colorizer('darkyellow')
