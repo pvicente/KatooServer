@@ -94,7 +94,7 @@ class RedisMixin(object):
                                           'dataReceived': IncrementMetric(name='dataReceived', unit='calls', source='MONGO'),
                                           'messageReceived':   IncrementMetric(name='messageReceived', unit='calls', source='MONGO'),
                                           'querySuccess':   IncrementMetric(name='querySuccess', unit='calls', source='MONGO'),
-                                          'queryFailure':   IncrementMetric(name='queryFailure', unit='calls', source='MONGO'),
+                                          'queryFailure':   IncrementMetric(name='queryFailure', unit='calls', source='MONGO', reset=False),
                                           'OP_INSERT': IncrementMetric(name='op_insert', unit='calls', source='MONGO'),
                                           'OP_UPDATE':     IncrementMetric(name='op_update', unit='calls', source='MONGO'),
                                           'OP_DELETE':   IncrementMetric(name='op_delete', unit='calls', source='MONGO'),
