@@ -145,6 +145,7 @@ class GoogleHandler(GenericXMPPHandler):
     @defer.inlineCallbacks
     def onAvailableReceived(self, jid, state):
         if self.isOwnBareJid(jid) and jid.resource == self.user.resource:
+            #TODO: Test function with eq or hash operators with timeit
             self.log.info('APP_GO_ONLINE %s',self.user.jid)
             self.user.away = False
             yield self.user.save()
@@ -166,6 +167,7 @@ class GoogleHandler(GenericXMPPHandler):
     @IncrementMetric(name='presence_unavailable', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onUnavailableReceived(self, jid):
         if self.isOwnBareJid(jid) and jid.resource == self.user.resource:
+            #TODO: Test function with eq or hash operators with timeit
             self.log.info('APP_GO_AWAY %s', self.user.jid)
             self.user.away = True
             return self.user.save()
