@@ -95,8 +95,8 @@ class API(DistributedAPI):
         finally:
             xmppuser.worker = conf.MACHINEID
             xmppuser.onMigrationTime=''
-            yield xmppuser.save()
-            self.log.info('RELOGIN %s. Finished. Data %s', xmppuser.jid, xmppuser)
+            res = yield xmppuser.save()
+            self.log.info('RELOGIN %s. Finished. Data %s. Save result: %s', xmppuser.jid, xmppuser, res)
     
     
     @Metric(name='update', value=METRIC_INCREMENT, unit=METRIC_UNIT, source=METRIC_SOURCE)

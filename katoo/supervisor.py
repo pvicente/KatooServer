@@ -155,7 +155,7 @@ class GlobalSupervisor(Supervisor):
             delta_time = now - user.onMigrationTime
             if delta_time.seconds < 60:
                 continue
-            self.log.warning('[%s] USER_MIGRATION_STOPPED %s second(s) ago. Performing new relogin ...', user.userid, delta_time.seconds)
+            self.log.warning('[%s] USER_MIGRATION_STOPPED %s second(s) ago. Performing new relogin. User state: %s', user.userid, delta_time.seconds, user)
             user.worker = user.userid
             user.onMigrationTime=''
             yield user.save()
