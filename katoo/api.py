@@ -49,17 +49,17 @@ class API(DistributedAPI):
         except XMPPUserAlreadyLogged:
             #If user is already logged xmppuser data is valid and we take it as xmppuser
             running_client = KatooApp().getService(xmppuser.userid)
+            self.log.warning('RELOGIN %s. User Already logged taking user to perform RELOGIN process. Running xmppclient: %s', xmppuser.jid, running_client)
             xmppuser = running_client.user
             xmppuser.worker = xmppuser.userid
-            self.log.warning('RELOGIN %s. User Already logged taking user to perform RELOGIN process. Running xmppclient: %s', xmppuser.jid, running_client)
         
         try:
             xmppuser.onMigrationTime = Timer().utcnow()
-            yield xmppuser.save()
+            res = yield xmppuser.save()
+            self.log.info('perform relogin %s. Enqueuing pending jobs %s before migration was launched. Data %s. Save result: %s', xmppuser.jid, len_pending_jobs, running_client, res)
             
             queue = Queue(conf.MACHINEID)
             
-            self.log.info('perform relogin %s. Enqueuing pending jobs %s before migration was launched. Data %s', xmppuser.jid, len_pending_jobs, xmppuser)
             #Enqueue pending jobs before migration was launched
             for job_id in pending_jobs:
                 try:
