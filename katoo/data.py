@@ -94,9 +94,7 @@ class GoogleRosterItem(object):
     
     @IncrementMetric(name='rosteritem_save', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def save(self):
-        data=vars(self)
-        d = self.model.update({'_userid': self.userid, '_jid': self.jid}, upsert=True, multi=False, **data)
-        return d
+        return self.model.save(vars(self))
     
     def update(self, **kwargs):
         for k,v in kwargs.iteritems():
@@ -267,8 +265,7 @@ class GoogleUser(object):
     
     @IncrementMetric(name='googleuser_save', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def save(self):
-        data=vars(self)
-        return self.model.update({'_userid': self.userid}, upsert=True, multi=False, **data)
+        return self.model.save(vars(self))
     
     def update(self, **kwargs):
         for k,v in kwargs.iteritems():
