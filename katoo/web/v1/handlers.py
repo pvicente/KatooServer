@@ -180,6 +180,9 @@ class GoogleHandler(MyRequestHandler):
         try:
             response_data = {'success': False, 'reason': 'Already logged'}
             if user is None or not user.connected:
+                if user and not user.connected:
+                    yield GoogleUser.remove(user.userid, flush_messages=False)
+                
                 user = GoogleUser(_userid=key, _version=self.user_agent.version, _iosversion = self.user_agent.iosVersion, _hwmodel= self.user_agent.hwmodel, 
                                   **self.args)
                 yield API(key).login(user)

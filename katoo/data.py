@@ -187,8 +187,11 @@ class GoogleUser(object):
     
     @classmethod
     @IncrementMetric(name='googleuser_remove', unit=METRIC_UNIT, source=METRIC_SOURCE)
-    def remove(cls, userid):
-        return defer.DeferredList([cls.model.remove({'_userid': userid}), GoogleMessage.flushMessages(userid), GoogleRosterItem.remove(userid)])
+    def remove(cls, userid, flush_messages=True):
+        if flush_messages:
+            return defer.DeferredList([cls.model.remove({'_userid': userid}), GoogleMessage.flushMessages(userid), GoogleRosterItem.remove(userid)])
+        else:
+            return defer.DeferredList([cls.model.remove({'_userid': userid}), GoogleRosterItem.remove(userid)])
     
     @classmethod
     def get_connected(cls, worker_name=None):
