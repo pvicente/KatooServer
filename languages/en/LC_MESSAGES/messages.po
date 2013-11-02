@@ -7,15 +7,16 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2013-09-25 12:13+0200\n"
-"PO-Revision-Date: 2013-09-24 18:54+0100\n"
+"POT-Creation-Date: 2013-11-02 11:06+0100\n"
+"PO-Revision-Date: 2013-11-02 11:09+0100\n"
 "Last-Translator: Pedro <pedrovfer@gmail.com>\n"
 "Language-Team: en <LL@li.org>\n"
-"Plural-Forms: nplurals=2; plural=(n != 1)\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 1.3\n"
+"X-Generator: Poedit 1.5.7\n"
 
 #: /Users/pvicente/Documents/workspace/KatooServer/katoo/supervisor.py:278
 #: /Users/pvicente/Documents/workspace/KatooServer/katoo/apns/api.py:89
@@ -34,7 +35,11 @@ msgstr "Video received"
 msgid "location"
 msgstr "Location received"
 
-#: /Users/pvicente/Documents/workspace/KatooServer/katoo/xmpp/xmppgoogle.py:158
+#: /Users/pvicente/Documents/workspace/KatooServer/katoo/apns/apnmessage.py:12
+msgid "sticker"
+msgstr "Sticker received"
+
+#: /Users/pvicente/Documents/workspace/KatooServer/katoo/xmpp/xmppgoogle.py:159
 msgid "available"
 msgstr "is available"
 
@@ -43,4 +48,3 @@ msgstr "is available"
 
 #~ msgid "maxretries"
 #~ msgstr "Disconnected. Connection problem"
-

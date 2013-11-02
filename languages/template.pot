@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2013-09-25 12:13+0200\n"
+"POT-Creation-Date: 2013-11-02 11:06+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -34,7 +34,11 @@ msgstr ""
 msgid "location"
 msgstr ""
 
-#: /Users/pvicente/Documents/workspace/KatooServer/katoo/xmpp/xmppgoogle.py:158
+#: /Users/pvicente/Documents/workspace/KatooServer/katoo/apns/apnmessage.py:12
+msgid "sticker"
+msgstr ""
+
+#: /Users/pvicente/Documents/workspace/KatooServer/katoo/xmpp/xmppgoogle.py:159
 msgid "available"
 msgstr ""
 
