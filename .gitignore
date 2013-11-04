@@ -39,3 +39,4 @@ venv
 .vagrant
 .env
 .idea
+*.iml
