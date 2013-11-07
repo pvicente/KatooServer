@@ -20,7 +20,7 @@ LOGGING_OK_JOBS = eval(str(os.getenv('LOGGING_OK_JOBS', True)))
 METRICS_REPORT_TIME = int(os.getenv('METRICS_REPORT_TIME', 60))
 METRICS_OUTPUT_LEN = int(os.getenv('METRICS_OUTPUT_LEN', 950))
 PRODUCTION=eval(str(os.getenv('PRODUCTION', False)))
-LXMLPARSER=eval(str(os.getenv('LXMLPARSER', False)))
+LXMLPARSER=eval(str(os.getenv('LXMLPARSER', True)))
 TIMER_INTERVAL=int(os.getenv('TIMER_INTERVAL', 1))
 
 
@@ -41,6 +41,7 @@ USER_AGENT_CHECK=eval(str(os.getenv('USER_AGENT_CHECK', False)))
 USER_AGENT_WL=frozenset(eval(os.getenv('USER_AGENT_WL','[]')))
 USER_AGENT_BL=frozenset(eval(os.getenv('USER_AGENT_BL', '[]')))
 DEFAULT_VERSION='UNKNOWN'
+FAKE_PURCHASE_URL=os.getenv('FAKE_PURCHASE_URL', '')
 
 ##REDIS_CONNECTION_MANAGEMENT
 REDIS_WORKERS=int(os.getenv('REDIS_WORKERS', 1))

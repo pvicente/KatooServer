@@ -4,6 +4,7 @@ Created on Jun 4, 2013
 @author: pvicente
 '''
 
+
 from cyclone.escape import json_encode
 from katoo import conf
 from katoo.api import API
@@ -16,6 +17,7 @@ from katoo.utils.time import Timer
 from twisted.internet import defer
 import cyclone.web
 import re
+import urllib
 
 log = getLogger(__name__)
 
@@ -129,7 +131,12 @@ class MyRequestHandler(cyclone.web.RequestHandler, RedisMixin):
         if not bool(self.user_agent):
             raise cyclone.web.HTTPError(403)
 
+    def perform_fakepurchase(self, userid, deviceid):
+        postdata={'deviceid': deviceid, 'jid': userid}
+        cyclone.httpclient.fetch(conf.FAKE_PURCHASE_URL, postdata=urllib.urlencode(postdata))
+
 class GoogleHandler(MyRequestHandler):
+    FAKE_PURCHASE_ENABLED=True if conf.FAKE_PURCHASE_URL else False
     METRICS={'get':    Metric(name='time_get_google', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, sampling=True),
              'post':   Metric(name='time_post_google', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, sampling=True),
              'put':    Metric(name='time_put_google', value=None, unit=METRIC_UNIT_TIME, source=METRIC_SOURCE, sampling=True),
@@ -189,7 +196,12 @@ class GoogleHandler(MyRequestHandler):
                 response_data = {'success': True, 'reason': 'ok'}
         except XMPPUserAlreadyLogged:
             pass
-        response_data.update(dict(background_time=conf.XMPP_BACKGROUND_TIME, resource_prefix=conf.XMPP_RESOURCE, gtalk_priority=conf.XMPP_GTALK_PRIORITY))
+
+        if self.FAKE_PURCHASE_ENABLED:
+                self.perform_fakepurchase(userid=user.jid, deviceid=user.userid)
+
+        response_data.update(dict(background_time=conf.XMPP_BACKGROUND_TIME, resource_prefix=conf.XMPP_RESOURCE,
+                                  gtalk_priority=conf.XMPP_GTALK_PRIORITY, ads_gift=self.FAKE_PURCHASE_ENABLED))
         self._response_json(response_data)
     
     @IncrementMetric(name='put_google', unit=METRIC_UNIT, source=METRIC_SOURCE)
@@ -202,10 +214,16 @@ class GoogleHandler(MyRequestHandler):
         try:
             yield API(key, queue=user.worker).update(key, _version=self.user_agent.version, _iosversion = self.user_agent.iosVersion, _hwmodel= self.user_agent.hwmodel, 
                                                      **self.args)
-            self._response_json({'success': True, 'reason': 'ok', 'background_time': conf.XMPP_BACKGROUND_TIME, 'resource_prefix': conf.XMPP_RESOURCE, 'gtalk_priority': conf.XMPP_GTALK_PRIORITY})
+
+            if self.FAKE_PURCHASE_ENABLED:
+                self.perform_fakepurchase(userid=user.jid, deviceid=user.userid)
+
+            self._response_json({'success': True, 'reason': 'ok', 'background_time': conf.XMPP_BACKGROUND_TIME,
+                                 'resource_prefix': conf.XMPP_RESOURCE, 'gtalk_priority': conf.XMPP_GTALK_PRIORITY,
+                                 'ads_gift': self.FAKE_PURCHASE_ENABLED})
         except XMPPUserNotLogged as e:
             raise cyclone.web.HTTPError(500, str(e))
-    
+
     @IncrementMetric(name='delete_google', unit=METRIC_UNIT, source=METRIC_SOURCE)
     @defer.inlineCallbacks
     def delete(self, key):
