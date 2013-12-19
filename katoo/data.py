@@ -5,6 +5,7 @@ Created on Jun 4, 2013
 '''
 
 from datetime import timedelta
+import types
 from katoo.metrics import IncrementMetric
 from katoo.txMongoModel.mongomodel.model import Model, Indexes, Sort
 from katoo.utils.connections import MongoMixin
@@ -141,6 +142,8 @@ class GoogleRosterItem(object):
     
     @favorite.setter
     def favorite(self, value):
+        if isinstance(value, types.StringTypes):
+            value = int(value) if value.isdigit() else ''
         self._favorite = bool(value)
     
     @property
