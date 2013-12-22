@@ -90,8 +90,8 @@ HEROKU_UNIDLING_URL=os.getenv('HEROKU_UNIDLING_URL', None)
 
 #DISTRIBUTED_SYSTEM
 DIST_ASYNC_AS_SYNC = eval(str(os.getenv('DIST_ASYNC_AS_SYNC', False)))
-DIST_TIMEOUT_TIME = float(os.getenv('DIST_TIMEOUT_TIME', 20))
-DIST_DEFAULT_TTL = int(os.getenv('DIST_DEFAULT_TTL', DIST_TIMEOUT_TIME))
+DIST_TIMEOUT_TIME = int(os.getenv('DIST_TIMEOUT_TIME', 604800)) #1 week to store job without execution or failed
+DIST_DEFAULT_TTL = int(os.getenv('DIST_DEFAULT_TTL', 20))
 DIST_PULL_TIME = float(os.getenv('DIST_PULL_TIME', 0.2))
 DIST_FIRST_PULL_TIME = float(os.getenv('DIST_FIRST_PULL_TIME', 0.025))
 DIST_DISABLED = REDIS_WORKERS == 0

@@ -41,6 +41,7 @@ class SynchronousCall(object):
         self.queue_name=None if conf.DIST_DISABLED else queue
         self.sync = True
         self.result_ttl = conf.DIST_DEFAULT_TTL
+        self.timeout = conf.DIST_TIMEOUT_TIME
     
     @defer.inlineCallbacks
     def get_result(self, job):
@@ -94,7 +95,7 @@ class SynchronousCall(object):
                 job = Job.create(func=function, args=args, kwargs=kwargs, connection=queue.connection,
                          result_ttl=self.result_ttl, status=Status.QUEUED)
                 job.meta['userid']=calling_self.key
-                yield queue.enqueue_job(job)
+                yield queue.enqueue_job(job, timeout=self.timeout)
                 if self.sync or calling_self.sync:
                     ret = yield self.get_result(job)
             defer.returnValue(ret)

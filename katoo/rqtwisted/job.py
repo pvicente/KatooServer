@@ -164,6 +164,8 @@ class Job(rq.job.Job):
             obj['meta'] = dumps(self.meta)
         
         yield self.connection.hmset(key, obj)
+        if self.timeout is not None:
+            yield self.connection.expire(key, self.timeout)
         
     def delete(self):
         """Deletes the job hash from Redis."""
