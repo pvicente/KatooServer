@@ -239,10 +239,9 @@ class GlobalSupervisor(Supervisor):
                         user = GoogleUser(**data)
                         user.worker = user.userid
                         yield user.save()
-                        
-                        pending_jobs = yield self.getPendingJobs(user.userid, worker)
-                        yield API(user.userid).relogin(user, pending_jobs)
-                        self.log.info('[%s] Reconnected %s/%s user(s) of worker %s', user.userid, i+1, total_bad_users, worker)
+
+                        reactor.callFromThread(self.reloginUser, user, worker)
+                        self.log.info('[%s] Reconnecting %s/%s user(s) of worker %s', user.userid, i+1, total_bad_users, worker)
                     except Exception as e:
                         self.log.err(e, '[%s] Exception while reconnecting'%(data['_userid']))
                     
@@ -289,16 +288,22 @@ class GlobalSupervisor(Supervisor):
             data = connected_users[i]
             try:
                 user = GoogleUser(**data)
-                last_worker = user.worker
-                user.worker = user.userid
+                worker, user.worker = user.worker, user.userid
                 yield user.save()
-                
-                pending_jobs = yield self.getPendingJobs(user.userid, last_worker)
-                yield API(user.userid).relogin(user, pending_jobs)
-                self.log.info('[%s] Reconnected %s/%s user(s)', user.userid, i+1, total_users)
+
+                reactor.callFromThread(self.reloginUser, user, user.worker)
+                self.log.info('[%s] Reconnecting %s/%s user(s)', user.userid, i+1, total_users)
             except Exception as e:
                 self.log.err(e, '[%s] Exception while reconnecting'%(data['_userid']))
-    
+
+    @defer.inlineCallbacks
+    def reloginUser(self, user, last_worker):
+        try:
+            pending_jobs = yield self.getPendingJobs(user.userid, last_worker)
+            yield API(user.userid).relogin(user, pending_jobs)
+        except Exception as e:
+            self.log.err(e, '[%s] Exception while reconnecting'%(data['_userid']))
+
     def startService(self):
         Supervisor.startService(self)
         
