@@ -47,7 +47,7 @@ FAKE_PURCHASE_URL=os.getenv('FAKE_PURCHASE_URL', '')
 REDIS_WORKERS=int(os.getenv('REDIS_WORKERS', 1))
 REDIS_URL=os.getenv('REDISCLOUD_URL', 'redis://localhost:6379')
 REDIS_POOL=int(os.getenv('REDIS_POOL', 10))
-WORKER_WARMUP=int(os.getenv('WORKER_WARMUP',TWISTED_WARMUP+5))
+WORKER_WARMUP=int(os.getenv('WORKER_WARMUP',TWISTED_WARMUP+8))
 
 #MONGO
 MONGO_URL=os.getenv('MONGOLAB_URI', 'mongodb://localhost:27017')
