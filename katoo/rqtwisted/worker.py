@@ -209,6 +209,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         
         meta = ','.join([item for item in job.meta.values()])
         job.meta['failure'] = failure
+        job.timeout=self.default_result_ttl
         self.log.msg('[%s] JOB_FAILED %s: %s'%(meta, job, exc_string))
         yield self.failed_queue.quarantine(job, exc_info=exc_string)
     
