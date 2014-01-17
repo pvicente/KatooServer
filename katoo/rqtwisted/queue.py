@@ -221,8 +221,9 @@ class Queue(rq.queue.Queue):
         defer.returnValue(ret)
 
 class FailedQueue(Queue):
-    def __init__(self, connection=None):
+    def __init__(self, connection=None, enqueue=True):
         super(FailedQueue, self).__init__('failed', connection=connection)
+        self._enqueuejob = enqueue
 
     @defer.inlineCallbacks
     def quarantine(self, job, exc_info):
@@ -236,7 +237,10 @@ class FailedQueue(Queue):
         job.ended_at = times.now()
         job.exc_info = exc_info
         job.status = Status.FAILED
-        ret = yield self.enqueue_job(job, timeout=job.timeout, set_meta_data=False)
+        if self._enqueuejob:
+            ret = yield self.enqueue_job(job, timeout=job.timeout, set_meta_data=False)
+        else:
+            ret = yield job.save()
         defer.returnValue(ret)
 
     def requeue(self, job_id):

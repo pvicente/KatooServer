@@ -41,7 +41,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     redis_death_workers_keys = "rq:workers:death"
     def __init__(self, queues, name=None, loops = 1, blocking_time = 1,
         default_result_ttl=DEFAULT_RESULT_TTL, connection=None, 
-        exc_handler=None, default_worker_ttl=DEFAULT_WORKER_TTL, default_warmup=TWISTED_WARMUP):
+        exc_handler=None, default_worker_ttl=DEFAULT_WORKER_TTL, default_warmup=TWISTED_WARMUP, default_enqueue_failed_jobs=True):
         if connection is None:
             connection = RedisMixin.redis_conn
         self.connection = connection
@@ -58,7 +58,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         self._horse_pid = 0
         self._stopped = False
         self.log = log
-        self.failed_queue = FailedQueue(connection=self.connection)
+        self.failed_queue = FailedQueue(connection=self.connection, enqueue=default_enqueue_failed_jobs)
         self.blocking_time = blocking_time
         self.loops = loops
         self.default_warmup = default_warmup
