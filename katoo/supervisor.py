@@ -187,11 +187,11 @@ class GlobalSupervisor(Supervisor):
             self.log.info('DEATH_WORKERS %s', [worker.get('name') for worker in death_workers])
         for worker in death_workers:
             name = worker.get('name')
-            key = worker.get('key')
             if conf.DIST_QUEUE_LOGIN in worker.get('queues', []):
                 connected_users = yield GoogleUser.get_connected(name)
                 total_users = len(connected_users)
                 self.log.info('Reconnecting %s connected user(s) of death worker %s', total_users, name)
+                last_user_index = total_users-1
                 for i in xrange(total_users):
                     try:
                         data = connected_users[i]
@@ -202,18 +202,14 @@ class GlobalSupervisor(Supervisor):
                         yield user.save()
                         
                         #Get pending jobs
-                        pending_jobs = yield self.getPendingJobs(user.userid, name)
-                        yield API(user.userid).relogin(user, pending_jobs)
-                        self.log.info('[%s] Reconnected %s/%s user(s) of worker %s', user.userid, i+1, total_users, name)
+                        reactor.callLater(0, self.reloginUser, user, name, i==last_user_index)
+                        self.log.info('[%s] Reconnecting %s/%s user(s) of worker %s', user.userid, i+1, total_users, name)
                     except Exception as e:
                         self.log.err(e, '[%s] Exception while reconnecting'%(data['_userid']))
-            
-            #Remove worker from death workers
-            yield Worker.remove(key)
-            
-            #Remove own queue of worker
-            queue = Queue(name)
-            yield queue.empty()
+
+                #Remove worker and queue when no users were assigned
+                if total_users == 0:
+                    yield self.removeWorker(name)
     
     @defer.inlineCallbacks
     def processBadAssignedWorkers(self):
@@ -236,7 +232,7 @@ class GlobalSupervisor(Supervisor):
                 total_bad_users = len(bad_users)
                 if total_bad_users > 0:
                     self.log.info('Reconnecting %s users assigned to bad worker %s', total_bad_users, worker)
-                last_worker_index = total_bad_users-1
+                last_user_index = total_bad_users-1
                 for i in xrange(total_bad_users):
                     try:
                         data = bad_users[i]
@@ -244,10 +240,15 @@ class GlobalSupervisor(Supervisor):
                         user.worker = user.userid
                         yield user.save()
 
-                        reactor.callLater(0, self.reloginUser, user, worker, i==last_worker_index)
+                        reactor.callLater(0, self.reloginUser, user, worker, i==last_user_index)
                         self.log.info('[%s] Reconnecting %s/%s user(s) of worker %s', user.userid, i+1, total_bad_users, worker)
                     except Exception as e:
                         self.log.err(e, '[%s] Exception while reconnecting'%(data['_userid']))
+
+                #Remove worker and queue when no users were assigned
+                if total_bad_users == 0:
+                    yield self.removeWorker(worker)
+
 
     
     @defer.inlineCallbacks
@@ -298,16 +299,22 @@ class GlobalSupervisor(Supervisor):
         try:
             pending_jobs = yield self.getPendingJobs(user.userid, last_worker)
             yield API(user.userid).relogin(user, pending_jobs)
-            if removeWorker:
-                #Remove worker from death workers
-                worker = Worker(queues=[], name=last_worker)
-                yield worker.remove(worker.key)
-
-                #Remove own queue of worker
-                queue = Queue(worker.key)
-                yield queue.empty()
         except Exception as e:
             self.log.err(e, '[%s] Exception while reconnecting'%(data['_userid']))
+        finally:
+            if removeWorker:
+                yield self.removeWorker(last_worker)
+
+    @defer.inlineCallbacks
+    def removeWorker(self, name):
+        self.log.info("Removing worker/queue %s from system", name)
+        #Remove worker from death workers
+        worker = Worker(queues=[], name=name)
+        yield worker.remove(worker.key)
+
+        #Remove own queue of worker
+        queue = Queue(name)
+        yield queue.empty()
 
     def startService(self):
         Supervisor.startService(self)
