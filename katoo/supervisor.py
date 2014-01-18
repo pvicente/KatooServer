@@ -236,6 +236,7 @@ class GlobalSupervisor(Supervisor):
                 total_bad_users = len(bad_users)
                 if total_bad_users > 0:
                     self.log.info('Reconnecting %s users assigned to bad worker %s', total_bad_users, worker)
+                last_worker_index = total_bad_users-1
                 for i in xrange(total_bad_users):
                     try:
                         data = bad_users[i]
@@ -243,19 +244,11 @@ class GlobalSupervisor(Supervisor):
                         user.worker = user.userid
                         yield user.save()
 
-                        reactor.callLater(0, self.reloginUser, user, worker)
+                        reactor.callLater(0, self.reloginUser, user, worker, i==last_worker_index)
                         self.log.info('[%s] Reconnecting %s/%s user(s) of worker %s', user.userid, i+1, total_bad_users, worker)
                     except Exception as e:
                         self.log.err(e, '[%s] Exception while reconnecting'%(data['_userid']))
-                    
-            
-                #Remove worker from death workers
-                worker = Worker(queues=[], name=worker)
-                yield worker.remove(worker.key)
-                
-                #Remove own queue of worker
-                queue = Queue(worker)
-                yield queue.empty()
+
     
     @defer.inlineCallbacks
     def checkWorkers(self):
@@ -301,10 +294,18 @@ class GlobalSupervisor(Supervisor):
                 self.log.err(e, '[%s] Exception while reconnecting'%(data['_userid']))
 
     @defer.inlineCallbacks
-    def reloginUser(self, user, last_worker):
+    def reloginUser(self, user, last_worker, removeWorker=False):
         try:
             pending_jobs = yield self.getPendingJobs(user.userid, last_worker)
             yield API(user.userid).relogin(user, pending_jobs)
+            if removeWorker:
+                #Remove worker from death workers
+                worker = Worker(queues=[], name=last_worker)
+                yield worker.remove(worker.key)
+
+                #Remove own queue of worker
+                queue = Queue(worker.key)
+                yield queue.empty()
         except Exception as e:
             self.log.err(e, '[%s] Exception while reconnecting'%(data['_userid']))
 
