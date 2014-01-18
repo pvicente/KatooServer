@@ -298,9 +298,6 @@ class GlobalSupervisor(Supervisor):
         try:
             pending_jobs = yield self.getPendingJobs(user.userid, last_worker)
             yield API(user.userid).relogin(user, pending_jobs)
-        except Exception as e:
-            self.log.err(e, '[%s] Exception while reconnecting'%(data['_userid']))
-        finally:
             if removeWorker:
                 #Remove worker from death workers
                 worker = Worker(queues=[], name=last_worker)
@@ -309,9 +306,10 @@ class GlobalSupervisor(Supervisor):
                 #Remove own queue of worker
                 queue = Queue(worker.key)
                 yield queue.empty()
+        except Exception as e:
+            self.log.err(e, '[%s] Exception while reconnecting'%(data['_userid']))
 
-
-def startService(self):
+    def startService(self):
         Supervisor.startService(self)
         
         t = LoopingCall(self.disconnectAwayUsers)
