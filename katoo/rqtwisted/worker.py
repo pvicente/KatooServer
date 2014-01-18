@@ -12,7 +12,7 @@ from rq.exceptions import NoQueueError
 from rq.job import Status
 from rq.utils import make_colorizer
 from twisted.application import service
-from twisted.internet import defer, threads, reactor
+from twisted.internet import defer, threads, reactor, task
 from twisted.python import log
 from twisted.python.failure import Failure
 import cyclone.redis
@@ -41,7 +41,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     redis_death_workers_keys = "rq:workers:death"
     def __init__(self, queues, name=None, loops = 1, blocking_time = 1,
         default_result_ttl=DEFAULT_RESULT_TTL, connection=None, 
-        exc_handler=None, default_worker_ttl=DEFAULT_WORKER_TTL, default_warmup=TWISTED_WARMUP, default_enqueue_failed_jobs=True):
+        exc_handler=None, default_worker_ttl=DEFAULT_WORKER_TTL, default_warmup=TWISTED_WARMUP, default_enqueue_failed_jobs=True, default_perform_job_in_thread=True):
         if connection is None:
             connection = RedisMixin.redis_conn
         self.connection = connection
@@ -65,7 +65,8 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         self._lastTime = datetime.utcnow()
         self._cycles = 0
         self._increment_cycles=BASE_INCREMENT_CYCLES
-    
+        self.perform_job = self.perform_job_to_thread if default_perform_job_in_thread else self.perform_job_to_reactor
+
     @classmethod
     @defer.inlineCallbacks
     def getWorkers(cls, key, connection = None):
@@ -212,7 +213,17 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         job.timeout=self.default_result_ttl
         self.log.msg('[%s] JOB_FAILED %s: %s'%(meta, job, exc_string))
         yield self.failed_queue.quarantine(job, exc_info=exc_string)
-    
+
+    def perform_job_to_thread(self, job):
+        d = threads.deferToThread(job.perform)
+        d.addCallback(self.callback_perform_job)
+        d.addErrback(self.errback_perform_job, job=job)
+
+    def perform_job_to_reactor(self, job):
+        d = task.deferLater(reactor, 0 , job.perform)
+        d.addCallback(self.callback_perform_job)
+        d.addErrback(self.errback_perform_job, job=job)
+
     @defer.inlineCallbacks
     def work(self):
         yield self.set_state('starting')
@@ -241,9 +252,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
                 
                 #Parameter _ is queue_key must be a processed when thresholds will be implemented
                 _, job = res
-                d = threads.deferToThread(job.perform)
-                d.addCallback(self.callback_perform_job)
-                d.addErrback(self.errback_perform_job, job=job)
+                self.perform_job(job)
             except cyclone.redis.ConnectionError as e:
                 self.log.err(e, 'REDIS_CONNECTION_ERROR')
                 connection_errors += 1

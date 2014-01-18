@@ -31,6 +31,9 @@ KatooAPNSService().service.setServiceParent(application)
 if conf.REDIS_WORKERS > 0:
     worker.LOGGING_OK_JOBS = conf.LOGGING_OK_JOBS
     w=worker.Worker([conf.DIST_QUEUE_PUSH], name="PUSH-%s"%(conf.MACHINEID), loops=conf.REDIS_WORKERS,
-                    default_result_ttl=conf.DIST_DEFAULT_TTL, default_warmup=conf.WORKER_WARMUP, default_enqueue_failed_jobs=conf.DIST_ENQUEUE_FAILED_JOBS)
+                    default_result_ttl=conf.DIST_DEFAULT_TTL, default_warmup=conf.WORKER_WARMUP,
+                    default_enqueue_failed_jobs=conf.DIST_ENQUEUE_FAILED_JOBS,
+                    default_perform_job_in_thread=conf.DIST_PERFORM_JOB_IN_THREAD)
+
     w.log = getLoggerAdapter(getLogger('WORKER', level='INFO'), id='WORKER')
     w.setServiceParent(application)
