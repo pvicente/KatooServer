@@ -5,6 +5,7 @@ Created on Jun 12, 2013
 '''
 from datetime import datetime
 from dateutil import parser
+from rq.exceptions import NoSuchJobError
 from katoo import conf, KatooApp
 from katoo.api import API
 from katoo.apns.api import API as APNSAPI
@@ -164,13 +165,17 @@ class GlobalSupervisor(Supervisor):
         queue = Queue(queue_name)
         job_ids = yield queue.job_ids
         jobs = []
+        index = 0
         for job_id in job_ids:
             try:
                 job = yield Job.fetch(job_id, connection=queue.connection)
                 if job.meta.get('userid') == userid:
                     jobs.append(job_id)
             except Exception as e:
-                self.log.err(e, '[%s] Exception fetching job %s while getPendingJobs in queue %s'%(userid, job_id, queue_name))
+                self.log.err(e, '[%s] Exception fetching job %s with index %s while getPendingJobs in queue %s'%(userid, job_id, index, queue_name))
+                yield queue.remove(job_id)
+            finally:
+                index+=1
         defer.returnValue(jobs)
     
     @defer.inlineCallbacks
