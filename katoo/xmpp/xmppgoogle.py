@@ -244,7 +244,7 @@ class XMPPGoogle(ReauthXMPPClient, Observer):
         if (current_time - self.lastTimeAuth).seconds >= self.AUTH_RENEWAL_TIME:
             self.log.info('Launching AUTH_RENEWAL as periodic task')
             self.CHECK_AUTH_RENEWAL_METRIC.add(1)
-            reactor.callLater(1, self.onAuthenticationRenewal, reason=None)
+            reactor.callLater(0, self.onAuthenticationRenewal, reason=None)
         
         #Send Keep Alive
         return self.handler.protocol.send(' ')

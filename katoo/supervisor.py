@@ -64,10 +64,9 @@ class MetricsSupervisor(Supervisor, Subject):
     def __init__(self):
         Supervisor.__init__(self)
         Subject.__init__(self)
-    
-    @defer.inlineCallbacks
+
     def report(self):
-        yield self.notifyObservers()
+        self.notifyObservers()
         MetricsHub().report()
     
     def startService(self):
@@ -88,11 +87,10 @@ class XMPPKeepAliveSupervisor(Supervisor, Subject):
         Subject.__init__(self)
         self.lastTime = datetime.utcnow()
         self.metric = Metric(name='elapsed_time', value=None, unit='msec', source=self.name, scale=1000, sampling=True)
-    
-    @defer.inlineCallbacks
+
     def perform_keep_alive(self):
         self.lastTime = datetime.utcnow()
-        yield self.notifyObservers()
+        self.notifyObservers()
         elapsedTime = datetime.utcnow()-self.lastTime
         usecs = elapsedTime.seconds*1000000 + elapsedTime.microseconds
         self.log.info('Finished XMPP_KEEP_ALIVE. Elapsed %s usecs', usecs)
@@ -240,7 +238,7 @@ class GlobalSupervisor(Supervisor):
                         user.worker = user.userid
                         yield user.save()
 
-                        reactor.callFromThread(self.reloginUser, user, worker)
+                        reactor.callLater(0, self.reloginUser, user, worker)
                         self.log.info('[%s] Reconnecting %s/%s user(s) of worker %s', user.userid, i+1, total_bad_users, worker)
                     except Exception as e:
                         self.log.err(e, '[%s] Exception while reconnecting'%(data['_userid']))
@@ -291,7 +289,8 @@ class GlobalSupervisor(Supervisor):
                 worker, user.worker = user.worker, user.userid
                 yield user.save()
 
-                reactor.callFromThread(self.reloginUser, user, user.worker)
+                #Enqueing in the next loop iteration of twisted event loop
+                reactor.callLater(0, self.reloginUser, user, user.worker)
                 self.log.info('[%s] Reconnecting %s/%s user(s)', user.userid, i+1, total_users)
             except Exception as e:
                 self.log.err(e, '[%s] Exception while reconnecting'%(data['_userid']))

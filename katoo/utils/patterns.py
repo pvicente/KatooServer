@@ -4,7 +4,8 @@ Created on Jun 28, 2013
 @author: pvicente
 '''
 from threading import RLock
-from twisted.internet import defer
+from twisted.internet import reactor
+
 
 class Singleton(object):
     _instance = None
@@ -40,8 +41,6 @@ class Subject(object):
     
     def unregisterObserver(self, observer):
         self._observers.remove(observer)
-    
-    @defer.inlineCallbacks
+
     def notifyObservers(self):
-        for observer in self._observers:
-            yield observer.notify()
+        [reactor.callLater(0, observer.notify) for observer in self._observers]
