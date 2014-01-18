@@ -215,9 +215,6 @@ class GoogleHandler(MyRequestHandler):
             yield API(key, queue=user.worker).update(key, _version=self.user_agent.version, _iosversion = self.user_agent.iosVersion, _hwmodel= self.user_agent.hwmodel, 
                                                      **self.args)
 
-            if self.FAKE_PURCHASE_ENABLED:
-                self.perform_fakepurchase(userid=user.jid, deviceid=user.userid)
-
             self._response_json({'success': True, 'reason': 'ok', 'background_time': conf.XMPP_BACKGROUND_TIME,
                                  'resource_prefix': conf.XMPP_RESOURCE, 'gtalk_priority': conf.XMPP_GTALK_PRIORITY,
                                  'ads_gift': self.FAKE_PURCHASE_ENABLED})
