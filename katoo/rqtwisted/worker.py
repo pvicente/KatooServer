@@ -14,6 +14,7 @@ from rq.utils import make_colorizer
 from twisted.application import service
 from twisted.internet import defer, threads, reactor, task
 from twisted.python import log
+from twisted.python.threadpool import ThreadPool
 from twisted.python.failure import Failure
 import cyclone.redis
 import os
@@ -26,6 +27,8 @@ import traceback
 DEFAULT_RESULT_TTL = 5
 DEFAULT_WORKER_TTL = 420
 TWISTED_WARMUP = 5
+MIN_THREAD_POOL_SIZE = 5
+DEFAULT_THREAD_POOL_SIZE = 10
 
 LOGGING_OK_JOBS = True
 BASE_INCREMENT_CYCLES=25
@@ -41,7 +44,9 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     redis_death_workers_keys = "rq:workers:death"
     def __init__(self, queues, name=None, loops = 1, blocking_time = 1,
         default_result_ttl=DEFAULT_RESULT_TTL, connection=None, 
-        exc_handler=None, default_worker_ttl=DEFAULT_WORKER_TTL, default_warmup=TWISTED_WARMUP, default_enqueue_failed_jobs=True, default_perform_job_in_thread=True):
+        exc_handler=None, default_worker_ttl=DEFAULT_WORKER_TTL, default_warmup=TWISTED_WARMUP, default_enqueue_failed_jobs=True,
+        default_perform_job_in_thread=True, default_thread_pool_size=DEFAULT_THREAD_POOL_SIZE):
+
         if connection is None:
             connection = RedisMixin.redis_conn
         self.connection = connection
@@ -65,7 +70,14 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         self._lastTime = datetime.utcnow()
         self._cycles = 0
         self._increment_cycles=BASE_INCREMENT_CYCLES
-        self.perform_job = self.perform_job_to_thread if default_perform_job_in_thread else self.perform_job_to_reactor
+        self.perform_job = self.perform_job_to_reactor
+        self._thread_pool = None
+        self._min_thread_pool_size = self._max_thread_pool_size = 0
+        if default_perform_job_in_thread:
+            self.perform_job = self.perform_job_to_thread
+            self._min_thread_pool_size = default_thread_pool_size if default_thread_pool_size<MIN_THREAD_POOL_SIZE else MIN_THREAD_POOL_SIZE
+            self._max_thread_pool_size = default_thread_pool_size
+            self._thread_pool = ThreadPool(minthreads=self._min_thread_pool_size , maxthreads=self._max_thread_pool_size, name=self._name)
 
     @classmethod
     @defer.inlineCallbacks
@@ -96,7 +108,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
     @defer.inlineCallbacks
     def register_birth(self):  # noqa
         """Registers its own birth."""
-        self.log.msg('REGISTER_BIRTH of worker %s' % (self.name,))
+        self.log.msg('REGISTER_BIRTH of worker %s with thread_pool(%s,%s)' % (self.name, self._min_thread_pool_size, self._max_thread_pool_size))
         exist_key = yield self.connection.exists(self.key)
         death =  yield self.connection.hexists(self.key, 'death')
         if exist_key and not death:
@@ -215,7 +227,7 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         yield self.failed_queue.quarantine(job, exc_info=exc_string)
 
     def perform_job_to_thread(self, job):
-        d = threads.deferToThread(job.perform)
+        d = threads.deferToThreadPool(reactor, self._thread_pool, job.perform)
         d.addCallback(self.callback_perform_job)
         d.addErrback(self.errback_perform_job, job=job)
 
@@ -303,9 +315,13 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
         reactor.callLater(self.default_warmup, self.register_birth)
         for _ in xrange(self.loops):
             reactor.callLater(self.default_warmup+1, self.work)
+        if self._thread_pool:
+            self._thread_pool.start()
 
     def stopService(self):
         if self.running:
             service.Service.stopService(self)
             self._stopped = True
+            if self._thread_pool:
+                self._thread_pool.stop()
             return self.register_death()
