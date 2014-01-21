@@ -152,7 +152,7 @@ class GlobalSupervisor(Supervisor):
         for data in onMigration_users:
             user = GoogleUser(**data)
             delta_time = now - user.onMigrationTime
-            if delta_time.seconds < 60:
+            if delta_time.seconds < conf.XMPP_KEEP_ALIVE_TIME+30:
                 continue
             self.log.warning('[%s] USER_MIGRATION_STOPPED %s second(s) ago. Performing new relogin. User state: %s', user.userid, delta_time.seconds, user)
             user.worker = user.userid
