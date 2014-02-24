@@ -302,7 +302,7 @@ class GlobalSupervisor(Supervisor):
             pending_jobs = yield self.getPendingJobs(user.userid, last_worker)
             yield API(user.userid).relogin(user, pending_jobs)
         except Exception as e:
-            self.log.err(e, '[%s] Exception while reconnecting'%(data['_userid']))
+            self.log.err(e, '[%s] Exception while reconnecting'%(user.userid))
         finally:
             if removeWorker:
                 yield self.removeWorker(last_worker)
