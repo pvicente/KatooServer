@@ -30,13 +30,13 @@ def newreactorstop():
     
 class KatooApp(Singleton):
     def constructor(self):
-        RedisMixin.setup()
-        MongoMixin.setup()
         self.app = service.Application('KatooApp')
-        self.service = self.app.getComponent(service.IService, None)
         self.log = TwistedLogging(self.app)
+        self.service = self.app.getComponent(service.IService, None)
         self.oldreactorstop = reactor.stop
         reactor.stop = newreactorstop
+        RedisMixin.setup(conf.REDIS_URL)
+        MongoMixin.setup(conf.MONGO_URL)
         self.running=True
         Timer().setServiceParent(self.app)
 

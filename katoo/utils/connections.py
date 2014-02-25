@@ -7,6 +7,7 @@ from cyclone import redis
 from cyclone.redis import ResponseError, RedisFactory
 from katoo import conf
 from katoo.metrics import IncrementMetric, Metric
+from katoo.utils.applog import getLoggerAdapter, getLogger
 from katoo.utils.decorators import inject_decorators
 from twisted.internet import defer
 from twisted.python import log
@@ -49,6 +50,7 @@ def url_parse(url, scheme):
 class AuthRedisProtocol(redis.RedisProtocol):
     CONNECTIONS_METRIC=Metric(name='connections', value=None, unit='connections', source='REDIS', reset=False)
     password = None
+    log = None
     
     @IncrementMetric(name='connectionMade', unit='calls', source='REDIS')
     @defer.inlineCallbacks
@@ -59,34 +61,41 @@ class AuthRedisProtocol(redis.RedisProtocol):
             except ResponseError, e:
                 self.factory.continueTrying = False
                 self.transport.loseConnection()
-                msg = "Redis AuthError.%s: %s"%(e.__class__.__name__,e)
+                msg = "Redis AuthError.%s: %r"%(e.__class__.__name__, e)
                 self.factory.connectionError(msg)
                 if self.factory.isLazy:
-                    log.msg(msg)
+                    self.log.warning(msg)
                 defer.returnValue(None)
             else:
                 yield redis.RedisProtocol.connectionMade(self)
         else:
             yield redis.RedisProtocol.connectionMade(self)
+
         self.CONNECTIONS_METRIC.add(1)
+        self.log.info('connectionMade and authenticated to REDIS id=%s total=%d', hex(id(self)), self.CONNECTIONS_METRIC)
     
     @IncrementMetric(name='connectionLost', unit='calls', source='REDIS')
     def connectionLost(self, why):
         self.CONNECTIONS_METRIC.add(-1)
+        self.log.info('connectionLost to REDIS id=%s total=%d reason=%r', hex(id(self)), self.CONNECTIONS_METRIC, why)
         return redis.RedisProtocol.connectionLost(self, why)
 
 class RedisMixin(object):
     redis_conn = None
     redis_db = None
+    log = None
 
     @classmethod
-    def setup(cls, url=None):
+    def setup(cls, url=None, log=None):
         if cls.redis_conn is None:
             if url is None:
                 url = conf.REDIS_URL
             hostname, port, db, _, password = url_parse(url, 'redis')
             cls.redis_db = int(db)
             AuthRedisProtocol.password = password
+            if log is None:
+                log = getLoggerAdapter(getLogger(__name__), id='REDIS_CONNECTIONPOOL')
+            cls.log = AuthRedisProtocol.log = log
             RedisFactory.protocol = AuthRedisProtocol
             cls.redis_conn = redis.lazyConnectionPool(host=hostname, port=port, dbid=cls.redis_db, poolsize=conf.REDIS_POOL, reconnect=True)
 
@@ -107,6 +116,7 @@ class AuthMongoProtocol(txmongo.MongoProtocol):
     username=None
     password=None
     database=None
+    log = None
     
     def _authenticate(self, name, password):
         """
@@ -156,19 +166,22 @@ class AuthMongoProtocol(txmongo.MongoProtocol):
         if not self.username is None:
             yield self._authenticate(self.username, self.password)
         self.CONNECTIONS_METRIC.add(1)
+        self.log.info('connectionMade and authenticated to MONGO id=%s total=%d', hex(id(self)), self.CONNECTIONS_METRIC)
         yield txmongo.MongoProtocol.connectionMade(self)
     
     @IncrementMetric(name='connectionLost', unit='calls', source='MONGO')
     def connectionLost(self, reason):
         self.CONNECTIONS_METRIC.add(-1)
+        self.log.info('connectionLost to REDIS id=%s total=%d reason=%r', hex(id(self)), self.CONNECTIONS_METRIC, reason)
         return txmongo.MongoProtocol.connectionLost(self, reason)
     
 class MongoMixin(object):
     mongo_conn = None
     mongo_db = None
+    log = None
     
     @classmethod
-    def setup(cls, url=None):
+    def setup(cls, url=None, log=None):
         if cls.mongo_conn is None:
             if url is None:
                 url = conf.MONGO_URL
@@ -176,6 +189,9 @@ class MongoMixin(object):
             AuthMongoProtocol.database = cls.mongo_db
             AuthMongoProtocol.username = username
             AuthMongoProtocol.password = password
+            if log is None:
+                log = getLoggerAdapter(getLogger(__name__), id='MONGO_CONNECTIONPOOL')
+            cls.log = AuthMongoProtocol.log = log
             txmongo._MongoFactory.protocol = AuthMongoProtocol
             cls.mongo_conn = txmongo.lazyMongoConnectionPool(host=hostname, port=port, reconnect=True, pool_size=conf.MONGO_POOL)
     

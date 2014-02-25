@@ -42,6 +42,9 @@ class Accumulator(object):
     def reset(self):
         raise NotImplementedError()
 
+    def __int__(self):
+        return 0
+
 class SamplingAccumulator(Accumulator):
     def reset(self):
         self._samples=[]
@@ -77,6 +80,9 @@ class SimpleAccumulator(Accumulator):
     
     def add(self, value):
         self._value+=value
+
+    def __int__(self):
+        return int(self._value)
     
     def __str__(self):
         return 'sample#%s=%.2f%s'%(self.name, self._value/self._scale, self.unit)
@@ -130,7 +136,10 @@ class Metric(object):
     
     def add(self, value):
         self._accumulator.add(value)
-    
+
+    def __int__(self):
+        return int(self._accumulator)
+
     def __call__(self, f):
         @wraps(f)
         def wrapped_f(*args, **kwargs):
