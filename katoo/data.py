@@ -28,7 +28,8 @@ class ModelMixin(Model, MongoMixin):
         self.pool = self.mongo_conn
         self.indexes = indexes
         metric_retry =  IncrementMetric(name='%s-retries'%collectionName, unit=METRIC_UNIT, source='MONGO', reset=False)
-        Model.__init__(self, logging=getLoggerAdapter(log, id="DATA-%s"%(collectionName.upper())), retries=conf.BACKEND_MAX_RETRIES, metric_retries=metric_retry)
+        metric_save = IncrementMetric(name='%s-saving-errors'%collectionName, unit=METRIC_UNIT, source='MONGO', reset=False)
+        Model.__init__(self, logging=getLoggerAdapter(log, id="DATA-%s"%(collectionName.upper())), retries=conf.BACKEND_MAX_RETRIES, metric_retries=metric_retry, metric_save=metric_save)
     
 class DataModel(ModelMixin):
     def __init__(self, collectionName, mongourl=None, indexes=None):
@@ -59,7 +60,7 @@ class GoogleMessage(object):
     
     def save(self):
         data=vars(self)
-        return self.model.insert(**data)
+        return self.model.save(data)
 
 class GoogleRosterItem(object):
     model = DataModel(collectionName='googleroster', indexes=Indexes(['_userid', ('_userid','_jid')]))
