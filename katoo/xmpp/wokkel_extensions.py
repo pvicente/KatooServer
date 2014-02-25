@@ -34,12 +34,12 @@ class ReauthXMPPClient(XMPPClient):
         self.log = getLoggerAdapter(log) if logid is None else getLoggerAdapter(log, id=logid)
         self.factory.addBootstrap(xmlstream.STREAM_ERROR_EVENT, self._onStreamError)
         self._authFailureTime = None
-        self._lastTimeAuth = Timer().utcnow()
+        self._lastTimeAuth = None
         self._connectedTime = None
     
     @property
     def lastTimeAuth(self):
-        return self._lastTimeAuth
+        return 0 if self._lastTimeAuth is None else (Timer().utcnow() - self._lastTimeAuth).seconds
 
     @property
     def connectedTime(self):

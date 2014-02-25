@@ -237,12 +237,11 @@ class XMPPGoogle(ReauthXMPPClient, Observer):
     
     def notify(self):
         #Check if it is mandatory to do AUTH_RENEWAL
-        current_time = Timer().utcnow()
-        if (current_time - self.lastTimeAuth).seconds >= self.AUTH_RENEWAL_TIME:
+        if self.lastTimeAuth >= self.AUTH_RENEWAL_TIME:
             self.log.info('Launching AUTH_RENEWAL as periodic task')
             self.CHECK_AUTH_RENEWAL_METRIC.add(1)
             reactor.callLater(0, self.onAuthenticationRenewal, reason=None)
-        
+
         #Send Keep Alive
         return self.handler.protocol.send(' ')
     
