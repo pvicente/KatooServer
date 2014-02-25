@@ -35,16 +35,22 @@ class ReauthXMPPClient(XMPPClient):
         self.factory.addBootstrap(xmlstream.STREAM_ERROR_EVENT, self._onStreamError)
         self._authFailureTime = None
         self._lastTimeAuth = Timer().utcnow()
+        self._connectedTime = None
     
     @property
     def lastTimeAuth(self):
         return self._lastTimeAuth
+
+    @property
+    def connectedTime(self):
+        return 0 if self._connectedTime is None else (Timer().utcnow() -  self._connectedTime).seconds
     
     def _onStreamError(self, reason):
         self.log.err(reason, 'STREAM_EROR_EVENT')
     
     def _connected(self, xs):
         XMPPClient._connected(self, xs)
+        self._connectedTime = None
         def logDataIn(buf):
             self.log.debug("RECV: %r", buf)
 
@@ -56,8 +62,9 @@ class ReauthXMPPClient(XMPPClient):
             self.xmlstream.rawDataOutFn = logDataOut
     
     def _authd(self, xs):
+        currTime = Timer().utcnow()
         self._authFailureTime = None
-        self._lastTimeAuth = Timer().utcnow()
+        self._lastTimeAuth = self._connectedTime = currTime
         XMPPClient._authd(self, xs)
     
     def isAuthenticating(self):

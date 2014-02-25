@@ -82,7 +82,6 @@ class GoogleHandler(GenericXMPPHandler):
         GenericXMPPHandler.__init__(self, client)
         self.user = client.user
         self.roster = RosterManager(self.user.userid, self.log)
-        self.connectionTime = None
     
     def isOwnBareJid(self, jid):
         return self.client.jid.user == jid.user and self.client.jid.host == jid.host
@@ -101,14 +100,13 @@ class GoogleHandler(GenericXMPPHandler):
     @IncrementMetric(name='connection_established', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onConnectionEstablished(self):
         self.CONNECTIONS_METRIC.add(1)
-        self.connectionTime = None
         self.log.info('CONNECTION_ESTABLISHED %s', self.user.jid)
     
     @IncrementMetric(name='connection_lost', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onConnectionLost(self, reason):
         self.CONNECTIONS_METRIC.add(-1)
         currTime = Timer().utcnow()
-        connectedTime = 0 if self.connectionTime is None else (currTime - self.connectionTime).seconds
+        connectedTime = self.client.connectedTime
         lastTimeKeepAlive = (currTime - KatooApp().getService('XMPP_KEEPALIVE_SUPERVISOR').lastTime).seconds
         isAuthenticating = self.client.isAuthenticating()
         
@@ -128,7 +126,6 @@ class GoogleHandler(GenericXMPPHandler):
     
     @IncrementMetric(name='connection_authenticated', unit=METRIC_UNIT, source=METRIC_SOURCE)
     def onAuthenticated(self):
-        self.connectionTime = Timer().utcnow()
         self.log.info('CONNECTION_AUTHENTICATED %s', self.user.jid)
         
         #Set away state to be restored with right value when presences will be received
@@ -151,7 +148,7 @@ class GoogleHandler(GenericXMPPHandler):
             yield self.user.save()
         else:
             self.log.debug('XMPP_GO_ONLINE %s <- %s@%s/%r State: %r', self.user.jid, jid.user, jid.host, jid.resource, state)
-            if self.user.haveAvailablePresenceContacts() and (state is None or state == 'chat') and self.user.pushtoken and self.connectionTime and (Timer().utcnow()-self.connectionTime).seconds > 60:
+            if self.user.haveAvailablePresenceContacts() and (state is None or state == 'chat') and self.user.pushtoken and self.client.connectedTime > 60:
                 #Connection has not been re-established and presence is ok
                 barejid = jid.userhost()
                 if self.user.isContactInAvailablePresence(barejid):
