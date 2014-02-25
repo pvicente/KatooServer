@@ -212,6 +212,8 @@ class GlobalSupervisor(Supervisor):
                 #Remove worker and queue when no users were assigned
                 if total_users == 0:
                     yield self.removeWorker(name)
+            else:
+                yield self.removeWorker(name)
     
     @defer.inlineCallbacks
     def processBadAssignedWorkers(self):
