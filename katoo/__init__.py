@@ -30,6 +30,7 @@ def newreactorstop():
     
 class KatooApp(Singleton):
     def constructor(self):
+        defer.Deferred.debug = conf.DEFERRED_DEBUG
         self.app = service.Application('KatooApp')
         self.log = TwistedLogging(self.app)
         self.service = self.app.getComponent(service.IService, None)
