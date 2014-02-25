@@ -4,7 +4,7 @@ Created on May 29, 2013
 @author: pvicente
 '''
 from cyclone import redis
-from cyclone.redis import ResponseError, RedisFactory
+from cyclone.redis import RedisFactory
 from katoo import conf
 from katoo.metrics import IncrementMetric, Metric
 from katoo.utils.applog import getLoggerAdapter, getLogger
@@ -55,23 +55,26 @@ class AuthRedisProtocol(redis.RedisProtocol):
     @IncrementMetric(name='connectionMade', unit='calls', source='REDIS')
     @defer.inlineCallbacks
     def connectionMade(self):
+        self.CONNECTIONS_METRIC.add(1)
         if not self.password is None:
             try:
                 yield self.auth(self.password)
-            except ResponseError, e:
-                self.factory.continueTrying = False
+                yield redis.RedisProtocol.connectionMade(self)
+            except Exception, e:
+                self.factory.maxRetries = conf.BACKEND_MAX_RETRIES
                 self.transport.loseConnection()
                 msg = "Redis AuthError.%s: %r"%(e.__class__.__name__, e)
                 self.factory.connectionError(msg)
-                if self.factory.isLazy:
-                    self.log.warning(msg)
+                self.log.warning(msg)
                 defer.returnValue(None)
-            else:
-                yield redis.RedisProtocol.connectionMade(self)
         else:
             yield redis.RedisProtocol.connectionMade(self)
 
-        self.CONNECTIONS_METRIC.add(1)
+        if not self.connected:
+            #Avoid problem with RedisProtocol connectionMade
+            self.factory.continueTrying = True
+            self.factory.maxRetries = conf.BACKEND_MAX_RETRIES
+
         self.log.info('connectionMade and authenticated to REDIS id=%s total=%d', hex(id(self)), self.CONNECTIONS_METRIC)
     
     @IncrementMetric(name='connectionLost', unit='calls', source='REDIS')

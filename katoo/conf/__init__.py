@@ -43,6 +43,7 @@ USER_AGENT_WL=frozenset(eval(os.getenv('USER_AGENT_WL','[]')))
 USER_AGENT_BL=frozenset(eval(os.getenv('USER_AGENT_BL', '[]')))
 DEFAULT_VERSION='UNKNOWN'
 FAKE_PURCHASE_URL=os.getenv('FAKE_PURCHASE_URL', '')
+BACKEND_MAX_RETRIES=int(os.getenv('BACKEND_MAX_RETRIES', 3))
 
 ##REDIS_CONNECTION_MANAGEMENT
 REDIS_WORKERS=int(os.getenv('REDIS_WORKERS', 1))
