@@ -8,11 +8,14 @@ from datetime import timedelta
 import types
 from katoo.metrics import IncrementMetric
 from katoo.txMongoModel.mongomodel.model import Model, Indexes, Sort
+from katoo.utils.applog import getLogger, getLoggerAdapter
 from katoo.utils.connections import MongoMixin
 from katoo.utils.time import Timer
 from twisted.internet import defer
 from txmongo._pymongo.objectid import ObjectId
 import conf
+
+log = getLogger(__name__)
 
 METRIC_UNIT='calls'
 METRIC_SOURCE='DATA'
@@ -24,7 +27,8 @@ class ModelMixin(Model, MongoMixin):
         self.collection = collectionName
         self.pool = self.mongo_conn
         self.indexes = indexes
-        Model.__init__(self)
+        metric_retry =  IncrementMetric(name='%s-retries'%collectionName, unit=METRIC_UNIT, source='MONGO', reset=False)
+        Model.__init__(self, logging=getLoggerAdapter(log, id="DATA-%s"%(collectionName.upper())), retries=conf.BACKEND_MAX_RETRIES, metric_retries=metric_retry)
     
 class DataModel(ModelMixin):
     def __init__(self, collectionName, mongourl=None, indexes=None):
