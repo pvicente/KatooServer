@@ -137,6 +137,10 @@ class Metric(object):
     def add(self, value):
         self._accumulator.add(value)
 
+    def __iadd__(self, value):
+        self.add(value)
+        return int(self)
+
     def __int__(self):
         return int(self._accumulator)
 
