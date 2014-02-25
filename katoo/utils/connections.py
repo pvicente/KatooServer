@@ -9,14 +9,13 @@ from katoo import conf
 from katoo.metrics import IncrementMetric, Metric
 from katoo.utils.applog import getLoggerAdapter, getLogger
 from katoo.utils.decorators import inject_decorators
-from twisted.internet import defer
+from twisted.internet import defer, reactor
 from twisted.python import log
 from txmongo._pymongo import helpers
 from txmongo._pymongo.son import SON
 from txmongo.collection import Collection
 from urlparse import urlparse
 import txmongo
-
 
 def url_parse(url, scheme):
     url = urlparse(url)
@@ -63,7 +62,7 @@ class AuthRedisProtocol(redis.RedisProtocol):
             except Exception, e:
                 self.factory.maxRetries = conf.BACKEND_MAX_RETRIES
                 self.transport.loseConnection()
-                msg = "Redis AuthError.%s: %r"%(e.__class__.__name__, e)
+                msg = "Redis Error.%s: %r"%(e.__class__.__name__, e)
                 self.factory.connectionError(msg)
                 self.log.warning(msg)
                 defer.returnValue(None)
@@ -75,12 +74,16 @@ class AuthRedisProtocol(redis.RedisProtocol):
             self.factory.continueTrying = True
             self.factory.maxRetries = conf.BACKEND_MAX_RETRIES
 
-        self.log.info('connectionMade and authenticated to REDIS id=%s total=%d', hex(id(self)), self.CONNECTIONS_METRIC)
+        self.log.info('connectionMade and authenticated to REDIS id=%s connected=%d total=%d', hex(id(self)), self.connected, self.CONNECTIONS_METRIC)
     
     @IncrementMetric(name='connectionLost', unit='calls', source='REDIS')
     def connectionLost(self, why):
         self.CONNECTIONS_METRIC.add(-1)
-        self.log.info('connectionLost to REDIS id=%s total=%d reason=%r', hex(id(self)), self.CONNECTIONS_METRIC, why)
+        if reactor.running:
+            logging_out = self.log.warning
+        else:
+            logging_out = self.log.info
+        logging_out('connectionLost to REDIS id=%s total=%d reason=%r', hex(id(self)), self.CONNECTIONS_METRIC, why)
         return redis.RedisProtocol.connectionLost(self, why)
 
 class RedisMixin(object):
@@ -135,7 +138,7 @@ class AuthMongoProtocol(txmongo.MongoProtocol):
         # First get the nonce
         Collection(self.database, "$cmd").find_one({"getnonce": 1}, _proto=self
                 ).addCallback(self._authenticate_with_nonce, name, password, d
-                ).addErrback(d.errback)
+                ).addErrback(self._auth_error, d)
     
     
         return d
@@ -153,7 +156,7 @@ class AuthMongoProtocol(txmongo.MongoProtocol):
         # Now actually authenticate
         Collection(self.database, "$cmd").find_one(auth_command,_proto=self
                 ).addCallback(self._authenticated, d
-                ).addErrback(d.errback)
+                ).addErrback(self._auth_error, d)
     
     def _authenticated(self, result, d):
         """might want to just call callback with 0.0 instead of errback"""
@@ -161,21 +164,44 @@ class AuthMongoProtocol(txmongo.MongoProtocol):
         if ok:
             d.callback(ok)
         else:
-            d.errback(result['errmsg'])
+            d.errback(ValueError(result['errmsg']))
+
+    def _auth_error(self, reason):
+        self.log.warning("Auth error with Mongo reason=%s", reason)
+
     
     @IncrementMetric(name='connectionMade', unit='calls', source='MONGO')
     @defer.inlineCallbacks
     def connectionMade(self):
-        if not self.username is None:
-            yield self._authenticate(self.username, self.password)
         self.CONNECTIONS_METRIC.add(1)
-        self.log.info('connectionMade and authenticated to MONGO id=%s total=%d', hex(id(self)), self.CONNECTIONS_METRIC)
-        yield txmongo.MongoProtocol.connectionMade(self)
+        if not self.username is None:
+            try:
+                yield self._authenticate(self.username, self.password)
+                yield txmongo.MongoProtocol.connectionMade(self)
+            except Exception, e:
+                self.factory.maxRetries = conf.BACKEND_MAX_RETRIES
+                self.transport.loseConnection()
+                msg = "Mongo Error.%s: %r"%(e.__class__.__name__, e)
+                self.log.warning(msg)
+                defer.returnValue(None)
+        else:
+            yield txmongo.MongoProtocol.connectionMade(self)
+
+        if not self.connected:
+            self.factory.continueTrying = True
+            self.factory.maxRetries = conf.BACKEND_MAX_RETRIES
+
+        self.log.info('connectionMade and authenticated to MONGO id=%s connected=%d total=%d', hex(id(self)), self.connected, self.CONNECTIONS_METRIC)
+
     
     @IncrementMetric(name='connectionLost', unit='calls', source='MONGO')
     def connectionLost(self, reason):
         self.CONNECTIONS_METRIC.add(-1)
-        self.log.info('connectionLost to REDIS id=%s total=%d reason=%r', hex(id(self)), self.CONNECTIONS_METRIC, reason)
+        if reactor.running:
+            logging_out = self.log.warning
+        else:
+            logging_out = self.log.info
+        logging_out('connectionLost to MONGO id=%s total=%d reason=%r', hex(id(self)), self.CONNECTIONS_METRIC, reason)
         return txmongo.MongoProtocol.connectionLost(self, reason)
     
 class MongoMixin(object):
