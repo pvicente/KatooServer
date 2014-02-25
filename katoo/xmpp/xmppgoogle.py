@@ -242,6 +242,10 @@ class XMPPGoogle(ReauthXMPPClient, Observer):
             self.CHECK_AUTH_RENEWAL_METRIC.add(1)
             reactor.callLater(0, self.onAuthenticationRenewal, reason=None)
 
+        if self.connectedTime <= conf.XMPP_KEEP_ALIVE_TIME+10:
+            self.log.info('Saving user data to prevent USER_MIGRATION_STOPPED due to not clear write concerns in MONGO. User: %s', self.user)
+            reactor.callLater(0, self.user.save)
+
         #Send Keep Alive
         return self.handler.protocol.send(' ')
     
