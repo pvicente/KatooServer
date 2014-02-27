@@ -10,6 +10,7 @@ from katoo.exceptions import XMPPUserNotLogged, DistributedJobTimeout, \
 from katoo.rqtwisted.job import Job
 from katoo.rqtwisted.queue import Queue, Status
 from katoo.utils.applog import getLogger, getLoggerAdapter
+from katoo.metrics import IncrementMetric
 from katoo.utils.time import sleep
 from twisted.internet import defer
 
@@ -36,6 +37,8 @@ class DistributedAPI(object):
         return self._log
     
 class SynchronousCall(object):
+    METRIC_RETRY = IncrementMetric(name='ErrorRetries', unit="calls", source='REDIS', reset=False)
+
     """Make a synchronous call enqueing job in queue and returning result"""
     def __init__(self, queue):
         self.queue_name=None if conf.DIST_DISABLED else queue
@@ -114,6 +117,7 @@ class SynchronousCall(object):
                 yield queue.enqueue_job(job, timeout=self.timeout)
                 retries = 0
             except Exception:
+                self.METRIC_RETRY+=1
                 retries-=1
                 yield sleep(self._delay_retry)
                 if retries == 0:
@@ -129,6 +133,7 @@ class SynchronousCall(object):
                 ret = yield self._get_result(job)
                 retries = 0
             except Exception:
+                self.METRIC_RETRY+=1
                 retries-=1
                 yield sleep(self._delay_retry)
                 if retries==0:
