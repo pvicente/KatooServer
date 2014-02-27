@@ -127,7 +127,7 @@ class SynchronousCall(object):
         while retries>0:
             try:
                 ret = yield self._get_result(job)
-                ret = 0
+                retries = 0
             except Exception:
                 retries-=1
                 yield sleep(self._delay_retry)
