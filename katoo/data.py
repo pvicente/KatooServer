@@ -8,9 +8,10 @@ from datetime import timedelta
 import types
 from katoo.metrics import IncrementMetric
 from katoo.txMongoModel.mongomodel.model import Model, Indexes, Sort
+from katoo.txMongoModel.mongomodel import model
 from katoo.utils.applog import getLogger, getLoggerAdapter
 from katoo.utils.connections import MongoMixin
-from katoo.utils.time import Timer
+from katoo.utils.time import Timer, sleep
 from twisted.internet import defer
 from txmongo._pymongo.objectid import ObjectId
 import conf
@@ -20,6 +21,12 @@ log = getLogger(__name__)
 METRIC_UNIT='calls'
 METRIC_SOURCE='DATA'
 
+Model.METRIC_SAVE = IncrementMetric(name='SavingErrors', unit=METRIC_UNIT, source='MONGO', reset=False)
+Model.METRIC_RETRY = IncrementMetric(name='ErrorRetries', unit=METRIC_UNIT, source='MONGO', reset=False)
+Model.MAX_RETRY = conf.BACKEND_MAX_RETRIES
+Model.RETRY_DELAY = conf.BACKEND_MAX_DELAY
+model.SLEEP_TIME_FUNC = sleep
+
 class ModelMixin(Model, MongoMixin):
     def __init__(self, collectionName, mongourl=None, indexes=None):
         self.setup(url=mongourl)
@@ -27,9 +34,8 @@ class ModelMixin(Model, MongoMixin):
         self.collection = collectionName
         self.pool = self.mongo_conn
         self.indexes = indexes
-        metric_retry =  IncrementMetric(name='%s-retries'%collectionName, unit=METRIC_UNIT, source='MONGO', reset=False)
-        metric_save = IncrementMetric(name='%s-saving-errors'%collectionName, unit=METRIC_UNIT, source='MONGO', reset=False)
-        Model.__init__(self, logging=getLoggerAdapter(log, id="DATA-%s"%(collectionName.upper())), retries=conf.BACKEND_MAX_RETRIES, metric_retries=metric_retry, metric_save=metric_save)
+        logger = getLoggerAdapter(log, id="DATA-%s"%(collectionName.upper()))
+        Model.__init__(self, logging=logger)
     
 class DataModel(ModelMixin):
     def __init__(self, collectionName, mongourl=None, indexes=None):
