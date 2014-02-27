@@ -61,6 +61,7 @@ class AuthRedisProtocol(redis.RedisProtocol):
                 yield redis.RedisProtocol.connectionMade(self)
             except Exception, e:
                 self.factory.maxRetries = conf.BACKEND_MAX_RETRIES
+                self.factory.maxDelay = conf.BACKEND_MAX_DELAY
                 self.transport.loseConnection()
                 msg = "Redis Error.%s: %r"%(e.__class__.__name__, e)
                 self.factory.connectionError(msg)
@@ -222,6 +223,8 @@ class MongoMixin(object):
                 log = getLoggerAdapter(getLogger(__name__), id='MONGO_CONNECTIONPOOL')
             cls.log = AuthMongoProtocol.log = log
             txmongo._MongoFactory.protocol = AuthMongoProtocol
+            txmongo._MongoFactory.maxRetries = conf.BACKEND_MAX_RETRIES
+            txmongo._MongoFactory.maxDelay = conf.BACKEND_MAX_DELAY
             cls.mongo_conn = txmongo.lazyMongoConnectionPool(host=hostname, port=port, reconnect=True, pool_size=conf.MONGO_POOL)
     
 

@@ -42,9 +42,11 @@ class SynchronousCall(object):
         self.sync = True
         self.result_ttl = conf.DIST_DEFAULT_TTL
         self.timeout = conf.DIST_TIMEOUT_TIME
+        self._max_retries = conf.BACKEND_MAX_RETRIES
+        self._delay_retry = conf.BACKEND_MAX_DELAY
     
     @defer.inlineCallbacks
-    def get_result(self, job):
+    def _get_result(self, job):
         #TODO: Improve pulling using reactor.callLater (https://twistedmatrix.com/documents/12.0.0/core/howto/time.html) if possible now we are using reactor.callLater in sleep
         yield sleep(conf.DIST_FIRST_PULL_TIME)
         status = yield job.status
@@ -72,7 +74,7 @@ class SynchronousCall(object):
                 raise DistributedJobFailure('Job %s failed without traceback', job)
             failure.raiseException()
         defer.returnValue(ret)
-    
+
     def __call__(self, f):
         @wraps(f)
         @defer.inlineCallbacks
@@ -81,10 +83,10 @@ class SynchronousCall(object):
                 raise TypeError('SynchronousCall must be called with a DistributedAPI object')
             calling_self = args[0]
             args = args[1:]
-            
+
             #More precedence queue_name of DistributedAPI than decorated method
             queue_name = calling_self.queue_name if calling_self.queue_name else self.queue_name
-            
+
             ret = None
             if calling_self.enqueued or not queue_name:
                 ret = yield f(calling_self, *args, **kwargs)
@@ -92,14 +94,47 @@ class SynchronousCall(object):
                 function = getattr(calling_self, getattr(f, 'func_name'))
                 queue = Queue(queue_name)
                 calling_self.enqueued = True
-                job = Job.create(func=function, args=args, kwargs=kwargs, connection=queue.connection,
-                         result_ttl=self.result_ttl, status=Status.QUEUED)
-                job.meta['userid']=calling_self.key
-                yield queue.enqueue_job(job, timeout=self.timeout)
+                job = yield self._enqueue_job(queue, calling_self.key, function, args, kwargs)
                 if self.sync or calling_self.sync:
-                    ret = yield self.get_result(job)
+                    ret = yield self._get_result_retry(job)
             defer.returnValue(ret)
         return wrapped_f
+
+    @defer.inlineCallbacks
+    def _enqueue_job(self, queue, userid, function, args, kwargs):
+        retries = self._max_retries
+        job = None
+        while retries>0:
+            try:
+                if job is None:
+                    job = Job.create(func=function, args=args, kwargs=kwargs, connection=queue.connection,
+                                    result_ttl=self.result_ttl, status=Status.QUEUED)
+                    job.meta['userid']=userid
+
+                yield queue.enqueue_job(job, timeout=self.timeout)
+                retries = 0
+            except Exception:
+                retries-=1
+                yield sleep(self._delay_retry)
+                if retries == 0:
+                    raise
+        defer.returnValue(job)
+
+    @defer.inlineCallbacks
+    def _get_result_retry(self, job):
+        ret = None
+        retries = self._max_retries
+        while retries>0:
+            try:
+                ret = yield self._get_result(job)
+                ret = 0
+            except Exception:
+                retries-=1
+                yield sleep(self._delay_retry)
+                if retries==0:
+                    raise
+        defer.returnValue(ret)
+
 
 class AsynchronousCall(SynchronousCall):
     def __init__(self, queue):

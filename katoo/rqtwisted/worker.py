@@ -39,6 +39,10 @@ green = make_colorizer('darkgreen')
 yellow = make_colorizer('darkyellow')
 blue = make_colorizer('darkblue')
 
+SLEEP_CALL = None
+MAX_RETRIES = 3
+MAX_DELAY_TIME = 1
+
 
 class Worker(service.Service, RedisMixin, rq.worker.Worker):
     redis_death_workers_keys = "rq:workers:death"
@@ -268,7 +272,9 @@ class Worker(service.Service, RedisMixin, rq.worker.Worker):
             except cyclone.redis.ConnectionError as e:
                 self.log.err(e, 'REDIS_CONNECTION_ERROR')
                 connection_errors += 1
-                if connection_errors >= 3:
+                if not SLEEP_CALL is None:
+                    yield SLEEP_CALL(MAX_DELAY_TIME)
+                if connection_errors >= MAX_RETRIES:
                     self._stopped = True
                     self.log.msg('Exiting due too many connection errors (%s) with redis'%(connection_errors))
                     if reactor.running:
