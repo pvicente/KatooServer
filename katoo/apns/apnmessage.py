@@ -47,7 +47,7 @@ class PushParser():
                 #it must be an attachment
                 if regex_key.find(cls._KATOO_URL) != -1:
                     extra_index = 2 if regex_key[cls._KATOO_URL_LEN+1]=='a' else 1
-                    print "-----------regex_key:%s-------------------:index: %s"%(regex_key, extra_index)
+                    print "-----------regex_key:%s-------------------:index: %s: letter: %s"%(regex_key, extra_index, regex_key[cls._KATOO_URL_LEN+1])
                     regex_key = regex_key[:cls._KATOO_URL_LEN+extra_index] #getting extra parameter p,v,s, al, as
                 else:
                     regex_key = cls._MAPS_URL
