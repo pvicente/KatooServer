@@ -9,7 +9,7 @@ from gettext import gettext as _
 import translate
 from katoo import conf
 
-declare = _('image'), _('video'), _('location'), _('sticker')
+declare = _('image'), _('video'), _('location'), _('sticker'), _('audio'), _('audio_sticker')
 
 class PushParser():
     '''Parse emoji/smileys of messages'''
@@ -22,7 +22,8 @@ class PushParser():
     _OLD_MAPS_URL = u'http://maps.google.com/?q='
     _MAPS_URL = u'https://maps.google.com/maps?q='
     _atachment_string = u'{0}p\S+|{0}v\S+|{0}a\S+|{0}s\S+|{1}\S+|{2}\S+'.format(regex.escape(_KATOO_URL), regex.escape(_OLD_MAPS_URL), regex.escape(_MAPS_URL))
-    _atachment_dict = {_KATOO_URL+'p': (u'\ue008', 'image'), _KATOO_URL+'v': (u'\ue12a', 'video'), _KATOO_URL+'s':(u'', 'sticker'), _MAPS_URL: (u'\U0001f4cd', 'location')}
+    _atachment_dict = {_KATOO_URL+'p': (u'\ue008', 'image'), _KATOO_URL+'v': (u'\ue12a', 'video'), _KATOO_URL+'s':(u'', 'sticker'),
+                       _KATOO_URL+'al':(u'\ue141', 'audio'), _KATOO_URL+'as':(u'\ue141','audio_sticker'), _MAPS_URL: (u'\U0001f4cd', 'location')}
     _regex_string = u'(' + _atachment_string + u'|' + _emoji_string + u')'
     #final regexp
     _regex_dict = dict(_emoji_dict.items()+_atachment_dict.items())

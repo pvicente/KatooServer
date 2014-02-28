@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2013-11-02 11:06+0100\n"
-"PO-Revision-Date: 2013-11-02 11:08+0100\n"
+"POT-Creation-Date: 2014-02-28 12:04+0100\n"
+"PO-Revision-Date: 2014-02-28 12:06+0100\n"
 "Last-Translator: Pedro <pedrovfer@gmail.com>\n"
 "Language-Team: es <LL@li.org>\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
@@ -18,28 +18,36 @@ msgstr ""
 "Generated-By: Babel 1.3\n"
 "X-Generator: Poedit 1.5.7\n"
 
-#: /Users/pvicente/Documents/workspace/KatooServer/katoo/supervisor.py:278
-#: /Users/pvicente/Documents/workspace/KatooServer/katoo/apns/api.py:89
+#: /Users/pvicente/IntelliJProjects/katooserver/katoo/supervisor.py:278
+#: /Users/pvicente/IntelliJProjects/katooserver/katoo/apns/api.py:89
 msgid "disconnected"
 msgstr "Desconectado por inactividad"
 
-#: /Users/pvicente/Documents/workspace/KatooServer/katoo/apns/apnmessage.py:12
+#: /Users/pvicente/IntelliJProjects/katooserver/katoo/apns/apnmessage.py:12
 msgid "image"
 msgstr "Imagen recibida"
 
-#: /Users/pvicente/Documents/workspace/KatooServer/katoo/apns/apnmessage.py:12
+#: /Users/pvicente/IntelliJProjects/katooserver/katoo/apns/apnmessage.py:12
 msgid "video"
 msgstr "Vídeo recibido"
 
-#: /Users/pvicente/Documents/workspace/KatooServer/katoo/apns/apnmessage.py:12
+#: /Users/pvicente/IntelliJProjects/katooserver/katoo/apns/apnmessage.py:12
 msgid "location"
 msgstr "Localización recibida"
 
-#: /Users/pvicente/Documents/workspace/KatooServer/katoo/apns/apnmessage.py:12
+#: /Users/pvicente/IntelliJProjects/katooserver/katoo/apns/apnmessage.py:12
 msgid "sticker"
 msgstr "Sticker recibido"
 
-#: /Users/pvicente/Documents/workspace/KatooServer/katoo/xmpp/xmppgoogle.py:159
+#: /Users/pvicente/IntelliJProjects/katooserver/katoo/apns/apnmessage.py:12
+msgid "audio"
+msgstr "Audio recibido"
+
+#: /Users/pvicente/IntelliJProjects/katooserver/katoo/apns/apnmessage.py:12
+msgid "audio_sticker"
+msgstr "Sticker con audio recibido"
+
+#: /Users/pvicente/IntelliJProjects/katooserver/katoo/xmpp/xmppgoogle.py:156
 msgid "available"
 msgstr "está disponible"
 
