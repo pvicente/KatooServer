@@ -46,7 +46,8 @@ class PushParser():
             else:
                 #it must be an attachment
                 if regex_key.find(cls._KATOO_URL) != -1:
-                    regex_key = regex_key[:cls._KATOO_URL_LEN+1] #getting extra parameter p,v,a
+                    extra_index = 2 if regex_key[cls._KATOO_URL_LEN+1]=='a' else 1
+                    regex_key = regex_key[:cls._KATOO_URL_LEN+extra_index] #getting extra parameter p,v,s, al, as
                 else:
                     regex_key = cls._MAPS_URL
                 emoji, string = cls._regex_dict[regex_key]
