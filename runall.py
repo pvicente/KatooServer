@@ -26,7 +26,7 @@ import os
 
 application = KatooApp().app
 
-worker_queues = [conf.MACHINEID, conf.DIST_QUEUE_LOGIN, conf.DIST_QUEUE_RELOGIN, conf.DIST_QUEUE_PUSH]
+worker_queues = [conf.MACHINEID, conf.DIST_QUEUE_LOGIN, conf.DIST_QUEUE_PUSH, conf.DIST_QUEUE_RELOGIN ]
 
 if conf.ADOPTED_STREAM is None:
     stream = reactor.listenTCP(port=conf.PORT, factory=app, backlog=conf.BACKLOG, interface=conf.LISTEN)
