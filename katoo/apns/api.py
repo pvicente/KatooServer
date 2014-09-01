@@ -35,6 +35,7 @@ class KatooAPNSProtocol(APNSProtocol):
 
 class KatooAPNSClientFactory(APNSClientFactory):
     protocol=KatooAPNSProtocol
+    maxDelay = conf.APNS_TIMEOUT
 
 class KatooAPNSService(Singleton):
     def constructor(self):
