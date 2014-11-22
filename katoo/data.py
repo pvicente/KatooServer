@@ -13,7 +13,7 @@ from katoo.utils.applog import getLogger, getLoggerAdapter
 from katoo.utils.connections import MongoMixin
 from katoo.utils.time import Timer, sleep
 from twisted.internet import defer
-from txmongo._pymongo.objectid import ObjectId
+from txmongo.collection import ObjectId
 import conf
 
 log = getLogger(__name__)
