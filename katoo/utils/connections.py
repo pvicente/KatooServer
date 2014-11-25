@@ -11,9 +11,9 @@ from katoo.utils.applog import getLoggerAdapter, getLogger
 from katoo.utils.decorators import inject_decorators
 from twisted.internet import defer, reactor
 from twisted.python import log
-#from txmongo._pymongo import helpers
-#from txmongo._pymongo.son import SON
-#from txmongo.collection import Collection
+from txmongo._pymongo import helpers
+from txmongo._pymongo.son import SON
+from txmongo.collection import Collection
 from urlparse import urlparse
 import txmongo
 
@@ -118,92 +118,92 @@ class RedisMixin(object):
                                           'OP_GET_MORE': IncrementMetric(name='op_get_more', unit='calls', source='MONGO'),
                                           'OP_QUERY': IncrementMetric(name='op_query', unit='calls', source='MONGO')
                                           })
-# class AuthMongoProtocol(txmongo.MongoProtocol):
-#     CONNECTIONS_METRIC=Metric(name='connections', value=None, unit='connections', source='MONGO', reset=False)
-#     username=None
-#     password=None
-#     database=None
-#     log = None
-#
-#     def _authenticate(self, name, password):
-#         """
-#         Send an authentication command for this database.
-#         mostly stolen from pymongo
-#         """
-#         if not isinstance(name, basestring):
-#             raise TypeError("name must be an instance of basestring")
-#         if not isinstance(password, basestring):
-#             raise TypeError("password must be an instance of basestring")
-#
-#         d = defer.Deferred()
-#         # First get the nonce
-#         Collection(self.database, "$cmd").find_one({"getnonce": 1}, _proto=self
-#                 ).addCallback(self._authenticate_with_nonce, name, password, d
-#                 ).addErrback(self._auth_error, d)
-#
-#
-#         return d
-#
-#     def _authenticate_with_nonce(self, result, name, password, d):
-#         nonce = result['nonce']
-#         key = helpers._auth_key(nonce, name, password)
-#
-#         # hacky because order matters
-#         auth_command = SON(authenticate=1)
-#         auth_command['user'] = unicode(name)
-#         auth_command['nonce'] = nonce
-#         auth_command['key'] = key
-#
-#         # Now actually authenticate
-#         Collection(self.database, "$cmd").find_one(auth_command,_proto=self
-#                 ).addCallback(self._authenticated, d
-#                 ).addErrback(self._auth_error, d)
-#
-#     def _authenticated(self, result, d):
-#         """might want to just call callback with 0.0 instead of errback"""
-#         ok = result['ok']
-#         if ok:
-#             d.callback(ok)
-#         else:
-#             d.errback(ValueError(result['errmsg']))
-#
-#     def _auth_error(self, reason):
-#         self.log.warning("Auth error with Mongo reason=%s", reason)
-#
-#
-#     @IncrementMetric(name='connectionMade', unit='calls', source='MONGO')
-#     @defer.inlineCallbacks
-#     def connectionMade(self):
-#         self.CONNECTIONS_METRIC.add(1)
-#         if not self.username is None:
-#             try:
-#                 yield self._authenticate(self.username, self.password)
-#                 yield txmongo.MongoProtocol.connectionMade(self)
-#             except Exception, e:
-#                 self.factory.maxRetries = conf.BACKEND_MAX_RETRIES
-#                 self.transport.loseConnection()
-#                 msg = "Mongo Error.%s: %r"%(e.__class__.__name__, e)
-#                 self.log.warning(msg)
-#                 defer.returnValue(None)
-#         else:
-#             yield txmongo.MongoProtocol.connectionMade(self)
-#
-#         if not self.connected:
-#             self.factory.continueTrying = True
-#             self.factory.maxRetries = conf.BACKEND_MAX_RETRIES
-#
-#         self.log.info('connectionMade and authenticated to MONGO id=%s connected=%d total=%d', hex(id(self)), self.connected, self.CONNECTIONS_METRIC)
-#
-#
-#     @IncrementMetric(name='connectionLost', unit='calls', source='MONGO')
-#     def connectionLost(self, reason):
-#         self.CONNECTIONS_METRIC.add(-1)
-#         if reactor.running:
-#             logging_out = self.log.warning
-#         else:
-#             logging_out = self.log.info
-#         logging_out('connectionLost to MONGO id=%s total=%d reason=%r', hex(id(self)), self.CONNECTIONS_METRIC, reason)
-#         return txmongo.MongoProtocol.connectionLost(self, reason)
+class AuthMongoProtocol(txmongo.MongoProtocol):
+    CONNECTIONS_METRIC=Metric(name='connections', value=None, unit='connections', source='MONGO', reset=False)
+    username=None
+    password=None
+    database=None
+    log = None
+    
+    def _authenticate(self, name, password):
+        """
+        Send an authentication command for this database.
+        mostly stolen from pymongo
+        """
+        if not isinstance(name, basestring):
+            raise TypeError("name must be an instance of basestring")
+        if not isinstance(password, basestring):
+            raise TypeError("password must be an instance of basestring")
+    
+        d = defer.Deferred()
+        # First get the nonce
+        Collection(self.database, "$cmd").find_one({"getnonce": 1}, _proto=self
+                ).addCallback(self._authenticate_with_nonce, name, password, d
+                ).addErrback(self._auth_error, d)
+    
+    
+        return d
+
+    def _authenticate_with_nonce(self, result, name, password, d):
+        nonce = result['nonce']
+        key = helpers._auth_key(nonce, name, password)
+    
+        # hacky because order matters
+        auth_command = SON(authenticate=1)
+        auth_command['user'] = unicode(name)
+        auth_command['nonce'] = nonce
+        auth_command['key'] = key
+    
+        # Now actually authenticate
+        Collection(self.database, "$cmd").find_one(auth_command,_proto=self
+                ).addCallback(self._authenticated, d
+                ).addErrback(self._auth_error, d)
+    
+    def _authenticated(self, result, d):
+        """might want to just call callback with 0.0 instead of errback"""
+        ok = result['ok']
+        if ok:
+            d.callback(ok)
+        else:
+            d.errback(ValueError(result['errmsg']))
+
+    def _auth_error(self, reason):
+        self.log.warning("Auth error with Mongo reason=%s", reason)
+
+    
+    @IncrementMetric(name='connectionMade', unit='calls', source='MONGO')
+    @defer.inlineCallbacks
+    def connectionMade(self):
+        self.CONNECTIONS_METRIC.add(1)
+        if not self.username is None:
+            try:
+                yield self._authenticate(self.username, self.password)
+                yield txmongo.MongoProtocol.connectionMade(self)
+            except Exception, e:
+                self.factory.maxRetries = conf.BACKEND_MAX_RETRIES
+                self.transport.loseConnection()
+                msg = "Mongo Error.%s: %r"%(e.__class__.__name__, e)
+                self.log.warning(msg)
+                defer.returnValue(None)
+        else:
+            yield txmongo.MongoProtocol.connectionMade(self)
+
+        if not self.connected:
+            self.factory.continueTrying = True
+            self.factory.maxRetries = conf.BACKEND_MAX_RETRIES
+
+        self.log.info('connectionMade and authenticated to MONGO id=%s connected=%d total=%d', hex(id(self)), self.connected, self.CONNECTIONS_METRIC)
+
+    
+    @IncrementMetric(name='connectionLost', unit='calls', source='MONGO')
+    def connectionLost(self, reason):
+        self.CONNECTIONS_METRIC.add(-1)
+        if reactor.running:
+            logging_out = self.log.warning
+        else:
+            logging_out = self.log.info
+        logging_out('connectionLost to MONGO id=%s total=%d reason=%r', hex(id(self)), self.CONNECTIONS_METRIC, reason)
+        return txmongo.MongoProtocol.connectionLost(self, reason)
     
 class MongoMixin(object):
     mongo_conn = None
@@ -216,8 +216,15 @@ class MongoMixin(object):
             if url is None:
                 url = conf.MONGO_URL
             hostname, port, cls.mongo_db, username, password = url_parse(url, 'mongodb')
-            txmongo.connection._Connection.maxRetries = conf.BACKEND_MAX_RETRIES
-            txmongo.connection._Connection.maxDelay = conf.BACKEND_MAX_DELAY
-            cls.mongo_conn = txmongo.connection.ConnectionPool(url, pool_size=conf.MONGO_POOL)
+            AuthMongoProtocol.database = cls.mongo_db
+            AuthMongoProtocol.username = username
+            AuthMongoProtocol.password = password
+            if log is None:
+                log = getLoggerAdapter(getLogger(__name__), id='MONGO_CONNECTIONPOOL')
+            cls.log = AuthMongoProtocol.log = log
+            txmongo._MongoFactory.protocol = AuthMongoProtocol
+            txmongo._MongoFactory.maxRetries = conf.BACKEND_MAX_RETRIES
+            txmongo._MongoFactory.maxDelay = conf.BACKEND_MAX_DELAY
+            cls.mongo_conn = txmongo.lazyMongoConnectionPool(host=hostname, port=port, reconnect=True, pool_size=conf.MONGO_POOL)
     
 

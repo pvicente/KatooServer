@@ -13,6 +13,6 @@ rq==0.3.7
 six==1.4.1
 times==0.6.2
 Twisted==13.1.0
-txmongo==0.5
+txmongo==0.4.2
 wokkel==0.7.1
 zope.interface==4.0.5

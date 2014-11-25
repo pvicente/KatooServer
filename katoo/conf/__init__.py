@@ -31,7 +31,7 @@ GOOGLE_CLIENT_SECRET=os.getenv('GOOGLE_CLIENT_SECRET', '8uTcq2n92dDWO8HWaJBC6Lxg
 GOOGLE_OAUTH2_URL='https://accounts.google.com/o/oauth2/token'
 
 #WEBSERVICE
-PORT=int(os.getenv('DEV_PORT', os.getenv('PORT', 5000)))
+PORT=int(os.getenv('PORT', 5000))
 LISTEN=os.getenv('LISTEN', '0.0.0.0')
 ADOPTED_STREAM=os.getenv('ADOPTED_STREAM', None)
 BACKLOG=int(os.getenv('BACKLOG', 50))
