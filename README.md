@@ -17,7 +17,7 @@ There are more technical information about the project in the oficial [wiki](htt
 
  1. Clone the repo:
 
-    ```git clone --recursive https://gearsofdev@bitbucket.org/gearsofdev/katooserver.git```
+    ```git clone --recursive git@bitbucket.org:katooin/katooserver.git```
 
  2. Install [virtualbox](https://www.virtualbox.org/wiki/Downloads)
 
