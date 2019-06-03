@@ -2,7 +2,7 @@
 
 # Introduction
 
-KatooServer has been designed to support background tasks of [KatooIOS](https://bitbucket.org/gearsofdev/katooios) clients, storing
+KatooServer has been designed to support background tasks of [KatooIOS](https://bitbucket.org/katooin/katooios/src) clients, storing
 their messages to be retrieved in a near future and sending [push notifications](http://developer.apple.com/library/mac/#documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/Introduction/Introduction.html#//apple_ref/doc/uid/TP40008194-CH1-SW1).
 
 It has been developed in Python 2.7 running in [Heroku](http://www.heroku.com/) with python 2.7.4. 
@@ -11,7 +11,7 @@ As backend message broker we are using [Redis](http://redis.io/) 2.6.14 and to p
 
 # Detailed documentation
 
-There are more technical information about the project in the oficial [wiki](https://bitbucket.org/gearsofdev/katooserver/wiki/Home).
+There are more technical information about the project in the oficial [wiki](https://github.com/pvicente/KatooServer/wiki)
 
 # Installation
 
