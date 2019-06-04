@@ -11,7 +11,7 @@ As backend message broker we are using [Redis](http://redis.io/) 2.6.14 and to p
 
 # Detailed documentation
 
-There are more technical information about the project in the oficial [wiki](https://github.com/pvicente/KatooServer/wiki)
+There is more technical information about the project in the oficial [wiki](https://github.com/pvicente/KatooServer/wiki)
 
 # Installation
 
