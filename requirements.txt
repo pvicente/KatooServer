@@ -12,7 +12,7 @@ regex===2013-08-04
 rq==0.3.7
 six==1.4.1
 times==0.6.2
-Twisted==13.1.0
+Twisted==20.3.0
 txmongo==0.4.2
 wheel==0.24.0
 wokkel==0.7.1
